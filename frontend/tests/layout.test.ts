@@ -8,8 +8,12 @@ import { describe, expect, it } from "vitest";
 const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf-8");
 
 function rule(selector: string): string {
-  const match = css.match(new RegExp(`(?:^|\n)${selector.replace(".", "\.")} \{([^}]*)\}`));
-  return match ? match[1] : "";
+  // plain string search instead of building a regex from the selector (no escaping to get wrong)
+  const start = css.indexOf(`
+${selector} {`);
+  if (start === -1) return "";
+  const open = css.indexOf("{", start);
+  return css.slice(open + 1, css.indexOf("}", open));
 }
 
 describe("scrollable rows containing screen-reader text", () => {
