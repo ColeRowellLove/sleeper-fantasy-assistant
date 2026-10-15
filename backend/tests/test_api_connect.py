@@ -20,7 +20,7 @@ FIXTURE: dict[str, Any] = json.loads(
 )
 
 
-def _routes() -> dict[str, Any]:
+def _routes_original() -> dict[str, Any]:
     routes: dict[str, Any] = {
         "/state/nfl": FIXTURE["state"],
         "/user/cole": FIXTURE["users"][0],
@@ -43,10 +43,25 @@ def _routes() -> dict[str, Any]:
     return routes
 
 
+FAILING: set[str] = set()  # paths a test wants Sleeper to answer with a 503
+OVERRIDES: dict[str, Any] = {}  # paths a test wants Sleeper to answer differently
+
+
+@pytest.fixture(autouse=True)
+def _reset_sleeper_faults() -> Iterator[None]:
+    yield
+    FAILING.clear()
+    OVERRIDES.clear()
+
+
+def _routes() -> dict[str, Any]:
+    return {**_routes_original(), **OVERRIDES}
+
+
 def _handler(request: httpx.Request) -> httpx.Response:
     path = request.url.path.removeprefix("/v1")
     routes = _routes()
-    if path == "/user/down":
+    if path == "/user/down" or path in FAILING:
         return httpx.Response(503)
     if path in routes:
         # content= (not json=) so a None route is sent as the literal JSON null Sleeper returns
@@ -257,3 +272,38 @@ def test_league_settings_endpoint_returns_what_sleeper_provides(client: TestClie
     assert body["scoring_settings"] == {
         k: float(v) for k, v in FIXTURE["league"]["scoring_settings"].items()
     }
+
+
+def test_connect_still_works_when_the_player_database_is_down(
+    client: TestClient,
+) -> None:
+    FAILING.update({"/players/nfl"})
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1").json()
+    assert body["name"] == "Family League"  # the league loads; names fall back to ids
+
+
+def test_connect_still_works_when_the_schedule_is_down(
+    client: TestClient,
+) -> None:
+    FAILING.update({"/schedule/nfl/regular/2026"})
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1").json()
+    assert body["week"] is None  # without a schedule there is no current week, and no crash
+
+
+def test_connect_reports_a_sleeper_outage_as_502(
+    client: TestClient,
+) -> None:
+    FAILING.update({"/league/1"})
+    assert client.post("/api/leagues/1/connect").status_code == 502
+
+
+def test_connect_reports_an_unknown_league_as_404(client: TestClient) -> None:
+    assert client.post("/api/leagues/999/connect").status_code == 404
+
+
+def test_connect_reports_a_malformed_sleeper_payload_as_502(client: TestClient) -> None:
+    broken = dict(FIXTURE["league"], league_id="1", total_rosters="many")
+    OVERRIDES["/league/1"] = broken
+    assert client.post("/api/leagues/1/connect").status_code == 502
