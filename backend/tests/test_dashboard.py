@@ -203,3 +203,42 @@ def test_owner_ids_are_exposed_for_my_team_matching(session: Session) -> None:
         t.roster_id: t.owner_id for m in build_lineups(session, league).matchups for t in m.teams
     }
     assert teams == {1: "u1", 2: None}
+
+
+def test_ir_and_taxi_players_are_not_labelled_as_bench_in_lineups(session: Session) -> None:
+    league = _league(["RB", "BN", "BN"])
+    session.add(league)
+    session.add_all(
+        [
+            _player("10", "Starter", "RB", "SF"),
+            _player("11", "Bench Guy", "WR", "MIN"),
+            _player("12", "Hurt Guy", "RB", "SEA"),
+            _player("13", "Stash Guy", "QB", "NYJ"),
+        ]
+    )
+    session.add(
+        _roster(
+            1, None, players=["10", "11", "12", "13"], starters=["10"], reserve=["12"], taxi=["13"]
+        )
+    )
+    session.add(
+        _matchup(
+            1,
+            1,
+            6,
+            9.0,
+            starters=["10"],
+            starters_points=[9.0],
+            players=["10", "11", "12", "13"],  # Sleeper lists IR and taxi players here too
+            players_points={"10": 9.0, "11": 4.0, "12": 99.0, "13": 0.5},
+        )
+    )
+    session.commit()
+
+    team = build_lineups(session, league, week=6).matchups[0].teams[0]
+
+    assert [(b.name, b.slot) for b in team.bench] == [
+        ("Bench Guy", "BN"),
+        ("Hurt Guy", "IR"),  # sorted after the bench even though it has the highest points
+        ("Stash Guy", "TAXI"),
+    ]

@@ -213,7 +213,48 @@ describe("lineup helpers", () => {
     const rows = pairRows(cole, dad);
     expect(rows.map((r) => r.slot)).toEqual(["QB", "RB", "Bench", "Bench"]);
     expect(rows[3].right).toBeNull();
-    expect(rows.filter((r) => r.bench)).toHaveLength(2);
+    expect(rows.filter((r) => r.kind === "bench")).toHaveLength(2);
+  });
+
+  it("shows IR and taxi players in their own labelled rows after the bench", () => {
+    const hurt = player("IR", "Hurt Guy", 0);
+    const stash = player("TAXI", "Stash Guy", 0);
+    const a = team(1, "A", 10, [player("QB", "A QB", 10)], [player("BN", "A Bench", 1), hurt]);
+    const b = team(2, "B", 9, [player("QB", "B QB", 9)], [stash]);
+    const rows = pairRows(a, b);
+    expect(rows.map((r) => [r.slot, r.kind])).toEqual([
+      ["QB", "starter"],
+      ["Bench", "bench"],
+      ["IR", "ir"],
+      ["Taxi", "taxi"],
+    ]);
+    expect(rows[2].left?.name).toBe("Hurt Guy");
+    expect(rows[2].right).toBeNull();
+    expect(rows[3].right?.name).toBe("Stash Guy");
+  });
+
+  it("never drops a non-starter, even with an unexpected slot label", () => {
+    const a = team(1, "A", 1, [player("QB", "A QB", 1)], [player("MYSTERY", "Odd Slot Guy", 2)]);
+    const b = team(2, "B", 1, [player("QB", "B QB", 1)]);
+    const rows = pairRows(a, b);
+    expect(rows.map((r) => r.left?.name)).toContain("Odd Slot Guy");
+    expect(rows.find((r) => r.left?.name === "Odd Slot Guy")?.kind).toBe("bench");
+  });
+
+  it("renders IR and taxi rows with a visible text label and their own row class", () => {
+    const a = team(1, "A", 10, [player("QB", "A QB", 10)], [player("IR", "Hurt Guy", 0)]);
+    const b = team(2, "B", 9, [player("QB", "B QB", 9)]);
+    render(
+      <WeeklyLineups
+        data={{ week: 5, current_week: 6, weeks: [5], matchups: [{ matchup_id: 1, teams: [a, b] }] }}
+        leagueId="9"
+        myRosterId={null}
+      />,
+    );
+    const irRow = screen.getByRole("rowheader", { name: "IR" }).closest("tr") as HTMLElement;
+    expect(irRow.className).toBe("ir");
+    expect(within(irRow).getByText("Hurt Guy")).toBeInTheDocument();
+    expect(screen.queryByRole("rowheader", { name: "Bench" })).not.toBeInTheDocument();
   });
 
   it("finds the winner, or nobody on a tie", () => {

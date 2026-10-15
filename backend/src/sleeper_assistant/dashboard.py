@@ -20,6 +20,8 @@ from sleeper_assistant.db import (
 # Sleeper marks an empty starter slot with the player id "0".
 EMPTY_SLOT = "0"
 NON_STARTER_SLOTS = {"BN", "IR", "TAXI"}
+# Matchup `players` also lists IR and taxi players; they are shown after the bench, not as bench.
+_PARKED_ORDER = {"BN": 0, "IR": 1, "TAXI": 2}
 
 Status = Literal["starter", "bench", "ir", "taxi"]
 GameState = Literal["upcoming", "live", "final", "bye"]
@@ -283,10 +285,15 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
     players = _players(session, {pid for m in week_rows for pid in [*m.starters, *m.players]})
     slots = starter_slots(league)
     games = games_for_week(session, league.season, week)
+    # IR and taxi come from the current roster (past weeks use today's IR list)
+    parked = {
+        r.roster_id: {**{pid: "IR" for pid in r.reserve}, **{pid: "TAXI" for pid in r.taxi}}
+        for r in rosters
+    }
 
     by_matchup: dict[int, list[TeamLineup]] = {}
     for m in sorted(week_rows, key=lambda m: m.roster_id):
-        lineup = _team_lineup(m, team, owners, players, slots, games)
+        lineup = _team_lineup(m, team, owners, players, slots, games, parked.get(m.roster_id, {}))
         # a missing matchup_id (bye/unscheduled) must not group unrelated teams together
         key = m.matchup_id if m.matchup_id is not None else -m.roster_id
         by_matchup.setdefault(key, []).append(lineup)
@@ -305,6 +312,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
     players: dict[str, PlayerRow],
     slots: list[str],
     games: dict[str, GameInfo],
+    parked: dict[str, str],
 ) -> TeamLineup:
     points: dict[str, Any] = m.players_points
 
@@ -343,7 +351,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
         name, position, nfl_team = _display(players, pid)
         bench.append(
             LineupPlayer(
-                slot="BN",
+                slot=parked.get(pid, "BN"),
                 player_id=pid,
                 name=name,
                 position=position,
@@ -352,7 +360,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 game=games.get(nfl_team) if nfl_team else None,
             )
         )
-    bench.sort(key=lambda p: (-(p.points or 0.0), p.name))
+    bench.sort(key=lambda p: (_PARKED_ORDER.get(p.slot, 0), -(p.points or 0.0), p.name))
     return TeamLineup(
         roster_id=m.roster_id,
         team=team.get(m.roster_id, f"Team {m.roster_id}"),

@@ -104,10 +104,19 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     }
   });
 
-  it("muted text stays readable on the lineups bench row tint (7% of the bench role color)", () => {
-    const tint = chipBackgroundAt(t["role-bench"], t.surface, 0.07);
-    expect(ratio(rgb(t.muted), tint)).toBeGreaterThanOrEqual(4.5);
-    expect(ratio(rgb(t.text), tint)).toBeGreaterThanOrEqual(7);
+  it("lineup row tints (bench 7%, IR and taxi 8% of their role color) keep text readable", () => {
+    for (const [role, alpha] of [["role-bench", 0.07], ["role-ir", 0.08], ["role-taxi", 0.08]] as const) {
+      const tint = chipBackgroundAt(t[role], t.surface, alpha);
+      expect(ratio(rgb(t.muted), tint)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(rgb(t.text), tint)).toBeGreaterThanOrEqual(7);
+    }
+  });
+
+  it("the IR and taxi slot labels are readable on their row tints", () => {
+    for (const role of ["role-ir", "role-taxi"]) {
+      const tint = chipBackgroundAt(t[role], t.surface, 0.08);
+      expect(ratio(rgb(t[role]), tint)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it("focus ring and error color stand out from the page", () => {

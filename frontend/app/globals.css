@@ -1167,6 +1167,24 @@ table.h2h {
   background: color-mix(in srgb, var(--role-bench) 7%, transparent);
 }
 
+.h2h tr.ir td,
+.h2h tr.ir th {
+  background: color-mix(in srgb, var(--role-ir) 8%, transparent);
+}
+
+.h2h tr.ir .slot-cell {
+  color: var(--role-ir);
+}
+
+.h2h tr.taxi td,
+.h2h tr.taxi th {
+  background: color-mix(in srgb, var(--role-taxi) 8%, transparent);
+}
+
+.h2h tr.taxi .slot-cell {
+  color: var(--role-taxi);
+}
+
 .h2h tr.bench .cell-name {
   font-weight: 500;
 }
