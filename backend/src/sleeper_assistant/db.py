@@ -131,6 +131,7 @@ class PlayerRow(Base):
     team: Mapped[str | None] = mapped_column(String)
     status: Mapped[str | None] = mapped_column(String)
     injury_status: Mapped[str | None] = mapped_column(String)
+    injury_body_part: Mapped[str | None] = mapped_column(String)
     external_ids: Mapped[dict[str, Any]]
 
 

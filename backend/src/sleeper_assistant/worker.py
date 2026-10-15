@@ -34,7 +34,9 @@ Handler = Callable[[Session, dict[str, Any]], None]
 ACTIVE_WINDOW = timedelta(days=14)  # leagues viewed within this window sync on schedule
 SYNC_INTERVAL = timedelta(minutes=15)
 POLL_SECONDS = 5.0
-PLAYER_SYNC_INTERVAL = timedelta(hours=24)
+PLAYER_SYNC_INTERVAL = timedelta(
+    hours=1
+)  # injury designations change during the week and on game days
 PLAYER_SYNC_FAILURE_COOLDOWN = timedelta(hours=6)  # do not hammer a failing /players endpoint
 SCHEDULE_SYNC_INTERVAL = timedelta(minutes=10)
 SCHEDULE_FAILURE_COOLDOWN = timedelta(minutes=30)
@@ -165,7 +167,7 @@ def _enqueue_periodic(
 
 
 def enqueue_player_sync_if_due(session: Session, now: datetime | None = None) -> bool:
-    """Enqueue the daily Sleeper player DB sync unless one is pending or finished recently."""
+    """Enqueue the hourly Sleeper player DB sync unless one is pending or finished recently."""
     return _enqueue_periodic(
         session, "sync_players", PLAYER_SYNC_INTERVAL, PLAYER_SYNC_FAILURE_COOLDOWN, now
     )

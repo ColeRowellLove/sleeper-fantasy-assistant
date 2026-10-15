@@ -1,6 +1,7 @@
 import type { LineupPlayer, Lineups, TeamLineup } from "../lib/api";
 import { formatPoints, pairRows, winnerId, type WeekState } from "../lib/lineups";
 import GameBadge from "./GameBadge";
+import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PositionChip from "./PositionChip";
 
@@ -79,6 +80,8 @@ function Cell({
           <span className="cell-name">{player.name}</span>
           <span className="cell-meta">
             <PositionChip position={player.position} />
+            {/* the designation is the current one, so it is not shown against weeks already played */}
+            {state !== "played" && <InjuryBadge injury={player.injury} />}
             <GameBadge game={player.game} />
           </span>
         </span>

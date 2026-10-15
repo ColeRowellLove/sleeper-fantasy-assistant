@@ -242,3 +242,64 @@ def test_ir_and_taxi_players_are_not_labelled_as_bench_in_lineups(session: Sessi
         ("Hurt Guy", "IR"),  # sorted after the bench even though it has the highest points
         ("Stash Guy", "TAXI"),
     ]
+
+
+def test_injury_designation_is_exposed_and_meaningless_values_are_hidden(session: Session) -> None:
+    league = _league(["RB", "WR", "BN"])
+    session.add(league)
+    session.add_all(
+        [
+            PlayerRow(
+                player_id="1",
+                full_name="Hurt RB",
+                position="RB",
+                team="SF",
+                injury_status="Questionable",
+                injury_body_part="Hamstring",
+                external_ids={},
+            ),
+            PlayerRow(
+                player_id="2",
+                full_name="Out WR",
+                position="WR",
+                team="MIN",
+                injury_status="Out",
+                injury_body_part=None,
+                external_ids={},
+            ),
+            PlayerRow(
+                player_id="3",
+                full_name="Fine TE",
+                position="TE",
+                team="KC",
+                injury_status="NA",  # carries no information
+                external_ids={},
+            ),
+            PlayerRow(
+                player_id="4", full_name="Healthy", position="QB", team="HOU", external_ids={}
+            ),
+        ]
+    )
+    session.add(_roster(1, None, players=["1", "2", "3", "4"], starters=["1", "2"]))
+    session.add(
+        _matchup(1, 1, 6, 0.0, starters=["1", "2"], players=["1", "2", "3", "4"], players_points={})
+    )
+    session.commit()
+
+    roster = {p.name: p for p in build_dashboard(session, league).rosters[0].players}
+    assert roster["Hurt RB"].injury is not None
+    assert (roster["Hurt RB"].injury.status, roster["Hurt RB"].injury.body_part) == (
+        "Questionable",
+        "Hamstring",
+    )
+    assert roster["Out WR"].injury is not None
+    assert roster["Out WR"].injury.body_part is None
+    assert roster["Fine TE"].injury is None  # NA is hidden
+    assert roster["Healthy"].injury is None
+
+    team = build_lineups(session, league, week=6).matchups[0].teams[0]
+    starters = {p.name: p for p in team.starters}
+    assert starters["Hurt RB"].injury is not None
+    assert starters["Hurt RB"].injury.status == "Questionable"
+    bench = {p.name: p for p in team.bench}
+    assert bench["Fine TE"].injury is None

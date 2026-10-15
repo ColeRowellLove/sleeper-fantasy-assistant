@@ -34,6 +34,13 @@ _STATUS_STATE: dict[str, GameState] = {
 }
 
 
+class InjuryInfo(BaseModel):
+    """Injury designation from Sleeper (Out, Doubtful, Questionable, IR, PUP, ...)."""
+
+    status: str
+    body_part: str | None = None
+
+
 class GameInfo(BaseModel):
     """A player's NFL game in a week: upcoming, live, final, or the team is on a bye."""
 
@@ -63,6 +70,7 @@ class RosterPlayer(BaseModel):
     status: Status
     slot: str | None  # lineup slot for starters, e.g. QB, RB, FLEX
     game: GameInfo | None = None  # this week's game (or bye) for the player's NFL team
+    injury: InjuryInfo | None = None
 
 
 class RosterView(BaseModel):
@@ -89,6 +97,7 @@ class LineupPlayer(BaseModel):
     team: str | None
     points: float | None
     game: GameInfo | None = None
+    injury: InjuryInfo | None = None
 
 
 class TeamLineup(BaseModel):
@@ -131,6 +140,17 @@ def _team_names(session: Session, rosters: list[RosterRow]) -> dict[int, str]:
 def _players(session: Session, player_ids: set[str]) -> dict[str, PlayerRow]:
     rows = session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(player_ids)))
     return {p.player_id: p for p in rows}
+
+
+# Designations that carry no information for a fantasy manager are hidden.
+_HIDDEN_INJURY_STATUSES = {"", "NA"}
+
+
+def _injury(players: dict[str, PlayerRow], pid: str) -> InjuryInfo | None:
+    p = players.get(pid)
+    if p is None or not p.injury_status or p.injury_status in _HIDDEN_INJURY_STATUSES:
+        return None
+    return InjuryInfo(status=p.injury_status, body_part=p.injury_body_part or None)
 
 
 def _display(players: dict[str, PlayerRow], pid: str) -> tuple[str, str | None, str | None]:
@@ -241,6 +261,7 @@ def _roster_players(
             status=status,
             slot=slot,
             game=games.get(nfl_team) if nfl_team else None,
+            injury=_injury(players, pid),
         )
 
     out: list[RosterPlayer] = []
@@ -341,6 +362,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 team=nfl_team,
                 points=None if value is None else float(value),
                 game=games.get(nfl_team) if nfl_team else None,
+                injury=_injury(players, pid),
             )
         )
 
@@ -358,6 +380,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 team=nfl_team,
                 points=pts(pid),
                 game=games.get(nfl_team) if nfl_team else None,
+                injury=_injury(players, pid),
             )
         )
     bench.sort(key=lambda p: (_PARKED_ORDER.get(p.slot, 0), -(p.points or 0.0), p.name))
