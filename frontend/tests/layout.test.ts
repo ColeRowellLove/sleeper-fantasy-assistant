@@ -23,3 +23,12 @@ describe("scrollable rows containing screen-reader text", () => {
     expect(body).toContain("position: relative");
   });
 });
+
+describe("settings rows", () => {
+  // the global `dl` rule is a two-column grid; without display: block each row's div became a grid
+  // item and the rows ran sideways out of their card
+  it(".setting-rows opts out of the global dl grid", () => {
+    expect(rule("dl")).toContain("display: grid");
+    expect(rule(".setting-rows")).toContain("display: block");
+  });
+});

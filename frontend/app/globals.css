@@ -1514,6 +1514,7 @@ table.h2h {
 
 /* League settings tab */
 .settings-grid {
+  align-items: start;
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
@@ -1535,6 +1536,7 @@ table.h2h {
 }
 
 .setting-rows {
+  display: block; /* the global dl rule makes a two-column grid, which breaks each row apart */
   margin: 0;
 }
 
