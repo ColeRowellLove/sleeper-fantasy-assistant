@@ -136,7 +136,7 @@ function format(value: unknown, how: Format | undefined): string {
   return plain(value);
 }
 
-export function titleCase(key: string): string {
+function titleCase(key: string): string {
   const words = key.replace(/_/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

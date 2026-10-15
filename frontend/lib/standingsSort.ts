@@ -7,7 +7,7 @@ export type SortKey =
   | "streak"
   | "points_for"
   | "points_against";
-export type SortDirection = "asc" | "desc";
+type SortDirection = "asc" | "desc";
 
 export interface SortState {
   key: SortKey;
@@ -51,7 +51,7 @@ const VALUE: Record<SortKey, (row: StandingsRow) => number | string> = {
 };
 
 /** What a first click on a column does: names run A to Z, rank best first, numbers high first. */
-export function firstDirection(key: SortKey): SortDirection {
+function firstDirection(key: SortKey): SortDirection {
   return key === "rank" || key === "team" ? "asc" : "desc"; // streak: hottest first
 }
 
