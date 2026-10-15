@@ -6,7 +6,7 @@ import WeeklyLineups from "../../../components/WeeklyLineups";
 import type { Dashboard, Lineups } from "../../../lib/api";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "League dashboard", robots: { index: false } };
+export const metadata = { title: "League", robots: { index: false } };
 
 const API_URL = process.env.API_URL ?? "http://localhost:8000";
 
@@ -39,7 +39,7 @@ export default async function LeaguePage({
   ]);
 
   return (
-    <main>
+    <main id="main" className="container">
       <LeagueDashboard data={dashboard} />
       <WeeklyLineups data={lineups} />
       <p>
