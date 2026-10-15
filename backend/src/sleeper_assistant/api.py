@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Iterator
 from datetime import timedelta
 from functools import lru_cache
 from typing import Annotated
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Path, Query
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -83,6 +84,24 @@ def _summary(league: SleeperLeague) -> LeagueSummary:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "version": __version__}
+
+
+@app.get("/health/db")
+def health_db(session: SessionDep, response: Response) -> dict[str, str | bool]:
+    """Is the database reachable? Reports only booleans and error class names, never URLs."""
+    result: dict[str, str | bool] = {
+        "database_url_configured": "DATABASE_URL" in os.environ,
+        "dialect": session.get_bind().dialect.name,
+    }
+    try:
+        session.execute(text("select 1"))
+        result["status"] = "ok"
+    except Exception as exc:  # report the class only; messages can contain connection details
+        session.rollback()
+        response.status_code = 503
+        result["status"] = "error"
+        result["error"] = type(exc).__name__
+    return result
 
 
 @app.get("/api/users/{username}/leagues")
