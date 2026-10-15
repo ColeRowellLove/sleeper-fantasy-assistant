@@ -20,6 +20,17 @@ export interface ConnectedLeague extends LeagueSummary {
   };
 }
 
+export interface LeagueSettings {
+  league_id: string;
+  name: string;
+  season: string;
+  total_rosters: number;
+  /** Sleeper's league settings exactly as sent (numbers, mostly 0/1 flags). */
+  settings: Record<string, number | string | boolean | null>;
+  scoring_settings: Record<string, number>;
+  roster_positions: string[];
+}
+
 export class ApiError extends Error {}
 
 const USERNAME_RE = /^[A-Za-z0-9_.]{1,40}$/;

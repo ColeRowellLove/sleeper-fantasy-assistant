@@ -7,7 +7,7 @@ import os
 from collections.abc import Callable, Iterator
 from datetime import timedelta
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
@@ -243,6 +243,38 @@ def get_league_dashboard(
     connected = _connected(row)
     response.headers["Cache-Control"] = READ_CACHE
     return DashboardResponse(**build_dashboard(session, row).model_dump(), rules=connected.rules)
+
+
+class LeagueSettings(BaseModel):
+    """Everything Sleeper reports about how the league is set up, as stored (read-only)."""
+
+    league_id: str
+    name: str
+    season: str
+    total_rosters: int
+    settings: dict[str, Any]
+    scoring_settings: dict[str, float]
+    roster_positions: list[str]
+
+
+@app.get("/api/leagues/{league_id}/settings")
+def get_league_settings(
+    league_id: LeagueId, session: SessionDep, response: Response
+) -> LeagueSettings:
+    """The league's rules, scoring and roster positions exactly as Sleeper provides them."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = READ_CACHE
+    return LeagueSettings(
+        league_id=row.league_id,
+        name=row.name,
+        season=row.season,
+        total_rosters=row.total_rosters,
+        settings=row.settings,
+        scoring_settings={k: float(v) for k, v in row.scoring_settings.items()},
+        roster_positions=row.roster_positions,
+    )
 
 
 @app.get("/api/leagues/{league_id}/lineups")

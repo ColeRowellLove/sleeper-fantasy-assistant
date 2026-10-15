@@ -244,3 +244,16 @@ def test_read_endpoints_are_briefly_cacheable_but_errors_are_not(client: TestCli
         cache = client.get(path).headers["cache-control"]
         assert "s-maxage=30" in cache
         assert "public" in cache
+
+
+def test_league_settings_endpoint_returns_what_sleeper_provides(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/settings").status_code == 404  # not connected yet
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/settings").json()
+    assert body["name"] == "Family League"
+    assert body["season"] == "2026"
+    assert body["roster_positions"] == FIXTURE["league"]["roster_positions"]
+    assert body["settings"] == FIXTURE["league"]["settings"]
+    assert body["scoring_settings"] == {
+        k: float(v) for k, v in FIXTURE["league"]["scoring_settings"].items()
+    }

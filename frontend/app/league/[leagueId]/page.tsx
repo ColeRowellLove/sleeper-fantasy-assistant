@@ -5,9 +5,10 @@ import { notFound } from "next/navigation";
 import LeagueHeader from "../../../components/LeagueHeader";
 import LeagueTabs from "../../../components/LeagueTabs";
 import RostersPanel from "../../../components/RostersPanel";
+import SettingsPanel from "../../../components/SettingsPanel";
 import StandingsTable from "../../../components/StandingsTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
-import type { Dashboard, Lineups } from "../../../lib/api";
+import type { Dashboard, LeagueSettings, Lineups } from "../../../lib/api";
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { parseTab } from "../../../lib/league";
 import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
@@ -42,10 +43,13 @@ export default async function LeaguePage({
     Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18 ? `?week=${weekNumber}` : "";
 
   // the header needs the dashboard on every tab; lineups are only fetched for their own tab
-  const [dashboard, lineups] = await Promise.all([
+  const [dashboard, lineups, leagueSettings] = await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
     tab === "lineups"
       ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
+      : Promise.resolve(null),
+    tab === "settings"
+      ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
       : Promise.resolve(null),
   ]);
 
@@ -77,6 +81,7 @@ export default async function LeaguePage({
       {tab === "lineups" && lineups && (
         <WeeklyLineups data={lineups} leagueId={leagueId} myRosterId={myRosterId} />
       )}
+      {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
       <p className="back">
         <Link href="/">Connect another league</Link>
       </p>
