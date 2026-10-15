@@ -104,9 +104,11 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
       />
       <span className="player-main">
         <span className="player-name">{player.name}</span>
-        <span className="player-sub">{player.team ?? "No team"}</span>
-        <span className="player-tags">
+        <span className="player-sub">
+          {player.team ?? "No team"}
           <InjuryBadge injury={player.injury} />
+        </span>
+        <span className="player-tags">
           <GameBadge game={player.game} />
         </span>
       </span>
