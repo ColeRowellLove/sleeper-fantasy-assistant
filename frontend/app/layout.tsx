@@ -79,7 +79,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="container">
             <p>
               Unofficial, and not affiliated with Sleeper. League data comes from Sleeper&apos;s
-              public API.
+              public API. Kickoff times come from{" "}
+              <a href="https://github.com/nflverse/nflverse-data">nflverse</a> (CC BY 4.0).
             </p>
           </div>
         </footer>

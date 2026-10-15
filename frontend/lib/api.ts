@@ -72,6 +72,8 @@ export interface StandingsRow {
 export interface GameInfo {
   state: "upcoming" | "live" | "final" | "bye";
   date: string | null;
+  /** ISO UTC timestamp; absent until the schedule publishes a time. */
+  kickoff?: string | null;
   opponent: string | null;
   home: boolean | null;
 }

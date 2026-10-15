@@ -162,6 +162,7 @@ class NflGameRow(Base):
     away: Mapped[str] = mapped_column(String)
     game_date: Mapped[str | None] = mapped_column(String)  # ISO date, e.g. 2026-10-18
     status: Mapped[str] = mapped_column(String)  # pre_game, in_game, complete
+    kickoff: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # from nflverse
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

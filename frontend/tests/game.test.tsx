@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import GameBadge from "../components/GameBadge";
 import RostersPanel from "../components/RostersPanel";
 import type { Dashboard, GameInfo } from "../lib/api";
-import { formatGameDate, gameLabel } from "../lib/game";
+import { formatGameDate, formatKickoff, gameLabel } from "../lib/game";
 import { expectNoA11yViolations } from "./a11y";
 
 const upcoming: GameInfo = { state: "upcoming", date: "2026-09-20", opponent: "CHI", home: true };
@@ -105,5 +105,34 @@ describe("rosters with game status", () => {
   it("omits the week note when the week is unknown", () => {
     render(<RostersPanel rosters={rosters} myRosterId={1} />);
     expect(screen.queryByText(/NFL week/)).not.toBeInTheDocument();
+  });
+});
+
+describe("kickoff time", () => {
+  const withKickoff: GameInfo = { ...upcoming, kickoff: "2026-09-20T17:00:00Z" };
+
+  it("formats the instant in the viewer's own zone, with the zone named", () => {
+    const text = formatKickoff("2026-09-20T17:00:00Z");
+    expect(text).toMatch(/\d{1,2}:00\s?(a.m.|p.m.|AM|PM)/i);
+    expect(text).toMatch(/[A-Z]{2,5}|GMT[+-]\d+|UTC/); // a zone abbreviation, not a bare time
+    expect(formatKickoff(null)).toBeNull();
+    expect(formatKickoff("not a date")).toBeNull();
+  });
+
+  it("uses the localized kickoff in place of the date when it is known", () => {
+    const kickoff = formatKickoff(withKickoff.kickoff);
+    expect(gameLabel(withKickoff, kickoff)?.detail).toBe(`${kickoff} vs CHI`);
+    expect(gameLabel(withKickoff)?.detail).toBe("Sun, Sep 20 vs CHI");
+  });
+
+  it("shows the kickoff time on the badge and has no accessibility violations", async () => {
+    render(<GameBadge game={withKickoff} />);
+    expect(screen.getByText(/\d:00\s?(a.m.|p.m.|AM|PM)/i)).toBeInTheDocument();
+    await expectNoA11yViolations(<GameBadge game={withKickoff} />);
+  });
+
+  it("falls back to the date when the schedule has no time yet", () => {
+    render(<GameBadge game={{ ...upcoming, kickoff: null }} />);
+    expect(screen.getByText("Sun, Sep 20 vs CHI")).toBeInTheDocument();
   });
 });

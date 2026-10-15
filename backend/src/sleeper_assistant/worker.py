@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+import httpx
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,6 +26,7 @@ from sleeper_assistant.db import (
     utcnow,
 )
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
+from sleeper_assistant.kickoffs import sync_kickoffs
 from sleeper_assistant.sleeper import SleeperClient
 
 log = logging.getLogger(__name__)
@@ -40,6 +42,8 @@ PLAYER_SYNC_INTERVAL = timedelta(
 PLAYER_SYNC_FAILURE_COOLDOWN = timedelta(hours=6)  # do not hammer a failing /players endpoint
 SCHEDULE_SYNC_INTERVAL = timedelta(minutes=10)
 SCHEDULE_FAILURE_COOLDOWN = timedelta(minutes=30)
+KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
+KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
 CYCLE_MAX_JOBS = 50
 CYCLE_BUDGET = timedelta(minutes=10)
 HEARTBEAT_SECONDS = jobs.STALE_AFTER.total_seconds() / 4
@@ -57,7 +61,13 @@ def default_handlers(client: SleeperClient) -> dict[str, Handler]:
         season = str(payload.get("season") or client.get_state().season)
         sync_schedule(session, client, season)
 
+    def _sync_kickoffs(session: Session, payload: dict[str, Any]) -> None:
+        season = str(payload.get("season") or client.get_state().season)
+        with httpx.Client(timeout=30.0) as http:
+            sync_kickoffs(session, http, season)
+
     return {
+        "sync_kickoffs": _sync_kickoffs,
         "sync_league": _sync_league,
         "sync_players": _sync_players,
         "sync_schedule": _sync_schedule,
@@ -180,6 +190,13 @@ def enqueue_schedule_sync_if_due(session: Session, now: datetime | None = None) 
     )
 
 
+def enqueue_kickoff_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh kickoff times from nflverse about daily."""
+    return _enqueue_periodic(
+        session, "sync_kickoffs", KICKOFF_SYNC_INTERVAL, KICKOFF_FAILURE_COOLDOWN, now
+    )
+
+
 @dataclass
 class CycleResult:
     enqueued: int
@@ -201,6 +218,7 @@ def run_cycle(
             enqueue_due_syncs(session)
             + int(enqueue_player_sync_if_due(session))
             + int(enqueue_schedule_sync_if_due(session))
+            + int(enqueue_kickoff_sync_if_due(session))
         )
     ran = 0
     while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):
