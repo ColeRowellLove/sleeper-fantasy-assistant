@@ -8,13 +8,14 @@ import LeagueTabs from "../../../components/LeagueTabs";
 import StandingsTable from "../../../components/StandingsTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type { Dashboard, Lineups } from "../../../lib/api";
+import { resolveApiUrl } from "../../../lib/apiUrl";
 import { parseTab } from "../../../lib/league";
 import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "League", robots: { index: false } };
 
-const API_URL = process.env.API_URL ?? "http://localhost:8000";
+const API_URL = resolveApiUrl();
 
 async function getJson<T>(path: string): Promise<T> {
   // data only changes when a sync runs, so a short shared cache keeps repeat views instant
