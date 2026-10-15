@@ -124,6 +124,16 @@ describe("PlayerAvatar", () => {
     expect(screen.getByText("CM")).toBeInTheDocument();
   });
 
+  it("loads images lazily unless marked as priority", () => {
+    const lazy = render(<PlayerAvatar player_id="4034" name="A B" position="RB" team="SF" />);
+    expect(lazy.container.querySelector("img")).toHaveAttribute("loading", "lazy");
+    lazy.unmount();
+    const eager = render(
+      <PlayerAvatar player_id="4034" name="A B" position="RB" team="SF" priority />,
+    );
+    expect(eager.container.querySelector("img")).toHaveAttribute("loading", "eager");
+  });
+
   it("is hidden from assistive technology because the name is always shown beside it", () => {
     const { container } = render(
       <PlayerAvatar player_id="1" name="A B" position="QB" team={null} />,

@@ -88,6 +88,12 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     }
   });
 
+  it("muted text stays readable on the lineups bench row tint (7% of the bench role color)", () => {
+    const tint = chipBackgroundAt(t["role-bench"], t.surface, 0.07);
+    expect(ratio(rgb(t.muted), tint)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(rgb(t.text), tint)).toBeGreaterThanOrEqual(7);
+  });
+
   it("focus ring and error color stand out from the page", () => {
     expect(ratio(rgb(t.focus), rgb(t.bg))).toBeGreaterThanOrEqual(3);
     expect(ratio(rgb(t.danger), rgb(t.surface))).toBeGreaterThanOrEqual(4.5);

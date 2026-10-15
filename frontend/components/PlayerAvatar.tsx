@@ -10,13 +10,15 @@ interface Props {
   name: string;
   position: string | null;
   team: string | null;
+  /** Load immediately (images visible on first paint); others load lazily as they near the screen. */
+  priority?: boolean;
 }
 
 /**
  * Decorative player image (the name is always next to it, so alt is empty): a headshot with a small
  * team logo, a team logo for defenses, and initials if an image fails to load.
  */
-export default function PlayerAvatar({ player_id, name, position, team }: Props) {
+export default function PlayerAvatar({ player_id, name, position, team, priority = false }: Props) {
   const [faceFailed, setFaceFailed] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const isDefense = position === "DEF";
@@ -32,7 +34,7 @@ export default function PlayerAvatar({ player_id, name, position, team }: Props)
           alt=""
           width={40}
           height={40}
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
           decoding="async"
           className={isDefense ? "avatar-logo" : undefined}
           onError={() => setFaceFailed(true)}
@@ -45,7 +47,7 @@ export default function PlayerAvatar({ player_id, name, position, team }: Props)
           alt=""
           width={16}
           height={16}
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
           decoding="async"
           className="avatar-team"
           onError={() => setLogoFailed(true)}
