@@ -1,0 +1,18 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+change-template: "- $TITLE (#$NUMBER)"
+categories:
+  - title: "Features"
+    labels: ["enhancement"]
+  - title: "Fixes"
+    labels: ["bug"]
+  - title: "Infrastructure and docs"
+    labels: ["chore", "infra", "docs", "ci"]
+version-resolver:
+  minor:
+    labels: ["enhancement"]
+  default: patch
+template: |
+  ## Changes
+
+  $CHANGES

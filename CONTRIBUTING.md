@@ -33,6 +33,16 @@ Install the hooks once with `uv run pre-commit install` (from `backend/`).
 - League rules are read from Sleeper, never hard-coded.
 - Never commit secrets. Use environment variables; `.env` files are git-ignored.
 
+## Releases
+
+1. Make sure `develop` is green and contains what should ship.
+2. Open a PR **from `develop` into `main`** titled `chore: release vX.Y.Z` (no issue link needed).
+3. After CI is green, **squash merge** it.
+4. Release notes are drafted automatically from merged PR titles (Releases tab). Review the draft,
+   then publish it to create the tag.
+
+Urgent fixes use a `hotfix/<name>` branch from `main` into `main`, then are merged back into `develop`.
+
 ## Reporting problems
 
 Bugs and feature ideas go in [issues](../../issues). For security problems, see
