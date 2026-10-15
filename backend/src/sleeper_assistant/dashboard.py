@@ -21,6 +21,7 @@ class StandingsRow(BaseModel):
     rank: int
     roster_id: int
     team: str
+    owner_id: str | None = None
     wins: int
     losses: int
     ties: int
@@ -40,6 +41,7 @@ class RosterPlayer(BaseModel):
 class RosterView(BaseModel):
     roster_id: int
     team: str
+    owner_id: str | None = None
     players: list[RosterPlayer]  # starters (slot order), bench, IR, taxi
 
 
@@ -63,6 +65,7 @@ class LineupPlayer(BaseModel):
 class TeamLineup(BaseModel):
     roster_id: int
     team: str
+    owner_id: str | None = None
     points: float
     starters: list[LineupPlayer]
     bench: list[LineupPlayer]
@@ -112,6 +115,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
     team = _team_names(session, rosters)
+    owners = {r.roster_id: r.owner_id for r in rosters}
     players = _players(session, {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]})
     slots = starter_slots(league)
 
@@ -121,6 +125,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
             rank=i,
             roster_id=r.roster_id,
             team=team[r.roster_id],
+            owner_id=owners[r.roster_id],
             wins=r.wins,
             losses=r.losses,
             ties=r.ties,
@@ -134,6 +139,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
         RosterView(
             roster_id=r.roster_id,
             team=team[r.roster_id],
+            owner_id=owners[r.roster_id],
             players=_roster_players(r, players, slots),
         )
         for r in sorted(rosters, key=lambda r: r.roster_id)
@@ -186,12 +192,13 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
     team = _team_names(session, rosters)
+    owners = {r.roster_id: r.owner_id for r in rosters}
     players = _players(session, {pid for m in week_rows for pid in [*m.starters, *m.players]})
     slots = starter_slots(league)
 
     by_matchup: dict[int, list[TeamLineup]] = {}
     for m in sorted(week_rows, key=lambda m: m.roster_id):
-        lineup = _team_lineup(m, team, players, slots)
+        lineup = _team_lineup(m, team, owners, players, slots)
         # a missing matchup_id (bye/unscheduled) must not group unrelated teams together
         key = m.matchup_id if m.matchup_id is not None else -m.roster_id
         by_matchup.setdefault(key, []).append(lineup)
@@ -204,7 +211,11 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
 
 
 def _team_lineup(
-    m: MatchupRow, team: dict[int, str], players: dict[str, PlayerRow], slots: list[str]
+    m: MatchupRow,
+    team: dict[int, str],
+    owners: dict[int, str | None],
+    players: dict[str, PlayerRow],
+    slots: list[str],
 ) -> TeamLineup:
     points: dict[str, Any] = m.players_points
 
@@ -254,6 +265,7 @@ def _team_lineup(
     return TeamLineup(
         roster_id=m.roster_id,
         team=team.get(m.roster_id, f"Team {m.roster_id}"),
+        owner_id=owners.get(m.roster_id),
         points=round(m.points, 2),
         starters=starters,
         bench=bench,

@@ -185,3 +185,21 @@ def test_lineups_with_no_matchups(session: Session) -> None:
     session.add(league)
     session.commit()
     assert build_lineups(session, league).matchups == []
+
+
+def test_owner_ids_are_exposed_for_my_team_matching(session: Session) -> None:
+    league = _league()
+    session.add(league)
+    session.add_all([SleeperUserRow(user_id="u1", username=None, display_name="Cole")])
+    session.add_all([_roster(1, "u1"), _roster(2, None)])
+    session.add_all([_matchup(1, 7, 5, 1.0), _matchup(2, 7, 5, 2.0)])
+    session.commit()
+
+    dash = build_dashboard(session, league)
+    assert {s.roster_id: s.owner_id for s in dash.standings} == {1: "u1", 2: None}
+    assert {r.roster_id: r.owner_id for r in dash.rosters} == {1: "u1", 2: None}
+
+    teams = {
+        t.roster_id: t.owner_id for m in build_lineups(session, league).matchups for t in m.teams
+    }
+    assert teams == {1: "u1", 2: None}

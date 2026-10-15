@@ -7,7 +7,13 @@ export function roleLabel(p: RosterPlayer): string {
   return "Bench";
 }
 
-export default function LeagueDashboard({ data }: { data: Dashboard }) {
+export default function LeagueDashboard({
+  data,
+  myRosterId = null,
+}: {
+  data: Dashboard;
+  myRosterId?: number | null;
+}) {
   const { rules } = data;
   return (
     <>
@@ -43,9 +49,16 @@ export default function LeagueDashboard({ data }: { data: Dashboard }) {
           </thead>
           <tbody>
             {data.standings.map((row) => (
-              <tr key={row.roster_id}>
+              <tr
+                key={row.roster_id}
+                className={row.roster_id === myRosterId ? "mine" : undefined}
+                aria-current={row.roster_id === myRosterId ? "true" : undefined}
+              >
                 <td>{row.rank}</td>
-                <th scope="row">{row.team}</th>
+                <th scope="row">
+                  {row.team}
+                  {row.roster_id === myRosterId && <span className="you">You</span>}
+                </th>
                 <td>
                   {row.wins}-{row.losses}-{row.ties}
                 </td>

@@ -11,13 +11,14 @@ const data: Dashboard = {
   season: "2026",
   rules: { reception_scoring: "full", uses_faab: true, trade_deadline_week: 11, playoff_teams: 6 },
   standings: [
-    { rank: 1, roster_id: 2, team: "Dad", wins: 2, losses: 0, ties: 0, points_for: 250.5, points_against: 200 },
-    { rank: 2, roster_id: 1, team: "Cole", wins: 1, losses: 1, ties: 0, points_for: 220, points_against: 230.25 },
+    { rank: 1, roster_id: 2, team: "Dad", owner_id: null, wins: 2, losses: 0, ties: 0, points_for: 250.5, points_against: 200 },
+    { rank: 2, roster_id: 1, team: "Cole", owner_id: null, wins: 1, losses: 1, ties: 0, points_for: 220, points_against: 230.25 },
   ],
   rosters: [
     {
       roster_id: 1,
       team: "Cole",
+      owner_id: null,
       players: [
         { player_id: "10", name: "Star RB", position: "RB", team: "SF", status: "starter", slot: "RB" },
         { player_id: "999", name: "999", position: null, team: null, status: "bench", slot: null },
