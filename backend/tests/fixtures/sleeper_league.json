@@ -1,0 +1,39 @@
+{
+  "state": {"week": 2, "leg": 2, "season": "2026", "season_type": "regular", "display_week": 2},
+  "league": {
+    "league_id": "L1", "name": "Family League", "season": "2026", "total_rosters": 2,
+    "previous_league_id": "L0", "status": "in_season",
+    "scoring_settings": {"rec": 1.0, "pass_td": 4.0},
+    "roster_positions": ["QB", "RB", "WR", "FLEX", "BN"],
+    "settings": {"waiver_type": 2, "waiver_budget": 100, "trade_deadline": 11}
+  },
+  "users": [
+    {"user_id": "u1", "username": "cole", "display_name": "Cole", "avatar": "x"},
+    {"user_id": "u2", "username": null, "display_name": "Dad"}
+  ],
+  "rosters": [
+    {"roster_id": 1, "owner_id": "u1", "players": ["4034", "6794"], "starters": ["4034"],
+     "settings": {"wins": 1, "losses": 0, "ties": 0, "fpts": 120, "fpts_decimal": 42,
+                  "fpts_against": 98, "fpts_against_decimal": 5}},
+    {"roster_id": 2, "owner_id": "u2", "players": null, "starters": null, "settings": {}}
+  ],
+  "matchups": {
+    "1": [
+      {"roster_id": 1, "matchup_id": 1, "points": 120.42, "starters": ["4034"], "starters_points": [20.5]},
+      {"roster_id": 2, "matchup_id": 1, "points": 98.05, "starters": [], "starters_points": []}
+    ],
+    "2": [
+      {"roster_id": 1, "matchup_id": 1, "points": 0, "starters": ["4034"], "starters_points": [null]},
+      {"roster_id": 2, "matchup_id": 1, "points": 0, "starters": null, "starters_points": null}
+    ]
+  },
+  "transactions": {
+    "1": [{"transaction_id": "t1", "type": "waiver", "status": "complete", "leg": 1, "created": 1757000000000}],
+    "2": []
+  },
+  "players": {
+    "4034": {"full_name": "Christian McCaffrey", "position": "RB", "team": "SF", "status": "Active",
+             "injury_status": null, "gsis_id": "00-0033280", "espn_id": 3117251, "sportradar_id": "abc"},
+    "6794": {"full_name": "Justin Jefferson", "position": "WR", "team": "MIN", "status": "Active", "gsis_id": "00-0036322"}
+  }
+}
