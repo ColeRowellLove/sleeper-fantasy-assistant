@@ -1,4 +1,11 @@
-import type { Dashboard } from "../lib/api";
+import type { Dashboard, RosterPlayer } from "../lib/api";
+
+export function roleLabel(p: RosterPlayer): string {
+  if (p.status === "starter") return p.slot ? `Starter (${p.slot})` : "Starter";
+  if (p.status === "ir") return "IR";
+  if (p.status === "taxi") return "Taxi";
+  return "Bench";
+}
 
 export default function LeagueDashboard({ data }: { data: Dashboard }) {
   const { rules } = data;
@@ -58,22 +65,24 @@ export default function LeagueDashboard({ data }: { data: Dashboard }) {
               {roster.team} ({roster.players.length} players)
             </summary>
             <table>
-              <caption className="visually-hidden">{roster.team} roster, starters first</caption>
+              <caption className="visually-hidden">
+                {roster.team} roster: starters, then bench, IR and taxi
+              </caption>
               <thead>
                 <tr>
+                  <th scope="col">Role</th>
                   <th scope="col">Player</th>
                   <th scope="col">Pos</th>
                   <th scope="col">Team</th>
-                  <th scope="col">Role</th>
                 </tr>
               </thead>
               <tbody>
                 {roster.players.map((p) => (
                   <tr key={p.player_id}>
+                    <td>{roleLabel(p)}</td>
                     <th scope="row">{p.name}</th>
                     <td>{p.position ?? "–"}</td>
                     <td>{p.team ?? "–"}</td>
-                    <td>{p.starter ? "Starter" : "Bench"}</td>
                   </tr>
                 ))}
               </tbody>

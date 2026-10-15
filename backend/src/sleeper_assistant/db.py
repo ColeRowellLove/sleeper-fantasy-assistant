@@ -73,6 +73,8 @@ class RosterRow(Base):
     owner_id: Mapped[str | None] = mapped_column(String)
     players: Mapped[list[str]]
     starters: Mapped[list[str]]
+    reserve: Mapped[list[str]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    taxi: Mapped[list[str]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     wins: Mapped[int] = mapped_column(default=0)
     losses: Mapped[int] = mapped_column(default=0)
     ties: Mapped[int] = mapped_column(default=0)
@@ -90,6 +92,10 @@ class MatchupRow(Base):
     points: Mapped[float] = mapped_column(default=0.0)
     starters: Mapped[list[str]]
     starters_points: Mapped[list[Any]]
+    players: Mapped[list[str]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    players_points: Mapped[dict[str, Any]] = mapped_column(
+        JSON, default=dict, server_default=text("'{}'")
+    )
 
 
 class TransactionRow(Base):

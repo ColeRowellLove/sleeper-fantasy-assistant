@@ -91,3 +91,18 @@ def test_sync_players(session: Session) -> None:
     assert cmc.external_ids["gsis"] == "00-0033280"
     assert "yahoo" not in cmc.external_ids
     assert _count(session, RawSnapshotRow) == 0  # player DB is not snapshotted
+
+
+def test_sync_players_updates_existing_rows(session: Session) -> None:
+    sync_players(session, _client())
+    changed = {**FIXTURE["players"]["4034"], "team": "DAL", "injury_status": "Questionable"}
+    FIXTURE["players"]["4034"] = changed
+    try:
+        assert sync_players(session, _client()) == 2
+    finally:
+        FIXTURE["players"]["4034"] = {**changed, "team": "SF", "injury_status": None}
+    session.expire_all()
+    cmc = session.get(PlayerRow, "4034")
+    assert cmc is not None
+    assert (cmc.team, cmc.injury_status) == ("DAL", "Questionable")
+    assert _count(session, PlayerRow) == 2  # updated in place, no duplicates

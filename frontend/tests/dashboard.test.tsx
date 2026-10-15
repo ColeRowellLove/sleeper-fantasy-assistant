@@ -19,8 +19,10 @@ const data: Dashboard = {
       roster_id: 1,
       team: "Cole",
       players: [
-        { player_id: "10", name: "Star RB", position: "RB", team: "SF", starter: true },
-        { player_id: "999", name: "999", position: null, team: null, starter: false },
+        { player_id: "10", name: "Star RB", position: "RB", team: "SF", status: "starter", slot: "RB" },
+        { player_id: "999", name: "999", position: null, team: null, status: "bench", slot: null },
+        { player_id: "12", name: "Hurt TE", position: "TE", team: "KC", status: "ir", slot: null },
+        { player_id: "13", name: "Rookie QB", position: "QB", team: "NYJ", status: "taxi", slot: null },
       ],
     },
   ],
@@ -51,8 +53,10 @@ describe("LeagueDashboard", () => {
   it("lists roster players with a text role (not color alone) and placeholders for unknowns", () => {
     render(<LeagueDashboard data={data} />);
     const roster = screen.getByRole("table", { name: /Cole roster/ });
-    expect(within(roster).getByText("Starter")).toBeInTheDocument();
+    expect(within(roster).getByText("Starter (RB)")).toBeInTheDocument();
     expect(within(roster).getByText("Bench")).toBeInTheDocument();
+    expect(within(roster).getByText("IR")).toBeInTheDocument();
+    expect(within(roster).getByText("Taxi")).toBeInTheDocument();
     expect(within(roster).getAllByText("–")).toHaveLength(2);
   });
 

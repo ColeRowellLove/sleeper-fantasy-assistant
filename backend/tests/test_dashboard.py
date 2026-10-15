@@ -1,30 +1,41 @@
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import build_dashboard
-from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow, SleeperUserRow
+from sleeper_assistant.dashboard import build_dashboard, build_lineups
+from sleeper_assistant.db import LeagueRow, MatchupRow, PlayerRow, RosterRow, SleeperUserRow
 
 
-def _league() -> LeagueRow:
+def _league(positions: list[str] | None = None) -> LeagueRow:
     return LeagueRow(
         league_id="L1",
         name="Family",
         season="2026",
         total_rosters=3,
         scoring_settings={},
-        roster_positions=[],
+        roster_positions=positions or ["RB", "WR", "BN", "BN"],
         settings={},
     )
 
 
-def _roster(
-    rid: int, owner: str | None, wins: int, losses: int, pf: float, **kw: object
+def _roster(  # noqa: PLR0913
+    rid: int,
+    owner: str | None,
+    *,
+    wins: int = 0,
+    losses: int = 0,
+    pf: float = 0.0,
+    players: list[str] | None = None,
+    starters: list[str] | None = None,
+    reserve: list[str] | None = None,
+    taxi: list[str] | None = None,
 ) -> RosterRow:
     return RosterRow(
         league_id="L1",
         roster_id=rid,
         owner_id=owner,
-        players=kw.get("players", []),  # type: ignore[arg-type]
-        starters=kw.get("starters", []),  # type: ignore[arg-type]
+        players=players or [],
+        starters=starters or [],
+        reserve=reserve or [],
+        taxi=taxi or [],
         wins=wins,
         losses=losses,
         ties=0,
@@ -33,15 +44,23 @@ def _roster(
     )
 
 
+def _player(pid: str, name: str, pos: str, team: str) -> PlayerRow:
+    return PlayerRow(player_id=pid, full_name=name, position=pos, team=team, external_ids={})
+
+
 def test_standings_order_and_team_names(session: Session) -> None:
     league = _league()
     session.add(league)
-    session.add_all([SleeperUserRow(user_id="u1", username="cole", display_name="Cole")])
+    session.add(SleeperUserRow(user_id="u1", username="cole", display_name="Cole"))
     session.add_all(
         [
-            _roster(1, "u1", 2, 1, 300.0),
-            _roster(2, None, 2, 1, 350.5),  # same record, more points -> ahead; no owner name
-            _roster(3, "ghost", 3, 0, 100.0),  # best record; owner not in users table
+            _roster(1, "u1", wins=2, losses=1, pf=300.0),
+            _roster(
+                2, None, wins=2, losses=1, pf=350.5
+            ),  # same record, more points -> ahead; no owner name
+            _roster(
+                3, "ghost", wins=3, losses=0, pf=100.0
+            ),  # best record; owner not in users table
         ]
     )
     session.commit()
@@ -54,25 +73,115 @@ def test_standings_order_and_team_names(session: Session) -> None:
     assert teams == {1: "Cole", 2: "Team 2", 3: "Team 3"}
 
 
-def test_rosters_list_starters_first_and_fall_back_to_ids(session: Session) -> None:
-    league = _league()
+def test_roster_groups_starters_bench_ir_taxi(session: Session) -> None:
+    league = _league(["RB", "WR", "BN", "BN"])
     session.add(league)
     session.add_all(
         [
-            PlayerRow(
-                player_id="10", full_name="Star RB", position="RB", team="SF", external_ids={}
-            ),
-            PlayerRow(
-                player_id="11", full_name="Bench WR", position="WR", team="MIN", external_ids={}
-            ),
+            _player("10", "Star RB", "RB", "SF"),
+            _player("11", "Bench WR", "WR", "MIN"),
+            _player("12", "Hurt TE", "TE", "KC"),
+            _player("13", "Rookie QB", "QB", "NYJ"),
         ]
     )
-    session.add(_roster(1, None, 0, 0, 0.0, players=["11", "10", "999"], starters=["10"]))
+    session.add(
+        _roster(
+            1,
+            None,
+            players=["13", "12", "11", "10", "999"],
+            starters=["10", "0"],  # "0" is Sleeper's empty-slot marker
+            reserve=["12"],
+            taxi=["13"],
+        )
+    )
     session.commit()
 
-    roster = build_dashboard(session, league).rosters[0]
+    players = build_dashboard(session, league).rosters[0].players
 
-    assert [p.name for p in roster.players] == ["Star RB", "Bench WR", "999"]
-    assert roster.players[0].starter
-    assert not roster.players[2].starter
-    assert roster.players[2].position is None
+    assert [(p.name, p.status, p.slot) for p in players] == [
+        ("Star RB", "starter", "RB"),
+        ("Bench WR", "bench", None),
+        ("999", "bench", None),  # unknown player id falls back to the id
+        ("Hurt TE", "ir", None),
+        ("Rookie QB", "taxi", None),
+    ]
+    assert players[0].position == "RB"
+    assert players[0].team == "SF"
+    assert players[2].position is None
+
+
+def _matchup(rid: int, mid: int | None, week: int, pts: float, **kw: object) -> MatchupRow:
+    return MatchupRow(
+        league_id="L1",
+        week=week,
+        roster_id=rid,
+        matchup_id=mid,
+        points=pts,
+        starters=kw.get("starters", []),  # type: ignore[arg-type]
+        starters_points=kw.get("starters_points", []),  # type: ignore[arg-type]
+        players=kw.get("players", []),  # type: ignore[arg-type]
+        players_points=kw.get("players_points", {}),  # type: ignore[arg-type]
+    )
+
+
+def test_lineups_pair_teams_and_split_starters_from_bench(session: Session) -> None:
+    league = _league(["RB", "WR", "BN", "BN"])
+    session.add(league)
+    session.add(SleeperUserRow(user_id="u1", username="cole", display_name="Cole"))
+    session.add_all([_player("10", "Star RB", "RB", "SF"), _player("11", "Bench WR", "WR", "MIN")])
+    session.add_all([_roster(1, "u1"), _roster(2, None), _roster(3, None)])
+    session.add_all(
+        [
+            _matchup(
+                1,
+                7,
+                5,
+                20.5,
+                starters=["10", "0"],
+                starters_points=[20.5, 0.0],
+                players=["10", "11"],
+                players_points={"10": 20.5, "11": 3.25},
+            ),
+            _matchup(2, 7, 5, 11.0),
+            _matchup(3, None, 5, 9.0),  # no matchup id: must not be paired with anyone
+            _matchup(1, 1, 4, 0.0),
+        ]
+    )
+    session.commit()
+
+    lineups = build_lineups(session, league)  # default: latest scored week
+
+    assert lineups.week == 5
+    assert lineups.weeks == [4, 5]
+    assert len(lineups.matchups) == 2
+    paired = next(m for m in lineups.matchups if m.matchup_id == 7)
+    assert [t.team for t in paired.teams] == ["Cole", "Team 2"]
+    cole = paired.teams[0]
+    assert cole.points == 20.5
+    assert [(s.slot, s.name, s.points) for s in cole.starters] == [
+        ("RB", "Star RB", 20.5),
+        ("WR", "Empty", None),
+    ]
+    assert [(b.slot, b.name, b.points) for b in cole.bench] == [("BN", "Bench WR", 3.25)]
+    unpaired = next(m for m in lineups.matchups if m.matchup_id is None)
+    assert len(unpaired.teams) == 1
+
+
+def test_lineups_for_explicit_and_unknown_weeks(session: Session) -> None:
+    league = _league()
+    session.add(league)
+    session.add_all([_roster(1, None), _matchup(1, 1, 3, 5.0)])
+    session.commit()
+
+    assert build_lineups(session, league, week=3).week == 3
+    unknown = build_lineups(session, league, week=9)
+    assert unknown.week is None
+    assert unknown.matchups == []
+    assert unknown.weeks == [3]
+
+
+def test_lineups_with_no_matchups(session: Session) -> None:
+    league = _league()
+    session.add(league)
+    session.commit()
+    assert build_lineups(session, league).matchups == []

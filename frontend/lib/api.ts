@@ -56,12 +56,38 @@ export interface StandingsRow {
   points_against: number;
 }
 
+export type RosterStatus = "starter" | "bench" | "ir" | "taxi";
+
 export interface RosterPlayer {
   player_id: string;
   name: string;
   position: string | null;
   team: string | null;
-  starter: boolean;
+  status: RosterStatus;
+  slot: string | null;
+}
+
+export interface LineupPlayer {
+  slot: string;
+  player_id: string | null;
+  name: string;
+  position: string | null;
+  team: string | null;
+  points: number | null;
+}
+
+export interface TeamLineup {
+  roster_id: number;
+  team: string;
+  points: number;
+  starters: LineupPlayer[];
+  bench: LineupPlayer[];
+}
+
+export interface Lineups {
+  week: number | null;
+  weeks: number[];
+  matchups: { matchup_id: number | null; teams: TeamLineup[] }[];
 }
 
 export interface Dashboard {
