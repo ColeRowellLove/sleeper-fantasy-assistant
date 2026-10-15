@@ -44,6 +44,8 @@ export default function StandingsTable({
 }) {
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
   const rows = sortStandings(standings, sort);
+  // the playoff bar only means something while the table runs from first place down
+  const showPlayoffs = playoffTeams !== null && sort.key === "rank" && sort.direction === "asc";
 
   return (
     <section aria-labelledby="standings-heading">
@@ -86,7 +88,7 @@ export default function StandingsTable({
           <tbody>
             {rows.map((row) => {
               const mine = row.roster_id === myRosterId;
-              const inPlayoffs = playoffTeams !== null && row.rank <= playoffTeams;
+              const inPlayoffs = showPlayoffs && row.rank <= playoffTeams;
               const classes = [
                 mine ? "mine" : "",
                 inPlayoffs ? "playoff" : "",
@@ -120,7 +122,7 @@ export default function StandingsTable({
       <p className="visually-hidden" role="status">
         {describe(sort)}
       </p>
-      {playoffTeams !== null && (
+      {showPlayoffs && (
         <p className="note">
           The top {playoffTeams} teams make the playoffs (marked with a bar and a line below
           {` #${playoffTeams}`}).
