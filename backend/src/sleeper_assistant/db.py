@@ -114,6 +114,20 @@ class PlayerRow(Base):
     external_ids: Mapped[dict[str, Any]]
 
 
+class CrosswalkRow(Base):
+    """Maps a Sleeper player id to the ids other sources use. One row per player."""
+
+    __tablename__ = "player_crosswalk"
+
+    player_id: Mapped[str] = mapped_column(ForeignKey("players.player_id"), primary_key=True)
+    gsis_id: Mapped[str | None] = mapped_column(String, index=True)
+    espn_id: Mapped[str | None] = mapped_column(String, index=True)
+    yahoo_id: Mapped[str | None] = mapped_column(String, index=True)
+    sportradar_id: Mapped[str | None] = mapped_column(String, index=True)
+    fantasypros_id: Mapped[str | None] = mapped_column(String, index=True)
+    fantasycalc_id: Mapped[str | None] = mapped_column(String, index=True)
+
+
 class RawSnapshotRow(Base):
     """Raw source payloads kept for replay, backtests and schema-drift debugging."""
 
