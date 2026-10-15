@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { TABS, type TabKey } from "../lib/league";
+import { TABS, leaguePath, type TabKey } from "../lib/league";
 
 /** Section navigation. Plain links (not ARIA tabs) so each tab is a real page that loads only its data. */
 export default function LeagueTabs({ leagueId, active }: { leagueId: string; active: TabKey }) {
@@ -10,7 +10,7 @@ export default function LeagueTabs({ leagueId, active }: { leagueId: string; act
         {TABS.map((tab) => (
           <li key={tab.key}>
             <Link
-              href={`/league/${encodeURIComponent(leagueId)}?tab=${tab.key}`}
+              href={leaguePath(leagueId, `?tab=${tab.key}`)}
               aria-current={tab.key === active ? "page" : undefined}
             >
               {tab.label}

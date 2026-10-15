@@ -32,6 +32,11 @@ export function ruleChips(rules: Rules): string[] {
   ];
 }
 
+/** Link to a league page; the id is encoded because it comes from outside. */
+export function leaguePath(leagueId: string, query = ""): string {
+  return `/league/${encodeURIComponent(leagueId)}${query}`;
+}
+
 export function formatRecord(wins: number, losses: number, ties: number): string {
   return ties > 0 ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
 }

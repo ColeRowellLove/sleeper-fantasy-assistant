@@ -10,7 +10,7 @@ import {
   type ConnectedLeague,
   type LeagueSummary,
 } from "../lib/api";
-import { ruleChips } from "../lib/league";
+import { leaguePath, ruleChips } from "../lib/league";
 import { USER_COOKIE, setCookie } from "../lib/myTeam";
 
 type Step =
@@ -141,7 +141,7 @@ export default function ConnectForm() {
               ))}
             </ul>
           </div>
-          <a className="btn" href={`/league/${encodeURIComponent(step.league.league_id)}`}>
+          <a className="btn" href={leaguePath(step.league.league_id)}>
             Open league dashboard
           </a>
         </div>
