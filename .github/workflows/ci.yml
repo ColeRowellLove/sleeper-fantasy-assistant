@@ -44,6 +44,13 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy
       - run: uv run pytest
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Backend coverage"
+            uv run coverage report --format=markdown
+          } >> "$GITHUB_STEP_SUMMARY" || true
 
   frontend:
     name: Frontend (tsc, eslint, vitest)
