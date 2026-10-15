@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 import { THEME_KEY } from "../lib/theme";
 
-export type Theme = "light" | "dark";
+type Theme = "light" | "dark";
 
 const EVENT = "sa-theme-change";
 
@@ -38,7 +38,7 @@ function currentTheme(): Theme {
   return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 }
 
-export function applyTheme(theme: Theme): void {
+function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
   try {
     localStorage.setItem(THEME_KEY, theme);

@@ -31,7 +31,7 @@ export function isMine(matchup: Matchup, myRosterId: number | null): boolean {
   return myRosterId !== null && matchup.teams.some((t) => t.roster_id === myRosterId);
 }
 
-export type RowKind = "starter" | "bench" | "ir" | "taxi";
+type RowKind = "starter" | "bench" | "ir" | "taxi";
 
 export interface PairedRow {
   /** Lineup slot (QB, RB, FLEX, ...) or the group name: Bench, IR, Taxi. */
