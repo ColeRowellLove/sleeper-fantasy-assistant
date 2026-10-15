@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine
 
-from sleeper_assistant.db import Base, database_url
+from sleeper_assistant.db import Base, database_url, normalize_url
 
 config = context.config
 if config.config_file_name is not None:
@@ -13,7 +13,7 @@ target_metadata = Base.metadata
 
 
 def _url() -> str:
-    return config.get_main_option("sqlalchemy.url") or database_url()
+    return normalize_url(config.get_main_option("sqlalchemy.url") or database_url())
 
 
 def run_migrations_offline() -> None:
