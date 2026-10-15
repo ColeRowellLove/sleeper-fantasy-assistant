@@ -2,9 +2,9 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
-import LeagueDashboard from "../../../components/LeagueDashboard";
 import LeagueHeader from "../../../components/LeagueHeader";
 import LeagueTabs from "../../../components/LeagueTabs";
+import RostersPanel from "../../../components/RostersPanel";
 import StandingsTable from "../../../components/StandingsTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type { Dashboard, Lineups } from "../../../lib/api";
@@ -66,7 +66,13 @@ export default async function LeaguePage({
           myRosterId={myRosterId}
         />
       )}
-      {tab === "rosters" && <LeagueDashboard data={dashboard} />}
+      {tab === "rosters" && (
+        <RostersPanel
+          key={myRosterId ?? "none"} // reset the selection when the user changes their team
+          rosters={dashboard.rosters}
+          myRosterId={myRosterId}
+        />
+      )}
       {tab === "lineups" && lineups && <WeeklyLineups data={lineups} />}
       <p className="back">
         <Link href="/">Connect another league</Link>
