@@ -494,6 +494,35 @@ input[aria-invalid="true"] {
   padding: 0.85rem 1rem;
 }
 
+/* Shown after connecting: the same name, season and rule chips as the league header */
+.connected-card {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin: 0 0 1.25rem;
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.connected-name {
+  font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+  margin: 0;
+}
+
+.connected-name:focus-visible {
+  outline-offset: 0.3rem;
+}
+
+.connected-label {
+  color: var(--muted);
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.connected-card .rule-chips li {
+  background: var(--surface);
+}
+
 /* Existing league page content, restyled until it is redesigned */
 main > section {
   margin-top: 2rem;
