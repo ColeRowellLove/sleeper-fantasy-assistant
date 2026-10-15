@@ -46,7 +46,7 @@ jobs:
             if [[ $count -eq 0 ]]; then
               err "PR description must link its issue with 'Closes #<number>'."
             elif [[ $count -gt 1 ]]; then
-              err "One issue per PR: found $count closing references ($(echo $refs | tr '\n' ' '))."
+              err "One issue per PR: found $count closing references ($(echo "$refs" | tr '\n' ' '))."
             fi
           fi
 
