@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Archivo, Instrument_Sans } from "next/font/google";
 
+import ThemeToggle from "../components/ThemeToggle";
+import { THEME_INIT } from "../lib/theme";
 import "./globals.css";
 
 const display = Archivo({
@@ -46,7 +48,10 @@ const MARK = ["qb", "rb", "wr", "te", "k", "def"];
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
       <body>
         <a className="skip" href="#main">
           Skip to content
@@ -61,9 +66,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </span>
               Sleeper Assistant
             </Link>
-            <nav className="site-nav" aria-label="Site">
-              <a href="https://github.com/ColeRowellLove/sleeper-fantasy-assistant">Source</a>
-            </nav>
+            <div className="tools">
+              <nav className="site-nav" aria-label="Site">
+                <a href="https://github.com/ColeRowellLove/sleeper-fantasy-assistant">Source</a>
+              </nav>
+              <ThemeToggle />
+            </div>
           </div>
         </header>
         {children}
