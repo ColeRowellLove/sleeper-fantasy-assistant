@@ -34,3 +34,22 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
   connect hits the serverless time limit, let the worker run once (it loads the player database and
   syncs active leagues) and retry; a background sync-on-connect is a follow-up.
 - `backend/app.py` is the Vercel entrypoint; locally use `uvicorn sleeper_assistant.api:app`.
+
+## Testing develop before a release
+
+`develop` is built as a preview on Vercel, so changes can be tried end to end before they reach `main`.
+
+| What | URL |
+|---|---|
+| Develop web preview | `https://web-git-develop-cole-b6ee.vercel.app` |
+| Develop API preview | `https://api-git-develop-cole-b6ee.vercel.app` (`/health/db` shows which database it uses) |
+
+- **Web to API:** previews default `API_URL` to the develop API (see `frontend/lib/apiUrl.ts`). An
+  explicit `API_URL` set for the Preview environment in Vercel wins; production never uses the develop API.
+- **Separate database:** Neon has a non-expiring `develop` branch (a copy of production). The
+  `Migrate develop database` workflow keeps it at develop's schema (secret
+  `DATABASE_URL_UNPOOLED_DEVELOP`). To make the develop API use it, in the `api` Vercel project add
+  `DATABASE_URL` for the **Preview** environment, Git branch `develop`, with the pooled develop connection
+  string. Until that is set, previews use whatever `DATABASE_URL` applies to Preview, which may be production.
+- **Data:** connect a league on the develop web preview once to load it into the develop database.
+- Every PR also gets its own web preview URL from the Vercel bot comment.
