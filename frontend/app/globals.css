@@ -76,3 +76,44 @@ input[aria-invalid="true"] {
     transition: none !important;
   }
 }
+
+.visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 0.5rem 0 1rem;
+  width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+summary {
+  cursor: pointer;
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
+}
+
+dl {
+  display: grid;
+  gap: 0.25rem 1rem;
+  grid-template-columns: max-content 1fr;
+}
+
+dd {
+  margin: 0;
+}
