@@ -66,6 +66,17 @@ class SleeperTransaction(BaseModel):
     created: int | None = None
 
 
+class SleeperGame(BaseModel):
+    """One NFL game from Sleeper's (undocumented) schedule endpoint. Dates only, no kickoff time."""
+
+    game_id: str
+    week: int
+    home: str
+    away: str
+    date: str | None = None
+    status: str
+
+
 class SleeperPlayer(BaseModel):
     player_id: str
     full_name: str | None = None
@@ -73,6 +84,7 @@ class SleeperPlayer(BaseModel):
     team: str | None = None
     status: str | None = None
     injury_status: str | None = None
+    injury_body_part: str | None = None
     gsis_id: str | None = None
     espn_id: int | str | None = None
     yahoo_id: int | str | None = None
@@ -150,3 +162,9 @@ class SleeperClient:
         return [
             SleeperPlayer.model_validate({**item, "player_id": pid}) for pid, item in data.items()
         ]
+
+    def get_schedule(self, season: str) -> list[SleeperGame]:
+        """Every regular-season game with its status. Cheap (about 27 KB); safe to refresh often."""
+        # outside the /v1 base path, so this is an absolute URL
+        data = self.get_json(f"https://api.sleeper.app/schedule/nfl/regular/{season}")
+        return [SleeperGame.model_validate(item) for item in data]

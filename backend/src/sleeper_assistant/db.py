@@ -9,7 +9,16 @@ import os
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
-from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, String, create_engine, text
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    create_engine,
+    text,
+)
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
@@ -122,6 +131,7 @@ class PlayerRow(Base):
     team: Mapped[str | None] = mapped_column(String)
     status: Mapped[str | None] = mapped_column(String)
     injury_status: Mapped[str | None] = mapped_column(String)
+    injury_body_part: Mapped[str | None] = mapped_column(String)
     external_ids: Mapped[dict[str, Any]]
 
 
@@ -137,6 +147,23 @@ class CrosswalkRow(Base):
     sportradar_id: Mapped[str | None] = mapped_column(String, index=True)
     fantasypros_id: Mapped[str | None] = mapped_column(String, index=True)
     fantasycalc_id: Mapped[str | None] = mapped_column(String, index=True)
+
+
+class NflGameRow(Base):
+    """An NFL game from the schedule; also tells us which teams are on a bye in a given week."""
+
+    __tablename__ = "nfl_games"
+    __table_args__ = (Index("ix_nfl_games_season_week", "season", "week"),)
+
+    game_id: Mapped[str] = mapped_column(String, primary_key=True)
+    season: Mapped[str] = mapped_column(String)
+    week: Mapped[int]
+    home: Mapped[str] = mapped_column(String)
+    away: Mapped[str] = mapped_column(String)
+    game_date: Mapped[str | None] = mapped_column(String)  # ISO date, e.g. 2026-10-18
+    status: Mapped[str] = mapped_column(String)  # pre_game, in_game, complete
+    kickoff: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # from nflverse
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class JobRow(Base):

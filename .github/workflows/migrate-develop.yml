@@ -1,0 +1,43 @@
+name: Migrate develop database
+
+# Keeps the Neon "develop" branch (used by develop and preview deployments) at develop's schema.
+# Production is migrated by the "Migrate database" workflow when main changes.
+on:
+  push:
+    branches: [develop]
+    paths: ["backend/migrations/**", "backend/src/sleeper_assistant/db.py"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate-develop
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: alembic upgrade head (develop)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED_DEVELOP }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the develop database secret exists
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Repository secret DATABASE_URL_UNPOOLED_DEVELOP is not set."
+            exit 1
+          fi
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync --frozen --no-dev
+      - run: uv run alembic upgrade head
+      - run: uv run alembic current

@@ -5,6 +5,12 @@ export interface LeagueSummary {
   total_rosters: number;
 }
 
+export interface UserLeagues {
+  user_id: string;
+  display_name: string;
+  leagues: LeagueSummary[];
+}
+
 export interface ConnectedLeague extends LeagueSummary {
   rules: {
     reception_scoring: string;
@@ -37,8 +43,14 @@ export function isValidUsername(username: string): boolean {
   return USERNAME_RE.test(username);
 }
 
-export function listLeagues(username: string): Promise<LeagueSummary[]> {
-  return request(`/api/users/${encodeURIComponent(username)}/leagues`);
+export async function listLeagues(username: string): Promise<UserLeagues> {
+  const data = await request<UserLeagues | LeagueSummary[]>(
+    `/api/users/${encodeURIComponent(username)}/leagues`,
+  );
+  // Web and API deploy as separate projects; tolerate the API's previous bare-array response
+  // during a release so the form never breaks mid-deploy.
+  if (Array.isArray(data)) return { user_id: "", display_name: "", leagues: data };
+  return data;
 }
 
 export function connectLeague(leagueId: string): Promise<ConnectedLeague> {
@@ -49,11 +61,26 @@ export interface StandingsRow {
   rank: number;
   roster_id: number;
   team: string;
+  owner_id: string | null;
   wins: number;
   losses: number;
   ties: number;
   points_for: number;
   points_against: number;
+}
+
+export interface GameInfo {
+  state: "upcoming" | "live" | "final" | "bye";
+  date: string | null;
+  /** ISO UTC timestamp; absent until the schedule publishes a time. */
+  kickoff?: string | null;
+  opponent: string | null;
+  home: boolean | null;
+}
+
+export interface InjuryInfo {
+  status: string;
+  body_part: string | null;
 }
 
 export type RosterStatus = "starter" | "bench" | "ir" | "taxi";
@@ -65,6 +92,8 @@ export interface RosterPlayer {
   team: string | null;
   status: RosterStatus;
   slot: string | null;
+  game?: GameInfo | null;
+  injury?: InjuryInfo | null;
 }
 
 export interface LineupPlayer {
@@ -74,11 +103,14 @@ export interface LineupPlayer {
   position: string | null;
   team: string | null;
   points: number | null;
+  game?: GameInfo | null;
+  injury?: InjuryInfo | null;
 }
 
 export interface TeamLineup {
   roster_id: number;
   team: string;
+  owner_id: string | null;
   points: number;
   starters: LineupPlayer[];
   bench: LineupPlayer[];
@@ -86,6 +118,7 @@ export interface TeamLineup {
 
 export interface Lineups {
   week: number | null;
+  current_week?: number | null;
   weeks: number[];
   matchups: { matchup_id: number | null; teams: TeamLineup[] }[];
 }
@@ -94,7 +127,13 @@ export interface Dashboard {
   league_id: string;
   name: string;
   season: string;
+  week?: number | null;
   standings: StandingsRow[];
-  rosters: { roster_id: number; team: string; players: RosterPlayer[] }[];
+  rosters: {
+    roster_id: number;
+    team: string;
+    owner_id: string | null;
+      players: RosterPlayer[];
+  }[];
   rules: ConnectedLeague["rules"];
 }
