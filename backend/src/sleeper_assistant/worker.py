@@ -2,19 +2,28 @@
 
 from __future__ import annotations
 
+import argparse
 import logging
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant import jobs
 from sleeper_assistant.crosswalk import build_crosswalk
-from sleeper_assistant.db import LeagueRow, as_utc, make_engine, make_session_factory, utcnow
+from sleeper_assistant.db import (
+    JobRow,
+    LeagueRow,
+    as_utc,
+    make_engine,
+    make_session_factory,
+    utcnow,
+)
 from sleeper_assistant.ingest import sync_league, sync_players
 from sleeper_assistant.sleeper import SleeperClient
 
@@ -25,6 +34,10 @@ Handler = Callable[[Session, dict[str, Any]], None]
 ACTIVE_WINDOW = timedelta(days=14)  # leagues viewed within this window sync on schedule
 SYNC_INTERVAL = timedelta(minutes=15)
 POLL_SECONDS = 5.0
+PLAYER_SYNC_INTERVAL = timedelta(hours=24)
+PLAYER_SYNC_FAILURE_COOLDOWN = timedelta(hours=6)  # do not hammer a failing /players endpoint
+CYCLE_MAX_JOBS = 50
+CYCLE_BUDGET = timedelta(minutes=10)
 HEARTBEAT_SECONDS = jobs.STALE_AFTER.total_seconds() / 4
 
 
@@ -114,6 +127,64 @@ def enqueue_due_syncs(session: Session, now: datetime | None = None) -> int:
     return count
 
 
+def enqueue_player_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Enqueue the daily Sleeper player DB sync unless one is pending or finished recently."""
+    now = now or utcnow()
+    recent = session.scalar(
+        select(JobRow.id)
+        .where(
+            JobRow.kind == "sync_players",
+            or_(
+                JobRow.status.in_(jobs.ACTIVE_STATUSES),
+                (JobRow.status == "done") & (JobRow.finished_at > now - PLAYER_SYNC_INTERVAL),
+                (JobRow.status == "failed")
+                & (JobRow.finished_at > now - PLAYER_SYNC_FAILURE_COOLDOWN),
+            ),
+        )
+        .limit(1)
+    )
+    if recent is not None:
+        return False
+    return jobs.enqueue(session, "sync_players", dedupe_key="sync_players") is not None
+
+
+@dataclass
+class CycleResult:
+    enqueued: int
+    ran: int
+
+
+def run_cycle(
+    factory: sessionmaker[Session],
+    handlers: dict[str, Handler],
+    *,
+    max_jobs: int = CYCLE_MAX_JOBS,
+    budget: timedelta = CYCLE_BUDGET,
+) -> CycleResult:
+    """One scheduled batch: recover stale jobs, enqueue due work, run jobs within a budget."""
+    started = utcnow()
+    with factory() as session:
+        jobs.requeue_stale(session)
+        enqueued = enqueue_due_syncs(session) + int(enqueue_player_sync_if_due(session))
+    ran = 0
+    while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):
+        ran += 1
+    log.info("worker cycle: enqueued %d, ran %d", enqueued, ran)
+    return CycleResult(enqueued=enqueued, ran=ran)
+
+
+def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process entry point
+    parser = argparse.ArgumentParser(description="Sleeper assistant worker")
+    parser.add_argument("--once", action="store_true", help="run one batch and exit (cron mode)")
+    args = parser.parse_args(argv)
+    if args.once:
+        logging.basicConfig(level=logging.INFO)
+        factory = make_session_factory(make_engine())
+        run_cycle(factory, default_handlers(SleeperClient()))
+    else:
+        run_forever()
+
+
 def run_forever() -> None:  # pragma: no cover - process entry point
     logging.basicConfig(level=logging.INFO)
     factory = make_session_factory(make_engine())
@@ -132,4 +203,4 @@ def run_forever() -> None:  # pragma: no cover - process entry point
 
 
 if __name__ == "__main__":  # pragma: no cover
-    run_forever()
+    main()

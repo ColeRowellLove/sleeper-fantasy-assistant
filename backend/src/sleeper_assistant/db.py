@@ -186,8 +186,16 @@ def database_url() -> str:
     return os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
 
 
+def normalize_url(url: str) -> str:
+    """Hosts like Neon hand out postgres:// or postgresql:// URLs; use the psycopg 3 driver."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url.removeprefix(prefix)
+    return url
+
+
 def make_engine(url: str | None = None) -> Engine:
-    return create_engine(url or database_url())
+    return create_engine(normalize_url(url or database_url()))
 
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:

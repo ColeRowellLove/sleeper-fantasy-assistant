@@ -17,7 +17,12 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.worker import enqueue_due_syncs, run_once
+from sleeper_assistant.worker import (
+    enqueue_due_syncs,
+    enqueue_player_sync_if_due,
+    run_cycle,
+    run_once,
+)
 
 
 def test_enqueue_and_claim_in_order(session: Session) -> None:
@@ -178,3 +183,75 @@ def test_heartbeat_ignores_finished_jobs(session: Session) -> None:
     jobs.heartbeat(session, job.id)  # still queued: untouched
     session.refresh(job)
     assert job.locked_at is None
+
+
+def test_player_sync_enqueued_once_per_day(session: Session) -> None:
+    now = utcnow()
+    assert enqueue_player_sync_if_due(session, now)
+    assert not enqueue_player_sync_if_due(session, now)  # already queued
+
+    job = jobs.claim_next(session, now + timedelta(seconds=1))
+    assert job is not None
+    jobs.complete(session, job, now)
+    assert not enqueue_player_sync_if_due(session, now + timedelta(hours=1))  # done recently
+    assert enqueue_player_sync_if_due(session, now + timedelta(hours=25))  # due again
+
+
+def test_run_cycle_enqueues_and_drains(engine: Engine) -> None:
+    factory = make_session_factory(engine)
+    ran: list[str] = []
+
+    def record(s: Session, payload: dict[str, object]) -> None:
+        league_id = payload.get("league_id")
+        ran.append(str(league_id or "players"))
+        if league_id:  # like a real sync, mark the league as freshly synced
+            league = s.get(LeagueRow, str(league_id))
+            assert league is not None
+            league.last_synced_at = utcnow()
+            s.commit()
+
+    now = utcnow()
+    with factory() as s:
+        s.add(
+            LeagueRow(
+                league_id="L1",
+                name="L",
+                season="2026",
+                total_rosters=2,
+                scoring_settings={},
+                roster_positions=[],
+                settings={},
+                last_viewed_at=now,
+                last_synced_at=None,
+            )
+        )
+        s.commit()
+
+    result = run_cycle(factory, {"sync_league": record, "sync_players": record})
+
+    assert result.enqueued == 2  # the league sync and the daily player sync
+    assert result.ran == 2
+    assert sorted(ran) == ["L1", "players"]
+    assert run_cycle(factory, {"sync_league": record, "sync_players": record}).ran == 0
+
+
+def test_run_cycle_respects_max_jobs(engine: Engine) -> None:
+    factory = make_session_factory(engine)
+    with factory() as s:
+        for _ in range(3):
+            jobs.enqueue(s, "noop")
+    result = run_cycle(factory, {"noop": lambda _s, _p: None}, max_jobs=2)
+    assert result.ran == 2
+
+
+def test_failed_player_sync_backs_off(session: Session) -> None:
+    now = utcnow()
+    job = enqueue_player_sync_if_due(session, now)
+    assert job
+    claimed = jobs.claim_next(session, now + timedelta(seconds=1))
+    assert claimed is not None
+    claimed.max_attempts = 1
+    jobs.fail(session, claimed, "boom", now)
+
+    assert not enqueue_player_sync_if_due(session, now + timedelta(hours=1))  # cooling down
+    assert enqueue_player_sync_if_due(session, now + timedelta(hours=7))  # try again later
