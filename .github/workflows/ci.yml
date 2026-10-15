@@ -14,8 +14,35 @@ permissions:
   contents: read
 
 jobs:
+  # Decides which jobs are needed. A job skipped by `if:` still reports as skipped, which counts as
+  # passing for required checks (unlike a workflow skipped by path filters, which would leave them
+  # pending forever). Pushes to develop/main always run everything.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+
   backend:
     name: Backend (ruff, mypy, pytest)
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -54,6 +81,8 @@ jobs:
 
   frontend:
     name: Frontend (tsc, eslint, vitest)
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

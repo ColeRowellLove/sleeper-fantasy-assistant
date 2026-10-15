@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ConnectForm from "../components/ConnectForm";
 import { expectNoA11yViolations } from "./a11y";
 
+const userLeagues = (leagues: unknown[]) => ({ user_id: "u1", display_name: "Cole", leagues });
 const league = { league_id: "123", name: "Family League", season: "2026", total_rosters: 10 };
 const connected = {
   ...league,
@@ -40,7 +41,7 @@ describe("ConnectForm", () => {
 
   it("labels the username field and is operable by keyboard", async () => {
     const user = userEvent.setup();
-    const fetchMock = mockFetch({ body: [league] });
+    const fetchMock = mockFetch({ body: userLeagues([league]) });
     render(<ConnectForm />);
 
     await user.tab();
@@ -53,7 +54,7 @@ describe("ConnectForm", () => {
 
   it("walks through username, league pick and connect", async () => {
     const user = userEvent.setup();
-    const fetchMock = mockFetch({ body: [league] }, { body: connected });
+    const fetchMock = mockFetch({ body: userLeagues([league]) }, { body: connected });
     const { container } = render(<ConnectForm />);
 
     await user.type(screen.getByLabelText("Sleeper username"), "cole");
@@ -69,6 +70,29 @@ describe("ConnectForm", () => {
 
     const { axe } = await import("vitest-axe");
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("remembers the Sleeper user id so the league page can find your team", async () => {
+    const user = userEvent.setup();
+    mockFetch({ body: userLeagues([league]) });
+    render(<ConnectForm />);
+
+    await user.type(screen.getByLabelText("Sleeper username"), "cole");
+    await user.click(screen.getByRole("button", { name: "Find my leagues" }));
+    await screen.findByRole("button", { name: /Family League/ });
+
+    expect(document.cookie).toContain("sa_user=u1");
+  });
+
+  it("still works with the API's previous bare-array response (deploy skew)", async () => {
+    const user = userEvent.setup();
+    mockFetch({ body: [league] });
+    render(<ConnectForm />);
+
+    await user.type(screen.getByLabelText("Sleeper username"), "cole");
+    await user.click(screen.getByRole("button", { name: "Find my leagues" }));
+
+    expect(await screen.findByRole("button", { name: /Family League/ })).toBeInTheDocument();
   });
 
   it("announces validation errors via an alert and flags the field", async () => {
@@ -99,7 +123,7 @@ describe("ConnectForm", () => {
 
   it("tells the user when no leagues exist", async () => {
     const user = userEvent.setup();
-    mockFetch({ body: [] });
+    mockFetch({ body: userLeagues([]) });
     render(<ConnectForm />);
 
     await user.type(screen.getByLabelText("Sleeper username"), "cole");
@@ -108,7 +132,7 @@ describe("ConnectForm", () => {
   });
   it("moves focus to the new content after each step", async () => {
     const user = userEvent.setup();
-    mockFetch({ body: [league] }, { body: connected });
+    mockFetch({ body: userLeagues([league]) }, { body: connected });
     render(<ConnectForm />);
 
     await user.type(screen.getByLabelText("Sleeper username"), "cole");

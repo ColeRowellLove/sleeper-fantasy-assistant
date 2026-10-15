@@ -185,7 +185,7 @@ def test_heartbeat_ignores_finished_jobs(session: Session) -> None:
     assert job.locked_at is None
 
 
-def test_player_sync_enqueued_once_per_day(session: Session) -> None:
+def test_player_sync_is_enqueued_hourly_but_not_twice_at_once(session: Session) -> None:
     now = utcnow()
     assert enqueue_player_sync_if_due(session, now)
     assert not enqueue_player_sync_if_due(session, now)  # already queued
@@ -193,8 +193,8 @@ def test_player_sync_enqueued_once_per_day(session: Session) -> None:
     job = jobs.claim_next(session, now + timedelta(seconds=1))
     assert job is not None
     jobs.complete(session, job, now)
-    assert not enqueue_player_sync_if_due(session, now + timedelta(hours=1))  # done recently
-    assert enqueue_player_sync_if_due(session, now + timedelta(hours=25))  # due again
+    assert not enqueue_player_sync_if_due(session, now + timedelta(minutes=30))  # done recently
+    assert enqueue_player_sync_if_due(session, now + timedelta(minutes=61))  # due again
 
 
 def test_run_cycle_enqueues_and_drains(engine: Engine) -> None:
@@ -227,12 +227,31 @@ def test_run_cycle_enqueues_and_drains(engine: Engine) -> None:
         )
         s.commit()
 
-    result = run_cycle(factory, {"sync_league": record, "sync_players": record})
+    result = run_cycle(
+        factory,
+        {
+            "sync_league": record,
+            "sync_players": record,
+            "sync_schedule": lambda _s, _p: None,
+            "sync_kickoffs": lambda _s, _p: None,
+        },
+    )
 
-    assert result.enqueued == 2  # the league sync and the daily player sync
-    assert result.ran == 2
+    assert result.enqueued == 4  # league sync, player sync, schedule refresh and kickoff refresh
+    assert result.ran == 4
     assert sorted(ran) == ["L1", "players"]
-    assert run_cycle(factory, {"sync_league": record, "sync_players": record}).ran == 0
+    assert (
+        run_cycle(
+            factory,
+            {
+                "sync_league": record,
+                "sync_players": record,
+                "sync_schedule": lambda _s, _p: None,
+                "sync_kickoffs": lambda _s, _p: None,
+            },
+        ).ran
+        == 0
+    )
 
 
 def test_run_cycle_respects_max_jobs(engine: Engine) -> None:
@@ -253,5 +272,5 @@ def test_failed_player_sync_backs_off(session: Session) -> None:
     claimed.max_attempts = 1
     jobs.fail(session, claimed, "boom", now)
 
-    assert not enqueue_player_sync_if_due(session, now + timedelta(hours=1))  # cooling down
+    assert not enqueue_player_sync_if_due(session, now + timedelta(hours=2))  # cooling down
     assert enqueue_player_sync_if_due(session, now + timedelta(hours=7))  # try again later
