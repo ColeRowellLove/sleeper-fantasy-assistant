@@ -1160,6 +1160,15 @@ table.h2h {
   vertical-align: middle;
 }
 
+/* line the table up with the scoreboard above it instead of hugging the card edge */
+.h2h tr > :first-child {
+  padding-left: 1.25rem;
+}
+
+.h2h tr > :last-child {
+  padding-right: 1.25rem;
+}
+
 .h2h thead th {
   color: var(--muted);
   font-size: 0.8rem;
@@ -1311,6 +1320,14 @@ table.h2h {
     padding: 0.5rem 0.3rem;
   }
 
+  .h2h tr > :first-child {
+    padding-left: 0.9rem;
+  }
+
+  .h2h tr > :last-child {
+    padding-right: 0.9rem;
+  }
+
   .h2h .slot-col,
   .h2h .slot-cell {
     padding-left: 0.4rem;
@@ -1347,6 +1364,10 @@ table.h2h {
 .sample {
   margin-top: 2.5rem;
   max-width: 46rem;
+}
+
+.sample .note {
+  margin: 0 0 0.75rem;
 }
 
 /* Theme toggle */
