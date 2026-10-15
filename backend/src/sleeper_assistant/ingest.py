@@ -91,7 +91,10 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                     user_id=user.user_id, username=user.username, display_name=user.display_name
                 )
             )
-            session.merge(UserLeagueRow(user_id=user.user_id, league_id=league_id))
+            team_name = str((user.metadata or {}).get("team_name") or "").strip() or None
+            session.merge(
+                UserLeagueRow(user_id=user.user_id, league_id=league_id, team_name=team_name)
+            )
         session.flush()
 
         for roster in client.get_rosters(league_id):

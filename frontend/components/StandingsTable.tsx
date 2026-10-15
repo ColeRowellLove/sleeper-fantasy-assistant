@@ -132,6 +132,12 @@ export default function StandingsTable({
                   <th scope="row">
                     {row.team}
                     {mine && <span className="you">You</span>}
+                    {row.manager && row.manager !== row.team && (
+                      <span className="manager">
+                        <span className="visually-hidden">Manager: </span>
+                        {row.manager}
+                      </span>
+                    )}
                   </th>
                   <td className="num">{formatRecord(row.wins, row.losses, row.ties)}</td>
                   <td className="num">

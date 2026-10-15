@@ -61,6 +61,8 @@ export interface StandingsRow {
   rank: number;
   roster_id: number;
   team: string;
+  /** The manager's Sleeper username; the team name is what they chose in Sleeper. */
+  manager?: string | null;
   owner_id: string | null;
   wins: number;
   losses: number;

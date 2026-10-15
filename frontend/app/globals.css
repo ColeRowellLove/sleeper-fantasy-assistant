@@ -712,6 +712,13 @@ table.standings {
   color: var(--text);
 }
 
+.manager {
+  color: var(--muted);
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
 .streak {
   font-weight: 700;
 }

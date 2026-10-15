@@ -209,3 +209,14 @@ describe("streak", () => {
     );
   });
 });
+
+describe("team names", () => {
+  it("shows the manager's username under a chosen team name, and nothing extra otherwise", () => {
+    const named: StandingsRow = { ...row(1, 1, "Tua Infinity And Beyond", 3, 1), manager: "MatthewOtto" };
+    const plain: StandingsRow = { ...row(2, 2, "NickOtto", 2, 2), manager: "NickOtto" };
+    render(<StandingsTable standings={[named, plain]} playoffTeams={null} myRosterId={null} />);
+    expect(screen.getByText("MatthewOtto")).toBeInTheDocument();
+    expect(screen.getByText("Manager:", { exact: false })).toBeInTheDocument();
+    expect(screen.getAllByText("NickOtto")).toHaveLength(1); // not repeated under itself
+  });
+});
