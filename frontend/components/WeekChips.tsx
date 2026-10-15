@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { leaguePath } from "../lib/league";
 import { weekState } from "../lib/lineups";
 
 /** Week navigation as plain links (works without JavaScript). Later weeks are visibly upcoming. */
@@ -22,7 +23,7 @@ export default function WeekChips({
           return (
             <li key={w}>
               <Link
-                href={`/league/${encodeURIComponent(leagueId)}?tab=lineups&week=${w}`}
+                href={leaguePath(leagueId, `?tab=lineups&week=${w}`)}
                 className={`chip-week ${state}`}
                 aria-current={w === selected ? "page" : undefined}
               >
