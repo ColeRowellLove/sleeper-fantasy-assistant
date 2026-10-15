@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import timedelta
 from functools import lru_cache
 from typing import Annotated
@@ -13,6 +13,7 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import func, select, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -43,8 +44,18 @@ LeagueId = Annotated[str, Path(pattern=r"^\d{1,25}$")]
 
 
 @lru_cache
+def _engine() -> Engine:
+    return make_engine()
+
+
+@lru_cache
 def _session_factory() -> sessionmaker[Session]:
-    return make_session_factory(make_engine())
+    return make_session_factory(_engine())
+
+
+def get_engine_factory() -> Callable[[], Engine]:
+    """Returns the engine builder without calling it, so callers can handle its errors."""
+    return _engine
 
 
 def get_session() -> Iterator[Session]:
@@ -87,17 +98,26 @@ def health() -> dict[str, str]:
 
 
 @app.get("/health/db")
-def health_db(session: SessionDep, response: Response) -> dict[str, str | bool]:
-    """Is the database reachable? Reports only booleans and error class names, never URLs."""
+def health_db(
+    engine_factory: Annotated[Callable[[], Engine], Depends(get_engine_factory)], response: Response
+) -> dict[str, str | bool]:
+    """Is the database reachable? Reports booleans, the URL scheme and error class names only.
+
+    The engine is built inside the try block so a bad DATABASE_URL is reported, not a bare 500.
+    """
+    raw = os.environ.get("DATABASE_URL", "")
     result: dict[str, str | bool] = {
-        "database_url_configured": "DATABASE_URL" in os.environ,
-        "dialect": session.get_bind().dialect.name,
+        "database_url_configured": bool(raw),
+        # only what precedes "://" (e.g. "postgresql"); never the credentials or host
+        "database_url_scheme": raw.split("://", 1)[0][:20] if "://" in raw else "none",
     }
     try:
-        session.execute(text("select 1"))
+        engine = engine_factory()
+        result["dialect"] = engine.dialect.name
+        with engine.connect() as connection:
+            connection.execute(text("select 1"))
         result["status"] = "ok"
     except Exception as exc:  # report the class only; messages can contain connection details
-        session.rollback()
         response.status_code = 503
         result["status"] = "error"
         result["error"] = type(exc).__name__
