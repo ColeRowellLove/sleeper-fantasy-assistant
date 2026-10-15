@@ -688,6 +688,35 @@ table.standings {
   font-weight: 600;
 }
 
+.sort-button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 0.4rem;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 0.3rem;
+  margin: -0.25rem -0.4rem;
+  padding: 0.25rem 0.4rem;
+  white-space: nowrap;
+}
+
+.sort-button:hover {
+  color: var(--text);
+}
+
+.standings th[aria-sort="ascending"] .sort-button,
+.standings th[aria-sort="descending"] .sort-button {
+  color: var(--text);
+}
+
+.sort-arrow {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
 .standings .rank {
   color: var(--muted);
   width: 3.5rem;
