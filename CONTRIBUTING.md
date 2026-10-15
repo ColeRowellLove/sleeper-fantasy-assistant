@@ -43,13 +43,20 @@ They follow the same rules as any PR: green CI, squash merge. Nothing auto-merge
 
 ## Releases
 
-1. Make sure `develop` is green and contains what should ship.
-2. Open a PR **from `develop` into `main`** titled `chore: release vX.Y.Z` (no issue link needed).
-3. After CI is green, **squash merge** it.
-4. Release notes are drafted automatically from merged PR titles (Releases tab). Review the draft,
-   then publish it to create the tag.
+Releases are squash merged like everything else. Squashing `develop` into `main` leaves `main` with
+a commit that `develop`'s history does not contain, so the next plain `develop` -> `main` PR
+conflicts. The first release (v0.1.0) was a plain PR; later releases carry develop's exact files:
 
-Urgent fixes use a `hotfix/<name>` branch from `main` into `main`, then are merged back into `develop`.
+1. Make sure `develop` is green and contains what should ship. Open an issue "Release vX.Y.Z".
+2. Branch from `main`: `git checkout -b hotfix/release-vX-Y-Z origin/main`.
+3. Copy develop's tree onto it: `git read-tree -u --reset origin/develop`, then commit as
+   `chore: release vX.Y.Z` (it must end up identical to develop: `git diff origin/develop` is empty).
+4. Open a PR into `main` (title `chore: release vX.Y.Z`, body `Closes #<issue>`), wait for CI, then
+   **squash merge**. Close the issue by hand (GitHub only auto-closes on merges into `develop`).
+5. Release notes are drafted from merged PR titles (Releases tab); publish the draft to tag it.
+
+Production (Vercel `web` and `api`) deploys from `main`; previews come from `develop` and PRs.
+Urgent fixes use a `hotfix/<name>` branch from `main`, then the fix is applied to `develop` too.
 
 ## Reporting problems
 
