@@ -89,6 +89,7 @@ class RosterRow(Base):
     ties: Mapped[int] = mapped_column(default=0)
     points_for: Mapped[float] = mapped_column(default=0.0)
     points_against: Mapped[float] = mapped_column(default=0.0)
+    streak: Mapped[str | None] = mapped_column(String)  # current run as Sleeper reports it: 3W, 2L
 
 
 class MatchupRow(Base):

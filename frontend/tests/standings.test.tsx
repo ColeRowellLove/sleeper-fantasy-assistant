@@ -174,3 +174,38 @@ describe("sorting", () => {
     );
   });
 });
+
+describe("streak", () => {
+  const withStreak = (r: StandingsRow, streak: string | null): StandingsRow => ({ ...r, streak });
+  const league = [
+    withStreak(row(1, 3, "Dad", 4, 1), "3W"),
+    withStreak(row(2, 1, "Cole", 3, 2), "1L"),
+    withStreak(row(3, 2, "Sis", 2, 3), "4L"),
+    withStreak(row(4, 4, "Alex", 1, 4), null),
+    withStreak(row(5, 5, "Pat", 1, 4), "1W"),
+  ];
+  const teams = () => screen.getAllByRole("rowheader").map((cell) => cell.textContent);
+
+  it("shows each team's streak in words for screen readers and a dash when there is none", () => {
+    render(<StandingsTable standings={league} playoffTeams={null} myRosterId={null} />);
+    expect(screen.getByText("W3")).toBeInTheDocument();
+    expect(screen.getByText("3 wins in a row")).toBeInTheDocument();
+    expect(screen.getByText("1 loss in a row")).toBeInTheDocument();
+    expect(screen.getByText("4 losses in a row")).toBeInTheDocument();
+    expect(screen.getAllByText("–")).toHaveLength(1);
+  });
+
+  it("sorts from the longest win streak to the longest loss streak, and back", async () => {
+    render(<StandingsTable standings={league} playoffTeams={null} myRosterId={null} />);
+    await userEvent.click(screen.getByRole("button", { name: /^Streak/ }));
+    expect(teams()).toEqual(["Dad", "Pat", "Alex", "Cole", "Sis"]);
+    await userEvent.click(screen.getByRole("button", { name: /^Streak/ }));
+    expect(teams()).toEqual(["Sis", "Cole", "Alex", "Pat", "Dad"]);
+  });
+
+  it("has no accessibility violations", async () => {
+    await expectNoA11yViolations(
+      <StandingsTable standings={league} playoffTeams={null} myRosterId={null} />,
+    );
+  });
+});

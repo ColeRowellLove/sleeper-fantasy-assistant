@@ -46,6 +46,7 @@ class SleeperRoster(BaseModel):
     reserve: list[str] | None = None  # injured reserve
     taxi: list[str] | None = None
     settings: dict[str, Any] = {}
+    metadata: dict[str, Any] | None = None  # includes the current "streak", e.g. "3W"
 
 
 class SleeperMatchup(BaseModel):
