@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import Base, LeagueRow, RosterRow, make_engine
+from sleeper_assistant.db import Base, LeagueRow, RosterRow, make_engine, normalize_url
 
 
 def _league(league_id: str) -> LeagueRow:
@@ -58,3 +58,19 @@ def test_migrations_match_models(tmp_path: Path) -> None:
     command.upgrade(cfg, "head")
     tables = set(inspect(make_engine(url)).get_table_names())
     assert set(Base.metadata.tables) <= tables
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        (
+            "postgresql://u:p@host/db?sslmode=require",
+            "postgresql+psycopg://u:p@host/db?sslmode=require",
+        ),
+        ("postgres://u:p@host/db", "postgresql+psycopg://u:p@host/db"),
+        ("postgresql+psycopg://u:p@host/db", "postgresql+psycopg://u:p@host/db"),
+        ("sqlite:///x.db", "sqlite:///x.db"),
+    ],
+)
+def test_normalize_url(url: str, expected: str) -> None:
+    assert normalize_url(url) == expected

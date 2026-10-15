@@ -1,0 +1,38 @@
+name: Worker
+
+# Scheduled batch worker: enqueues due league syncs and the daily player sync, then runs the queue.
+# GitHub cron is best-effort (runs can be late, and schedules pause after 60 days without commits),
+# so this is a starting point, not a guarantee. It only runs when the repo variable
+# WORKER_ENABLED is "true" (set it after migrations have run and the DATABASE_URL secret exists).
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Run worker batch
+    if: ${{ vars.WORKER_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync --frozen --no-dev
+      - run: uv run python -m sleeper_assistant.worker --once
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
