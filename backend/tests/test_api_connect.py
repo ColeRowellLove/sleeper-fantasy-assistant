@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterator
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -147,3 +148,42 @@ def test_unexpected_sleeper_payload_is_502(client: TestClient) -> None:
     )
     app.dependency_overrides[get_sleeper] = lambda: bad
     assert client.post("/api/leagues/1/connect").status_code == 502
+
+
+def test_dashboard_after_connect(client: TestClient) -> None:
+    assert client.get("/api/leagues/1").status_code == 404  # not connected yet
+
+    client.post("/api/leagues/1/connect")
+    resp = client.get("/api/leagues/1")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["name"] == "Family League"
+    assert body["rules"]["uses_faab"] is True
+    assert [s["team"] for s in body["standings"]] == ["Cole", "Dad"]
+    assert body["standings"][0]["points_for"] == 120.42
+    assert body["rosters"][0]["players"][0]["starter"] is True
+
+
+def test_dashboard_rejects_bad_league_id(client: TestClient) -> None:
+    assert client.get("/api/leagues/abc").status_code == 422
+
+
+def test_dashboard_view_timestamp_is_throttled(client: TestClient) -> None:
+    client.post("/api/leagues/1/connect")
+    session = next(app.dependency_overrides[get_session]())
+    league = session.get(LeagueRow, "1")
+    assert league is not None
+    recent = league.last_viewed_at
+    assert recent is not None
+
+    client.get("/api/leagues/1")
+    session.refresh(league)
+    assert league.last_viewed_at == recent  # within the hour: not rewritten
+
+    league.last_viewed_at = recent - timedelta(hours=2)
+    session.commit()
+    client.get("/api/leagues/1")
+    session.refresh(league)
+    assert league.last_viewed_at is not None
+    assert league.last_viewed_at > recent - timedelta(hours=1)  # stale: refreshed

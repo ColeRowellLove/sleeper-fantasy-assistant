@@ -44,3 +44,31 @@ export function listLeagues(username: string): Promise<LeagueSummary[]> {
 export function connectLeague(leagueId: string): Promise<ConnectedLeague> {
   return request(`/api/leagues/${encodeURIComponent(leagueId)}/connect`, { method: "POST" });
 }
+
+export interface StandingsRow {
+  rank: number;
+  roster_id: number;
+  team: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  points_for: number;
+  points_against: number;
+}
+
+export interface RosterPlayer {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  starter: boolean;
+}
+
+export interface Dashboard {
+  league_id: string;
+  name: string;
+  season: string;
+  standings: StandingsRow[];
+  rosters: { roster_id: number; team: string; players: RosterPlayer[] }[];
+  rules: ConnectedLeague["rules"];
+}

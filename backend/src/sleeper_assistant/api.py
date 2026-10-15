@@ -14,6 +14,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant import __version__
+from sleeper_assistant.dashboard import Dashboard, build_dashboard
 from sleeper_assistant.db import LeagueRow, as_utc, make_engine, make_session_factory, utcnow
 from sleeper_assistant.ingest import sync_league
 from sleeper_assistant.rules import LeagueRules, derive_rules
@@ -22,6 +23,7 @@ from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFo
 log = logging.getLogger(__name__)
 
 RESYNC_COOLDOWN = timedelta(seconds=60)  # connect reuses a sync newer than this
+VIEW_TOUCH_INTERVAL = timedelta(hours=1)  # last_viewed_at is refreshed at most this often
 
 app = FastAPI(title="Sleeper Fantasy Assistant", version=__version__)
 
@@ -116,6 +118,25 @@ def connect_league(
     row.last_viewed_at = utcnow()
     session.commit()
     return _connected(row)
+
+
+class DashboardResponse(Dashboard):
+    rules: LeagueRules
+
+
+@app.get("/api/leagues/{league_id}")
+def get_league_dashboard(league_id: LeagueId, session: SessionDep) -> DashboardResponse:
+    """Standings, rosters and the league rules card for a connected league (read-only)."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    now = utcnow()
+    # throttled: refreshing the page must not cost a database write every time
+    if row.last_viewed_at is None or as_utc(row.last_viewed_at) < now - VIEW_TOUCH_INTERVAL:
+        row.last_viewed_at = now
+        session.commit()
+    connected = _connected(row)
+    return DashboardResponse(**build_dashboard(session, row).model_dump(), rules=connected.rules)
 
 
 def _connected(row: LeagueRow) -> ConnectedLeague:
