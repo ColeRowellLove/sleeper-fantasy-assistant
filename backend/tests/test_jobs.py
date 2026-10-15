@@ -229,16 +229,26 @@ def test_run_cycle_enqueues_and_drains(engine: Engine) -> None:
 
     result = run_cycle(
         factory,
-        {"sync_league": record, "sync_players": record, "sync_schedule": lambda _s, _p: None},
+        {
+            "sync_league": record,
+            "sync_players": record,
+            "sync_schedule": lambda _s, _p: None,
+            "sync_kickoffs": lambda _s, _p: None,
+        },
     )
 
-    assert result.enqueued == 3  # the league sync, the daily player sync and the schedule refresh
-    assert result.ran == 3
+    assert result.enqueued == 4  # league sync, player sync, schedule refresh and kickoff refresh
+    assert result.ran == 4
     assert sorted(ran) == ["L1", "players"]
     assert (
         run_cycle(
             factory,
-            {"sync_league": record, "sync_players": record, "sync_schedule": lambda _s, _p: None},
+            {
+                "sync_league": record,
+                "sync_players": record,
+                "sync_schedule": lambda _s, _p: None,
+                "sync_kickoffs": lambda _s, _p: None,
+            },
         ).ran
         == 0
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -45,7 +46,8 @@ class GameInfo(BaseModel):
     """A player's NFL game in a week: upcoming, live, final, or the team is on a bye."""
 
     state: GameState
-    date: str | None = None  # ISO date; Sleeper's schedule has no kickoff time
+    date: str | None = None  # ISO date
+    kickoff: str | None = None  # ISO UTC timestamp, once the schedule publishes a time
     opponent: str | None = None
     home: bool | None = None
 
@@ -180,6 +182,14 @@ def current_week(session: Session, season: str) -> int | None:
     return weeks[-1]
 
 
+def _utc_iso(moment: datetime | None) -> str | None:
+    if moment is None:
+        return None
+    if moment.tzinfo is None:  # SQLite drops the zone; everything is stored as UTC
+        moment = moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
 def games_for_week(session: Session, season: str, week: int) -> dict[str, GameInfo]:
     """NFL team -> that team's game in the week; teams with no game in the week are on a bye."""
     games = list(session.scalars(select(NflGameRow).where(NflGameRow.season == season)))
@@ -191,8 +201,13 @@ def games_for_week(session: Session, season: str, week: int) -> dict[str, GameIn
         state = _STATUS_STATE.get(g.status)
         if state is None:
             continue
-        out[g.home] = GameInfo(state=state, date=g.game_date, opponent=g.away, home=True)
-        out[g.away] = GameInfo(state=state, date=g.game_date, opponent=g.home, home=False)
+        kickoff = _utc_iso(g.kickoff)
+        out[g.home] = GameInfo(
+            state=state, date=g.game_date, kickoff=kickoff, opponent=g.away, home=True
+        )
+        out[g.away] = GameInfo(
+            state=state, date=g.game_date, kickoff=kickoff, opponent=g.home, home=False
+        )
     if week_games:  # without any games in the week we cannot tell a bye from missing data
         for team in all_teams - playing:
             out[team] = GameInfo(state="bye")

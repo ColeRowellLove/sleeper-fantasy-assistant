@@ -173,6 +173,7 @@ def test_dashboard_after_connect(client: TestClient) -> None:
     assert first["game"] == {
         "state": "upcoming",
         "date": "2026-09-20",
+        "kickoff": None,
         "opponent": "CHI",
         "home": True,
     }
