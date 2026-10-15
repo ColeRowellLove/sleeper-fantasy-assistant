@@ -38,5 +38,5 @@ gh pr merge "$PR" --squash --delete-branch
 
 git checkout -q develop
 git pull -q origin develop
-git branch -D "$BRANCH" > /dev/null
+git branch -D "$BRANCH" > /dev/null 2>&1 || true  # gh may have deleted it already
 echo "Issue #$ISSUE: $(gh issue view "$ISSUE" --json state -q .state)"
