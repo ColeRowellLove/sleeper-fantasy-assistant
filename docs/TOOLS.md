@@ -29,7 +29,7 @@ check each provider's pricing page before relying on a number.
 - **What it is:** a hosting platform that builds and deploys straight from GitHub, giving every branch
   and pull request its own preview URL.
 - **What it does here:** two projects. `web` serves the Next.js site; `api` runs the FastAPI backend as
-  a Python serverless function. Merges to `main` go to production; `develop` and PR branches get previews.
+  a Python serverless function. Merges to `main` go to production and `develop` gets a preview; work branches do not deploy (the free plan caps deployments per day).
 - **Why it was chosen:**
   - Zero-config deploys for both Next.js and FastAPI, and no server to look after.
   - Preview deployments per branch make it possible to test changes before they reach `main`.
@@ -55,6 +55,16 @@ check each provider's pricing page before relying on a number.
 - **What it does here:** the system of record for everything about a league. No login is needed.
 - **Why:** it is public, covers what the app needs, and never requires users' credentials.
 - **Trade-offs:** it has no projections or live game state; those come from other sources later (issues #109, #131).
+
+### nflverse (kickoff times)
+
+- **What it is:** an open-source project that publishes NFL data, including the full schedule, under CC BY 4.0.
+- **What it does here:** Sleeper's schedule has game dates but no kickoff time, so a daily job reads
+  nflverse's schedule file and stores each game's kickoff (converted from US Eastern to UTC). The site
+  then shows it in each viewer's own time zone.
+- **Why:** free, no key, complete (all 272 regular-season games matched Sleeper's), and credit is all it asks.
+- **Trade-offs:** it is a third-party file, so a failed download just leaves the last known times, and
+  the footer credits nflverse. nflverse calls the Rams `LA` where Sleeper says `LAR`; one code is mapped.
 
 ## Backend
 

@@ -25,7 +25,11 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
 
 ## Notes
 
-- Vercel Hobby is for non-commercial personal use.
+- Vercel Hobby is for non-commercial personal use and allows 100 deployments a day. To stay under it,
+  `feature/`, `bugfix/`, `chore/`, `docs/`, `refactor/`, `test/` and `hotfix/` branches do not deploy
+  (CI still tests them), `web` skips a build when `frontend/` is unchanged and `api` when `backend/` is
+  unchanged. Only `develop` and `main` deploy. When the limit is hit, builds fail with "Deployment rate
+  limited" and resume about 24 hours later; production keeps serving the last good deployment.
 - Neon free compute suspends when idle; the first request after a pause is slower.
 - GitHub cron is best-effort (runs can be late; schedules pause after 60 days without commits).
 - The first league connect loads Sleeper's player database if the table is empty; the worker also
@@ -33,6 +37,8 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
 - Known risk: connecting a league syncs it inside one request (about 40 Sleeper calls). If the first
   connect hits the serverless time limit, let the worker run once (it loads the player database and
   syncs active leagues) and retry; a background sync-on-connect is a follow-up.
+- The worker also refreshes kickoff times from nflverse once a day (job `sync_kickoffs`); a failed
+  download only leaves the previous times in place.
 - `backend/app.py` is the Vercel entrypoint; locally use `uvicorn sleeper_assistant.api:app`.
 
 ## Testing develop before a release
@@ -52,4 +58,5 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
   `DATABASE_URL` for the **Preview** environment, Git branch `develop`, with the pooled develop connection
   string. Until that is set, previews use whatever `DATABASE_URL` applies to Preview, which may be production.
 - **Data:** connect a league on the develop web preview once to load it into the develop database.
-- Every PR also gets its own web preview URL from the Vercel bot comment.
+- Pull requests no longer get their own Vercel preview (see the deployment limit above); try a
+  change locally or merge it into `develop` and use the develop preview.
