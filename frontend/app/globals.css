@@ -897,8 +897,13 @@ table.standings {
 }
 
 .player-sub {
+  align-items: center;
   color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
   font-size: 0.85rem;
+  gap: 0.15rem 0.5rem;
+  min-height: 1.6rem;
 }
 
 .slot {
@@ -1365,6 +1370,8 @@ table.h2h {
   flex-wrap: wrap;
   gap: 0.25rem 0.5rem;
   margin-top: 0.15rem;
+  /* reserve the line so a player with no game still lines up with the rest */
+  min-height: 1.6rem;
 }
 
 .player-tags .game {
