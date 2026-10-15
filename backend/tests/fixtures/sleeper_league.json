@@ -41,7 +41,8 @@
     {
       "user_id": "u2",
       "username": null,
-      "display_name": "Dad"
+      "display_name": "Dad",
+      "metadata": {"team_name": " Dad Bods "}
     }
   ],
   "rosters": [

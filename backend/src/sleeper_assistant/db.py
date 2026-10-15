@@ -72,6 +72,7 @@ class UserLeagueRow(Base):
 
     user_id: Mapped[str] = mapped_column(ForeignKey("sleeper_users.user_id"), primary_key=True)
     league_id: Mapped[str] = mapped_column(ForeignKey("leagues.league_id"), primary_key=True)
+    team_name: Mapped[str | None] = mapped_column(String)  # the name this manager gave their team
 
 
 class RosterRow(Base):

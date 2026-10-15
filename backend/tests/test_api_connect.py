@@ -166,7 +166,8 @@ def test_dashboard_after_connect(client: TestClient) -> None:
     body = resp.json()
     assert body["name"] == "Family League"
     assert body["rules"]["uses_faab"] is True
-    assert [s["team"] for s in body["standings"]] == ["Cole", "Dad"]
+    assert [s["team"] for s in body["standings"]] == ["Cole", "Dad Bods"]  # chosen name, trimmed
+    assert [s["manager"] for s in body["standings"]] == ["Cole", "Dad"]  # username fallback
     assert body["standings"][0]["points_for"] == 120.42
     assert [s["streak"] for s in body["standings"]] == ["2W", None]  # a missing streak is None
     first = body["rosters"][0]["players"][0]
