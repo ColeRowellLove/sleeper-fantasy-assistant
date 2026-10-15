@@ -9,7 +9,7 @@ import os
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
-from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, String, create_engine
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, String, create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
@@ -126,6 +126,36 @@ class CrosswalkRow(Base):
     sportradar_id: Mapped[str | None] = mapped_column(String, index=True)
     fantasypros_id: Mapped[str | None] = mapped_column(String, index=True)
     fantasycalc_id: Mapped[str | None] = mapped_column(String, index=True)
+
+
+class JobRow(Base):
+    """Postgres-backed job queue. Workers claim rows with FOR UPDATE SKIP LOCKED."""
+
+    __tablename__ = "jobs"
+    __table_args__ = (
+        Index("ix_jobs_status_run_at", "status", "run_at"),
+        # at most one queued/running job per dedupe_key (enforces enqueue dedupe atomically)
+        Index(
+            "uq_jobs_active_dedupe",
+            "dedupe_key",
+            unique=True,
+            postgresql_where=text("status IN ('queued', 'running')"),
+            sqlite_where=text("status IN ('queued', 'running')"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(String)
+    payload: Mapped[dict[str, Any]]
+    status: Mapped[str] = mapped_column(String, default="queued")  # queued/running/done/failed
+    run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    attempts: Mapped[int] = mapped_column(default=0)
+    max_attempts: Mapped[int] = mapped_column(default=3)
+    dedupe_key: Mapped[str | None] = mapped_column(String)
+    last_error: Mapped[str | None] = mapped_column(String)
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class RawSnapshotRow(Base):
