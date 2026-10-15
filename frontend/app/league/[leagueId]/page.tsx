@@ -3,9 +3,12 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import LeagueDashboard from "../../../components/LeagueDashboard";
-import MyTeamPicker from "../../../components/MyTeamPicker";
+import LeagueHeader from "../../../components/LeagueHeader";
+import LeagueTabs from "../../../components/LeagueTabs";
+import StandingsTable from "../../../components/StandingsTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type { Dashboard, Lineups } from "../../../lib/api";
+import { parseTab } from "../../../lib/league";
 import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 
 export const dynamic = "force-dynamic";
@@ -26,19 +29,23 @@ export default async function LeaguePage({
   searchParams,
 }: {
   params: Promise<{ leagueId: string }>;
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ tab?: string; week?: string }>;
 }) {
   const { leagueId } = await params;
-  const { week } = await searchParams;
+  const { tab: tabParam, week } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
+  const tab = parseTab(tabParam);
   const weekNumber = Number(week);
   // ignore anything outside the weeks the API accepts instead of failing the whole page
   const weekQuery =
     Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18 ? `?week=${weekNumber}` : "";
 
+  // the header needs the dashboard on every tab; lineups are only fetched for their own tab
   const [dashboard, lineups] = await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
-    getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`),
+    tab === "lineups"
+      ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
+      : Promise.resolve(null),
   ]);
 
   const jar = await cookies();
@@ -49,15 +56,18 @@ export default async function LeaguePage({
 
   return (
     <main id="main" className="container">
-      <MyTeamPicker
-        key={myRosterId ?? "none"} // remount when the server resolves a different team
-        leagueId={leagueId}
-        teams={dashboard.standings}
-        myRosterId={myRosterId}
-      />
-      <LeagueDashboard data={dashboard} myRosterId={myRosterId} />
-      <WeeklyLineups data={lineups} />
-      <p>
+      <LeagueHeader data={dashboard} myRosterId={myRosterId} />
+      <LeagueTabs leagueId={leagueId} active={tab} />
+      {tab === "standings" && (
+        <StandingsTable
+          standings={dashboard.standings}
+          playoffTeams={dashboard.rules.playoff_teams}
+          myRosterId={myRosterId}
+        />
+      )}
+      {tab === "rosters" && <LeagueDashboard data={dashboard} />}
+      {tab === "lineups" && lineups && <WeeklyLineups data={lineups} />}
+      <p className="back">
         <Link href="/">Connect another league</Link>
       </p>
     </main>

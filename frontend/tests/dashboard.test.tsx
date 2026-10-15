@@ -34,23 +34,6 @@ describe("LeagueDashboard", () => {
     await expectNoA11yViolations(<LeagueDashboard data={data} />);
   });
 
-  it("renders standings as a table with row and column headers", () => {
-    render(<LeagueDashboard data={data} />);
-    const table = screen.getByRole("table", { name: /standings/i });
-    const rows = within(table).getAllByRole("row");
-    expect(rows).toHaveLength(3); // header + 2 teams
-    expect(within(rows[1]).getByRole("rowheader", { name: "Dad" })).toBeInTheDocument();
-    expect(within(rows[1]).getByText("2-0-0")).toBeInTheDocument();
-    expect(within(rows[2]).getByText("230.25")).toBeInTheDocument();
-  });
-
-  it("shows the league rules card", () => {
-    render(<LeagueDashboard data={data} />);
-    expect(screen.getByText("Waivers").tagName).toBe("DT");
-    expect(screen.getByText("Week 11")).toBeInTheDocument();
-    expect(screen.getByText("FAAB")).toBeInTheDocument();
-  });
-
   it("lists roster players with a text role (not color alone) and placeholders for unknowns", () => {
     render(<LeagueDashboard data={data} />);
     const roster = screen.getByRole("table", { name: /Cole roster/ });
@@ -61,13 +44,8 @@ describe("LeagueDashboard", () => {
     expect(within(roster).getAllByText("–")).toHaveLength(2);
   });
 
-  it("has one h1 and ordered headings", () => {
+  it("has an h2 for the rosters section", () => {
     render(<LeagueDashboard data={data} />);
-    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
-      "League rules",
-      "Standings",
-      "Rosters",
-    ]);
+    expect(screen.getByRole("heading", { level: 2, name: "Rosters" })).toBeInTheDocument();
   });
 });
