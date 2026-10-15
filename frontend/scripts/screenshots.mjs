@@ -11,9 +11,16 @@ const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844 },
 ];
 
-const server = spawn("npx", ["next", "start", "-p", String(PORT)], {
+// Fail loudly instead of screenshotting a stale server that is already on the port.
+const alreadyUp = await fetch(`http://localhost:${PORT}/`).then(
+  () => true,
+  () => false,
+);
+if (alreadyUp) throw new Error(`port ${PORT} is already in use; stop that server first`);
+
+// Run next directly (no shell) so server.kill() really stops it, including on Windows.
+const server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", String(PORT)], {
   stdio: "ignore",
-  shell: true,
 });
 
 async function waitForServer() {
