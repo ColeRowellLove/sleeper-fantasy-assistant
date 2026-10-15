@@ -24,7 +24,7 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.ingest import sync_league, sync_players
+from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
 from sleeper_assistant.sleeper import SleeperClient
 
 log = logging.getLogger(__name__)
@@ -36,6 +36,8 @@ SYNC_INTERVAL = timedelta(minutes=15)
 POLL_SECONDS = 5.0
 PLAYER_SYNC_INTERVAL = timedelta(hours=24)
 PLAYER_SYNC_FAILURE_COOLDOWN = timedelta(hours=6)  # do not hammer a failing /players endpoint
+SCHEDULE_SYNC_INTERVAL = timedelta(minutes=10)
+SCHEDULE_FAILURE_COOLDOWN = timedelta(minutes=30)
 CYCLE_MAX_JOBS = 50
 CYCLE_BUDGET = timedelta(minutes=10)
 HEARTBEAT_SECONDS = jobs.STALE_AFTER.total_seconds() / 4
@@ -49,7 +51,15 @@ def default_handlers(client: SleeperClient) -> dict[str, Handler]:
         sync_players(session, client)
         build_crosswalk(session)
 
-    return {"sync_league": _sync_league, "sync_players": _sync_players}
+    def _sync_schedule(session: Session, payload: dict[str, Any]) -> None:
+        season = str(payload.get("season") or client.get_state().season)
+        sync_schedule(session, client, season)
+
+    return {
+        "sync_league": _sync_league,
+        "sync_players": _sync_players,
+        "sync_schedule": _sync_schedule,
+    }
 
 
 class Heartbeat:
@@ -127,25 +137,45 @@ def enqueue_due_syncs(session: Session, now: datetime | None = None) -> int:
     return count
 
 
-def enqueue_player_sync_if_due(session: Session, now: datetime | None = None) -> bool:
-    """Enqueue the daily Sleeper player DB sync unless one is pending or finished recently."""
+def _enqueue_periodic(
+    session: Session,
+    kind: str,
+    interval: timedelta,
+    failure_cooldown: timedelta,
+    now: datetime | None = None,
+) -> bool:
+    """Enqueue a recurring job unless one is pending, finished within ``interval``, or failed
+    within ``failure_cooldown`` (so a broken source is not hammered every cycle)."""
     now = now or utcnow()
     recent = session.scalar(
         select(JobRow.id)
         .where(
-            JobRow.kind == "sync_players",
+            JobRow.kind == kind,
             or_(
                 JobRow.status.in_(jobs.ACTIVE_STATUSES),
-                (JobRow.status == "done") & (JobRow.finished_at > now - PLAYER_SYNC_INTERVAL),
-                (JobRow.status == "failed")
-                & (JobRow.finished_at > now - PLAYER_SYNC_FAILURE_COOLDOWN),
+                (JobRow.status == "done") & (JobRow.finished_at > now - interval),
+                (JobRow.status == "failed") & (JobRow.finished_at > now - failure_cooldown),
             ),
         )
         .limit(1)
     )
     if recent is not None:
         return False
-    return jobs.enqueue(session, "sync_players", dedupe_key="sync_players") is not None
+    return jobs.enqueue(session, kind, dedupe_key=kind) is not None
+
+
+def enqueue_player_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Enqueue the daily Sleeper player DB sync unless one is pending or finished recently."""
+    return _enqueue_periodic(
+        session, "sync_players", PLAYER_SYNC_INTERVAL, PLAYER_SYNC_FAILURE_COOLDOWN, now
+    )
+
+
+def enqueue_schedule_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh the NFL schedule (game statuses) about every cycle; it is one small request."""
+    return _enqueue_periodic(
+        session, "sync_schedule", SCHEDULE_SYNC_INTERVAL, SCHEDULE_FAILURE_COOLDOWN, now
+    )
 
 
 @dataclass
@@ -165,7 +195,11 @@ def run_cycle(
     started = utcnow()
     with factory() as session:
         jobs.requeue_stale(session)
-        enqueued = enqueue_due_syncs(session) + int(enqueue_player_sync_if_due(session))
+        enqueued = (
+            enqueue_due_syncs(session)
+            + int(enqueue_player_sync_if_due(session))
+            + int(enqueue_schedule_sync_if_due(session))
+        )
     ran = 0
     while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):
         ran += 1

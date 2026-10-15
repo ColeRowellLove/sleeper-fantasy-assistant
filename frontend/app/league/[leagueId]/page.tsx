@@ -71,6 +71,7 @@ export default async function LeaguePage({
           key={myRosterId ?? "none"} // reset the selection when the user changes their team
           rosters={dashboard.rosters}
           myRosterId={myRosterId}
+          week={dashboard.week ?? null}
         />
       )}
       {tab === "lineups" && lineups && <WeeklyLineups data={lineups} />}

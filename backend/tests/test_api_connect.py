@@ -31,6 +31,7 @@ def _routes() -> dict[str, Any]:
         "/league/L1/rosters": FIXTURE["rosters"],
         "/league/999": None,
         "/players/nfl": FIXTURE["players"],
+        "/schedule/nfl/regular/2026": FIXTURE["schedule"],
     }
     routes["/league/1"] = FIXTURE["league"] | {"league_id": "1"}
     routes["/league/1/users"] = FIXTURE["users"]
@@ -168,6 +169,15 @@ def test_dashboard_after_connect(client: TestClient) -> None:
     assert [s["team"] for s in body["standings"]] == ["Cole", "Dad"]
     assert body["standings"][0]["points_for"] == 120.42
     first = body["rosters"][0]["players"][0]
+    assert body["week"] == 2  # current NFL week, from the schedule loaded on connect
+    assert first["game"] == {
+        "state": "upcoming",
+        "date": "2026-09-20",
+        "opponent": "CHI",
+        "home": True,
+    }
+    bye = next(p for p in body["rosters"][0]["players"] if p["name"] == "Justin Jefferson")
+    assert bye["game"]["state"] == "bye"  # MIN has no game in week 2
     assert first["status"] == "starter"
     assert first["name"] == "Christian McCaffrey"  # player DB loaded on first connect
     assert first["position"] == "RB"
@@ -202,16 +212,24 @@ def test_lineups_endpoint(client: TestClient) -> None:
     assert client.get("/api/leagues/1/lineups").status_code == 404  # not connected yet
 
     client.post("/api/leagues/1/connect")
-    body = client.get("/api/leagues/1/lineups").json()
+    current = client.get("/api/leagues/1/lineups").json()
 
-    assert body["week"] == 1  # latest week that has scores (week 2 has none yet)
-    assert body["weeks"] == [1, 2]
-    team = body["matchups"][0]["teams"][0]
+    # defaults to the current NFL week (week 2 is the first with an unfinished game)
+    assert current["week"] == 2
+    assert current["current_week"] == 2
+    assert current["weeks"] == [1, 2, 3]  # includes the upcoming week 3 pairing
+
+    played = client.get("/api/leagues/1/lineups?week=1").json()
+    team = played["matchups"][0]["teams"][0]
     assert team["team"] == "Cole"
     assert team["starters"][0]["name"] == "Christian McCaffrey"
     assert team["starters"][0]["points"] == 20.5
+    assert team["starters"][0]["game"]["state"] == "final"  # week 1 is complete
 
-    assert client.get("/api/leagues/1/lineups?week=2").json()["week"] == 2
+    upcoming = client.get("/api/leagues/1/lineups?week=3").json()
+    assert upcoming["week"] == 3
+    assert upcoming["matchups"][0]["teams"][0]["starters"][0]["game"]["state"] == "upcoming"
+
     assert client.get("/api/leagues/1/lineups?week=99").status_code == 422
 
 

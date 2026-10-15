@@ -23,6 +23,9 @@
   --def: #d4a373;
   --pos-na: #9aa1c0;
 
+  --game-bye: #fbbf24;
+  --game-live: #34d399;
+
   --role-starter: #eef0f8;
   --role-bench: #8a91b4;
   --role-ir: #ff7a6b;
@@ -54,6 +57,9 @@
     --k: #6d28d9;
     --def: #92400e;
     --pos-na: #565d7e;
+
+    --game-bye: #92400e;
+    --game-live: #065f46;
 
     --role-starter: #14172a;
     --role-bench: #565d7e;
@@ -936,5 +942,61 @@ table.standings {
 
   .roster-group header {
     padding: 0.9rem 0.9rem 0.4rem;
+  }
+}
+
+/* Game status badges (text always visible; color only reinforces) */
+.game {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  gap: 0.15rem 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.game-state {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.18rem 0.5rem;
+}
+
+.game-detail {
+  color: var(--muted);
+}
+
+.game-bye .game-state {
+  background: color-mix(in srgb, var(--game-bye) 16%, var(--surface));
+  color: var(--game-bye);
+}
+
+.game-live .game-state {
+  background: color-mix(in srgb, var(--game-live) 16%, var(--surface));
+  color: var(--game-live);
+}
+
+.game-upcoming .game-state,
+.game-final .game-state {
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .game-live .game-state::before {
+    animation: pulse 1.6s ease-in-out infinite;
+    background: currentColor;
+    border-radius: 50%;
+    content: "";
+    display: inline-block;
+    height: 0.45rem;
+    margin-right: 0.35rem;
+    width: 0.45rem;
+  }
+
+  @keyframes pulse {
+    50% {
+      opacity: 0.25;
+    }
   }
 }

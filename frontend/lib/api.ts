@@ -69,6 +69,13 @@ export interface StandingsRow {
   points_against: number;
 }
 
+export interface GameInfo {
+  state: "upcoming" | "live" | "final" | "bye";
+  date: string | null;
+  opponent: string | null;
+  home: boolean | null;
+}
+
 export type RosterStatus = "starter" | "bench" | "ir" | "taxi";
 
 export interface RosterPlayer {
@@ -78,6 +85,7 @@ export interface RosterPlayer {
   team: string | null;
   status: RosterStatus;
   slot: string | null;
+  game?: GameInfo | null;
 }
 
 export interface LineupPlayer {
@@ -87,6 +95,7 @@ export interface LineupPlayer {
   position: string | null;
   team: string | null;
   points: number | null;
+  game?: GameInfo | null;
 }
 
 export interface TeamLineup {
@@ -100,6 +109,7 @@ export interface TeamLineup {
 
 export interface Lineups {
   week: number | null;
+  current_week?: number | null;
   weeks: number[];
   matchups: { matchup_id: number | null; teams: TeamLineup[] }[];
 }
@@ -108,6 +118,7 @@ export interface Dashboard {
   league_id: string;
   name: string;
   season: string;
+  week?: number | null;
   standings: StandingsRow[];
   rosters: {
     roster_id: number;
