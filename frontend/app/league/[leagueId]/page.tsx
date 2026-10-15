@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import LeagueDashboard from "../../../components/LeagueDashboard";
+import MyTeamPicker from "../../../components/MyTeamPicker";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type { Dashboard, Lineups } from "../../../lib/api";
+import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "League", robots: { index: false } };
@@ -38,9 +41,21 @@ export default async function LeaguePage({
     getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`),
   ]);
 
+  const jar = await cookies();
+  const myRosterId = findMyRosterId(dashboard.standings, {
+    team: jar.get(teamCookie(leagueId))?.value,
+    userId: jar.get(USER_COOKIE)?.value,
+  });
+
   return (
     <main id="main" className="container">
-      <LeagueDashboard data={dashboard} />
+      <MyTeamPicker
+        key={myRosterId ?? "none"} // remount when the server resolves a different team
+        leagueId={leagueId}
+        teams={dashboard.standings}
+        myRosterId={myRosterId}
+      />
+      <LeagueDashboard data={dashboard} myRosterId={myRosterId} />
       <WeeklyLineups data={lineups} />
       <p>
         <Link href="/">Connect another league</Link>

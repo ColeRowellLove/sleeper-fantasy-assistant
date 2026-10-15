@@ -82,6 +82,14 @@ class LeagueSummary(BaseModel):
     total_rosters: int
 
 
+class UserLeagues(BaseModel):
+    """user_id lets the site remember which team is the user's (league users have no usernames)."""
+
+    user_id: str
+    display_name: str
+    leagues: list[LeagueSummary]
+
+
 class ConnectedLeague(LeagueSummary):
     rules: LeagueRules
 
@@ -132,7 +140,7 @@ def list_user_leagues(
     username: Username,
     sleeper: SleeperDep,
     season: Annotated[str | None, Query(pattern=r"^\d{4}$")] = None,
-) -> list[LeagueSummary]:
+) -> UserLeagues:
     """Step 1 of connecting: the leagues a Sleeper username belongs to (no password needed)."""
     try:
         user = sleeper.get_user(username)
@@ -141,7 +149,11 @@ def list_user_leagues(
         raise HTTPException(status_code=404, detail="Sleeper user not found") from None
     except httpx.HTTPError:
         raise HTTPException(status_code=502, detail="Sleeper is unavailable") from None
-    return [_summary(lg) for lg in leagues]
+    return UserLeagues(
+        user_id=user.user_id,
+        display_name=user.display_name,
+        leagues=[_summary(lg) for lg in leagues],
+    )
 
 
 @app.post("/api/leagues/{league_id}/connect")

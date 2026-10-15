@@ -15,6 +15,7 @@ const data: Lineups = {
         {
           roster_id: 1,
           team: "Cole",
+          owner_id: null,
           points: 20.5,
           starters: [
             { slot: "RB", player_id: "10", name: "Star RB", position: "RB", team: "SF", points: 20.5 },
@@ -24,7 +25,7 @@ const data: Lineups = {
             { slot: "BN", player_id: "11", name: "Bench WR", position: "WR", team: "MIN", points: 3.25 },
           ],
         },
-        { roster_id: 2, team: "Dad", points: 11, starters: [], bench: [] },
+        { roster_id: 2, team: "Dad", owner_id: null, points: 11, starters: [], bench: [] },
       ],
     },
   ],

@@ -10,6 +10,7 @@ import {
   type ConnectedLeague,
   type LeagueSummary,
 } from "../lib/api";
+import { USER_COOKIE, setCookie } from "../lib/myTeam";
 
 type Step =
   | { kind: "username" }
@@ -53,7 +54,8 @@ export default function ConnectForm() {
       return;
     }
     void run(async () => {
-      const leagues = await listLeagues(name);
+      const { user_id: userId, leagues } = await listLeagues(name);
+      if (userId) setCookie(USER_COOKIE, userId); // lets the league pages find your team
       if (leagues.length === 0) {
         setError("No leagues found for that username this season.");
         return;

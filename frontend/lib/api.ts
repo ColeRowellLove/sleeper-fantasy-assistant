@@ -5,6 +5,12 @@ export interface LeagueSummary {
   total_rosters: number;
 }
 
+export interface UserLeagues {
+  user_id: string;
+  display_name: string;
+  leagues: LeagueSummary[];
+}
+
 export interface ConnectedLeague extends LeagueSummary {
   rules: {
     reception_scoring: string;
@@ -37,8 +43,14 @@ export function isValidUsername(username: string): boolean {
   return USERNAME_RE.test(username);
 }
 
-export function listLeagues(username: string): Promise<LeagueSummary[]> {
-  return request(`/api/users/${encodeURIComponent(username)}/leagues`);
+export async function listLeagues(username: string): Promise<UserLeagues> {
+  const data = await request<UserLeagues | LeagueSummary[]>(
+    `/api/users/${encodeURIComponent(username)}/leagues`,
+  );
+  // Web and API deploy as separate projects; tolerate the API's previous bare-array response
+  // during a release so the form never breaks mid-deploy.
+  if (Array.isArray(data)) return { user_id: "", display_name: "", leagues: data };
+  return data;
 }
 
 export function connectLeague(leagueId: string): Promise<ConnectedLeague> {
@@ -49,6 +61,7 @@ export interface StandingsRow {
   rank: number;
   roster_id: number;
   team: string;
+  owner_id: string | null;
   wins: number;
   losses: number;
   ties: number;
@@ -79,6 +92,7 @@ export interface LineupPlayer {
 export interface TeamLineup {
   roster_id: number;
   team: string;
+  owner_id: string | null;
   points: number;
   starters: LineupPlayer[];
   bench: LineupPlayer[];
@@ -95,6 +109,11 @@ export interface Dashboard {
   name: string;
   season: string;
   standings: StandingsRow[];
-  rosters: { roster_id: number; team: string; players: RosterPlayer[] }[];
+  rosters: {
+    roster_id: number;
+    team: string;
+    owner_id: string | null;
+      players: RosterPlayer[];
+  }[];
   rules: ConnectedLeague["rules"];
 }

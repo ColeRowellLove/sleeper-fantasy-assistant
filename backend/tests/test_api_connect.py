@@ -78,9 +78,13 @@ def client() -> Iterator[TestClient]:
 def test_list_leagues_for_username(client: TestClient) -> None:
     resp = client.get("/api/users/cole/leagues")
     assert resp.status_code == 200
-    assert resp.json() == [
-        {"league_id": "L1", "name": "Family League", "season": "2026", "total_rosters": 2}
-    ]
+    assert resp.json() == {
+        "user_id": "u1",
+        "display_name": "Cole",
+        "leagues": [
+            {"league_id": "L1", "name": "Family League", "season": "2026", "total_rosters": 2}
+        ],
+    }
 
 
 def test_unknown_user_is_404(client: TestClient) -> None:
