@@ -14,6 +14,9 @@ The full rules live in [CLAUDE.md](CLAUDE.md#workflow-required) (written for bot
 
 ## Local setup
 
+Shortcut (needs `make`, or use the devcontainer): `make setup`, `make check`, `make fmt`, `make hooks`;
+see `make help`. The manual commands are:
+
 ```bash
 # backend (Python 3.12+, uv)
 cd backend && uv sync
