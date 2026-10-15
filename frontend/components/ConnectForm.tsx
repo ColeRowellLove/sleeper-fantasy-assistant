@@ -10,6 +10,7 @@ import {
   type ConnectedLeague,
   type LeagueSummary,
 } from "../lib/api";
+import { ruleChips } from "../lib/league";
 import { USER_COOKIE, setCookie } from "../lib/myTeam";
 
 type Step =
@@ -22,7 +23,7 @@ export default function ConnectForm() {
   const [step, setStep] = useState<Step>({ kind: "username" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const pickRef = useRef<HTMLParagraphElement>(null);
+  const pickRef = useRef<HTMLHeadingElement>(null);
   const connectedRef = useRef<HTMLParagraphElement>(null);
   const usernameRef = useRef<HTMLInputElement>(null);
 
@@ -126,11 +127,20 @@ export default function ConnectForm() {
 
       {step.kind === "connected" && (
         <div>
-          <p ref={connectedRef} tabIndex={-1} className="notice">
-            Connected <strong>{step.league.name}</strong>. Reception scoring:{" "}
-            {step.league.rules.reception_scoring}; {step.league.rules.uses_faab ? "FAAB" : "priority"}{" "}
-            waivers.
-          </p>
+          <div className="connected-card">
+            <h3 ref={connectedRef} tabIndex={-1} className="connected-name">
+              <span className="connected-label">Connected</span>
+              {step.league.name.trim()}
+            </h3>
+            <p className="league-meta">
+              {step.league.season} season, {step.league.total_rosters} teams
+            </p>
+            <ul className="rule-chips" aria-label="League rules">
+              {ruleChips(step.league.rules).map((chip) => (
+                <li key={chip}>{chip}</li>
+              ))}
+            </ul>
+          </div>
           <a className="btn" href={`/league/${encodeURIComponent(step.league.league_id)}`}>
             Open league dashboard
           </a>

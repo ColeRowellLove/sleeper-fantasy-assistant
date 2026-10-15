@@ -62,6 +62,8 @@ describe("ConnectForm", () => {
     await user.click(await screen.findByRole("button", { name: /Family League/ }));
 
     expect(await screen.findByText(/FAAB waivers/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Connected\s*Family League/ })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "League rules" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open league dashboard" })).toHaveAttribute(
       "href",
       "/league/123",
@@ -142,7 +144,7 @@ describe("ConnectForm", () => {
 
     await user.click(screen.getByRole("button", { name: /Family League/ }));
     await screen.findByText(/FAAB waivers/);
-    expect(screen.getByText(/Connected/)).toHaveFocus();
+    expect(screen.getByRole("heading", { name: /Connected/ })).toHaveFocus();
   });
 
   it("returns focus to the field and describes it with the error", async () => {
