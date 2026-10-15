@@ -82,6 +82,8 @@ function Cell({
             <PositionChip position={player.position} />
             {/* the designation is the current one, so it is not shown against weeks already played */}
             {state !== "played" && <InjuryBadge injury={player.injury} />}
+          </span>
+          <span className="cell-meta">
             <GameBadge game={player.game} />
           </span>
         </span>
