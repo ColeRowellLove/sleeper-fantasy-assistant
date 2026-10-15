@@ -12,11 +12,20 @@ function block(source: string): Record<string, string> {
   return tokens;
 }
 
+/** The text between a selector's "{" and its closing "}" (the token blocks have no nesting). */
+function sliceBlock(selector: string): string {
+  const start = css.indexOf(selector);
+  if (start === -1) throw new Error(`selector not found in globals.css: ${selector}`);
+  const open = css.indexOf("{", start);
+  return css.slice(open + 1, css.indexOf("}", open));
+}
+
 const darkBlock = css.slice(0, css.indexOf("@media (prefers-color-scheme: light)"));
-const lightStart = css.indexOf("@media (prefers-color-scheme: light)");
-const lightBlock = css.slice(lightStart, css.indexOf("* {", lightStart));
+// two copies of the light tokens: for devices that prefer light, and for an explicit toggle choice
+const lightFromMedia = block(sliceBlock(':root:not([data-theme="dark"]) {'));
+const lightFromToggle = block(sliceBlock(':root[data-theme="light"] {'));
 const dark = block(darkBlock);
-const light = { ...dark, ...block(lightBlock) };
+const light = { ...dark, ...lightFromToggle };
 
 function rgb(hex: string): [number, number, number] {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
@@ -48,6 +57,13 @@ function chipBackground(pos: string, surface: string): [number, number, number] 
 }
 
 const themes = { dark, light } as const;
+
+describe("theme token copies", () => {
+  it("keeps the device-preference light tokens identical to the toggle's light tokens", () => {
+    expect(Object.keys(lightFromToggle).length).toBeGreaterThan(10);
+    expect(lightFromMedia).toEqual(lightFromToggle);
+  });
+});
 
 describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
   it.each(["qb", "rb", "wr", "te", "k", "def"])("%s chip text is AA on its tinted chip", (pos) => {

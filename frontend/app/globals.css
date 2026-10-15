@@ -38,7 +38,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]) {
     --bg: #f3f4f9;
     --surface: #ffffff;
     --surface-2: #eceef7;
@@ -66,6 +66,41 @@
     --role-ir: #b3261e;
     --role-taxi: #0f766e;
   }
+}
+
+/* Explicit choice from the theme toggle (keep the tokens identical to the media block above) */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f4f9;
+  --surface: #ffffff;
+  --surface-2: #eceef7;
+  --line: #dcdff0;
+  --text: #14172a;
+  --muted: #565d7e;
+  --accent: #14172a;
+  --on-accent: #f3f1e8;
+  --danger: #b3261e;
+  --focus: #1d4ed8;
+
+  --qb: #b0165a;
+  --rb: #065f46;
+  --wr: #1d4ed8;
+  --te: #9a3412;
+  --k: #6d28d9;
+  --def: #92400e;
+  --pos-na: #565d7e;
+
+  --game-bye: #92400e;
+  --game-live: #065f46;
+
+  --role-starter: #14172a;
+  --role-bench: #565d7e;
+  --role-ir: #b3261e;
+  --role-taxi: #0f766e;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 * {
@@ -1230,4 +1265,33 @@ table.h2h {
 .sample {
   margin-top: 2.5rem;
   max-width: 46rem;
+}
+
+/* Theme toggle */
+.theme-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  height: 2.75rem;
+  justify-content: center;
+  width: 2.75rem;
+}
+
+.theme-toggle:hover {
+  background: var(--surface-2);
+}
+
+.theme-toggle svg {
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.site-header .tools {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
 }
