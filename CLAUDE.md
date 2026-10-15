@@ -13,7 +13,9 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
 
 - `backend/` — Python 3.12 (FastAPI, Pydantic, httpx). Package `src/sleeper_assistant`. Managed with **uv**.
 - `frontend/` — Next.js (App Router, TypeScript). Managed with **npm**.
-- `.github/workflows/` — CI (`ci.yml`).
+- `.github/workflows/` — CI (`ci.yml`), PR policy, secret scan, dependency review (CodeQL is enabled in repo settings).
+- `.claude/skills/` — project skills: `ship-pr` (issue -> branch -> review -> CI -> squash merge),
+  `run-checks` (what CI runs), `add-source-parser` (new data source checklist). `scripts/ship-pr.sh` backs `ship-pr`.
 - `docs/` — plan and engineering notes.
 
 ## Commands
