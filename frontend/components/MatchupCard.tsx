@@ -158,7 +158,7 @@ export default function MatchupCard({
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={`${row.slot}-${i}`} className={row.bench ? "bench" : undefined}>
+            <tr key={`${row.slot}-${i}`} className={row.kind === "starter" ? undefined : row.kind}>
               <Cell player={row.left} state={state} side="left" priority={priority} />
               <th scope="row" className="slot-cell">
                 {row.slot}

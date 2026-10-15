@@ -31,26 +31,41 @@ export function isMine(matchup: Matchup, myRosterId: number | null): boolean {
   return myRosterId !== null && matchup.teams.some((t) => t.roster_id === myRosterId);
 }
 
+export type RowKind = "starter" | "bench" | "ir" | "taxi";
+
 export interface PairedRow {
-  /** Lineup slot (QB, RB, FLEX, ...) or "Bench". */
+  /** Lineup slot (QB, RB, FLEX, ...) or the group name: Bench, IR, Taxi. */
   slot: string;
   left: LineupPlayer | null;
   right: LineupPlayer | null;
-  bench: boolean;
+  kind: RowKind;
 }
 
-/** Lines the two teams up row by row: starters by slot, then bench in order. */
+// Non-starters, in display order. The API labels IR and taxi players separately from the bench.
+const PARKED: { slot: string; label: string; kind: Exclude<RowKind, "starter"> }[] = [
+  { slot: "BN", label: "Bench", kind: "bench" },
+  { slot: "IR", label: "IR", kind: "ir" },
+  { slot: "TAXI", label: "Taxi", kind: "taxi" },
+];
+
+/** Lines the two teams up row by row: starters by slot, then bench, then IR, then taxi. */
 export function pairRows(left: TeamLineup, right: TeamLineup): PairedRow[] {
   const rows: PairedRow[] = [];
   const starters = Math.max(left.starters.length, right.starters.length);
   for (let i = 0; i < starters; i++) {
     const l = left.starters[i] ?? null;
     const r = right.starters[i] ?? null;
-    rows.push({ slot: l?.slot ?? r?.slot ?? "", left: l, right: r, bench: false });
+    rows.push({ slot: l?.slot ?? r?.slot ?? "", left: l, right: r, kind: "starter" });
   }
-  const bench = Math.max(left.bench.length, right.bench.length);
-  for (let i = 0; i < bench; i++) {
-    rows.push({ slot: "Bench", left: left.bench[i] ?? null, right: right.bench[i] ?? null, bench: true });
+  const isParked = (p: LineupPlayer) => PARKED.some((g) => g.slot !== "BN" && g.slot === p.slot);
+  for (const group of PARKED) {
+    // anything that is not explicitly IR or taxi counts as bench, so no player can be dropped
+    const inGroup = (p: LineupPlayer) => (group.slot === "BN" ? !isParked(p) : p.slot === group.slot);
+    const l = left.bench.filter(inGroup);
+    const r = right.bench.filter(inGroup);
+    for (let i = 0; i < Math.max(l.length, r.length); i++) {
+      rows.push({ slot: group.label, left: l[i] ?? null, right: r[i] ?? null, kind: group.kind });
+    }
   }
   return rows;
 }
