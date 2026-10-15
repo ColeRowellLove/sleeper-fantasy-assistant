@@ -24,7 +24,8 @@ waiver alerts, trade ideas, rankings, playoff odds and weekly league recaps.
 | Recaps | Weekly write-ups, trash talk, team names, season awards (family-friendly by default) |
 | Offseason | News feed, draft assistant, keeper/dynasty mode, ask-the-assistant chat |
 
-See [docs/PLAN.md](docs/PLAN.md) for the plan, and the
+See [docs/PLAN.md](docs/PLAN.md) for the plan, [docs/TOOLS.md](docs/TOOLS.md) for what each tool and
+service is and why it was chosen, [docs/DEPLOY.md](docs/DEPLOY.md) for hosting, and the
 [milestones](https://github.com/ColeRowellLove/sleeper-fantasy-assistant/milestones) and
 [issues](https://github.com/ColeRowellLove/sleeper-fantasy-assistant/issues) for progress.
 
