@@ -195,7 +195,18 @@ def normalize_url(url: str) -> str:
 
 
 def make_engine(url: str | None = None) -> Engine:
-    return create_engine(normalize_url(url or database_url()))
+    resolved = normalize_url(url or database_url())
+    if resolved.startswith("postgresql"):
+        return create_engine(
+            resolved,
+            pool_pre_ping=True,  # serverless instances freeze; drop dead connections
+            pool_size=2,
+            max_overflow=2,
+            # Neon's pooler (PgBouncer, transaction mode) must not see server-side prepared
+            # statements
+            connect_args={"prepare_threshold": None},
+        )
+    return create_engine(resolved)
 
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:
