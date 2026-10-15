@@ -35,11 +35,16 @@ function ratio(a: [number, number, number], b: [number, number, number]): number
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/** A color at the given opacity over a surface (the chip and badge tints in globals.css). */
+function chipBackgroundAt(color: string, surface: string, alpha: number): [number, number, number] {
+  const p = rgb(color);
+  const s = rgb(surface);
+  return p.map((v, i) => v * alpha + s[i] * (1 - alpha)) as [number, number, number];
+}
+
 /** Position chip background: the position color at 16% over the surface (see .chip). */
 function chipBackground(pos: string, surface: string): [number, number, number] {
-  const p = rgb(pos);
-  const s = rgb(surface);
-  return p.map((v, i) => v * 0.16 + s[i] * 0.84) as [number, number, number];
+  return chipBackgroundAt(pos, surface, 0.16);
 }
 
 const themes = { dark, light } as const;
@@ -66,6 +71,13 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
   it("roster role colors are readable on cards", () => {
     for (const role of ["role-bench", "role-ir", "role-taxi", "role-starter"]) {
       expect(ratio(rgb(t[role]), rgb(t.surface))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("count badge text stays readable on its role tint (18% of the role color)", () => {
+    for (const role of ["role-bench", "role-ir", "role-taxi", "role-starter"]) {
+      const tint = chipBackgroundAt(t[role], t.surface, 0.18);
+      expect(ratio(rgb(t.text), tint)).toBeGreaterThanOrEqual(4.5);
     }
   });
 
