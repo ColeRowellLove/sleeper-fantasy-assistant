@@ -4,9 +4,12 @@ version = "0.1.0"
 description = "Sleeper fantasy football assistant: consensus rankings, waivers, trades, odds and recaps."
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.0",
     "fastapi>=0.115",
     "httpx>=0.27",
+    "psycopg[binary]>=3.3.6",
     "pydantic>=2.9",
+    "sqlalchemy>=2.1.4",
     "uvicorn>=0.32",
 ]
 
@@ -28,6 +31,7 @@ build-backend = "hatchling.build"
 packages = ["src/sleeper_assistant"]
 
 [tool.ruff]
+extend-exclude = ["migrations"]
 line-length = 100
 src = ["src", "tests"]
 
