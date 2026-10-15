@@ -33,6 +33,11 @@ Install the hooks once with `uv run pre-commit install` (from `backend/`).
 - League rules are read from Sleeper, never hard-coded.
 - Never commit secrets. Use environment variables; `.env` files are git-ignored.
 
+## Dependency updates
+
+Dependabot opens grouped weekly PRs (minor/patch together, majors separately) into `develop`.
+They follow the same rules as any PR: green CI, squash merge. Nothing auto-merges.
+
 ## Releases
 
 1. Make sure `develop` is green and contains what should ship.
