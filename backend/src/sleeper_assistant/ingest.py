@@ -46,7 +46,9 @@ def _weeks_to_sync(client: SleeperClient, season: str) -> range:
 
 def sync_league(session: Session, client: SleeperClient, league_id: str) -> LeagueRow:
     """Fetch and upsert league settings, users, rosters, matchups and transactions."""
-    client.recorder = _snapshot_recorder(session)
+    client = client.with_recorder(
+        _snapshot_recorder(session)
+    )  # per-sync; never mutate the shared client
     try:
         league = client.get_league(league_id)
         existing = session.get(LeagueRow, league_id)
@@ -121,8 +123,6 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
     except Exception:
         session.rollback()
         raise
-    finally:
-        client.recorder = None
     return row
 
 

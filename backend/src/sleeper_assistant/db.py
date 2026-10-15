@@ -20,6 +20,11 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def as_utc(value: datetime) -> datetime:
+    """SQLite returns naive datetimes (stored as UTC); Postgres returns aware ones."""
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
 class Base(DeclarativeBase):
     type_annotation_map: ClassVar[dict[Any, Any]] = {
         dict[str, Any]: JSON,
