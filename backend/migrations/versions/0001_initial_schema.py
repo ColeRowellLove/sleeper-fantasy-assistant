@@ -92,7 +92,7 @@ def upgrade() -> None:
     sa.Column('type', sa.String(), nullable=False),
     sa.Column('status', sa.String(), nullable=False),
     sa.Column('week', sa.Integer(), nullable=False),
-    sa.Column('created_ms', sa.Integer(), nullable=True),
+    sa.Column('created_ms', sa.BigInteger(), nullable=True),
     sa.Column('payload', sa.JSON(), nullable=False),
     sa.ForeignKeyConstraint(['league_id'], ['leagues.league_id'], ),
     sa.PrimaryKeyConstraint('league_id', 'transaction_id')

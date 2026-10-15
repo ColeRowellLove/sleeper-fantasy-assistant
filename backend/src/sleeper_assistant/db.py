@@ -9,7 +9,7 @@ import os
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, create_engine
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, String, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
@@ -96,7 +96,7 @@ class TransactionRow(Base):
     type: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String)
     week: Mapped[int]
-    created_ms: Mapped[int | None]
+    created_ms: Mapped[int | None] = mapped_column(BigInteger)
     payload: Mapped[dict[str, Any]]
 
 
