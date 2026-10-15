@@ -29,6 +29,20 @@ service is and why it was chosen, [docs/DEPLOY.md](docs/DEPLOY.md) for hosting, 
 [milestones](https://github.com/ColeRowellLove/sleeper-fantasy-assistant/milestones) and
 [issues](https://github.com/ColeRowellLove/sleeper-fantasy-assistant/issues) for progress.
 
+## What works today
+
+Connect a league by Sleeper username and the app shows, for each league:
+
+- **Standings:** sortable by any column (rank, team, record, streak, points for and against), with
+  each manager's team name and your own team highlighted, plus the playoff line.
+- **Rosters:** starters, bench, injured reserve and taxi, with injury status and each player's NFL
+  game (kickoff in your time zone, live, final, or bye week).
+- **Lineups:** every matchup side by side for any week, in the Sleeper starter order.
+- **Settings:** the league's rules and scoring as Sleeper reports them.
+
+Dark and light themes, phone and desktop layouts, and keyboard and screen-reader support throughout.
+Kickoff times come from [nflverse](https://github.com/nflverse/nflverse-data) (CC BY 4.0).
+
 ## Principles
 
 1. **Consensus over any single source**: every value shows its source spread.
@@ -51,7 +65,7 @@ Sleeper API + other sources -> ingest jobs -> Postgres -> FastAPI -> Next.js das
 | Backend (`backend/`) | Python 3.12, FastAPI, Pydantic, SQLAlchemy, Alembic, httpx, managed with [uv](https://docs.astral.sh/uv/) |
 | Frontend (`frontend/`) | Next.js (App Router), TypeScript, Vitest, ESLint |
 | Storage | Postgres (SQLite for quick local tests) |
-| CI | GitHub Actions: ruff, mypy (strict), pytest + coverage, tsc, eslint, vitest |
+| CI | GitHub Actions: ruff, mypy (strict), pytest + coverage, tsc, eslint, vitest, accessibility and screenshot checks |
 
 ## Project structure
 
@@ -61,7 +75,7 @@ backend/
   migrations/              Alembic migrations
   tests/                   pytest tests and recorded JSON fixtures
 frontend/                  Next.js app
-docs/PLAN.md               build plan and milestones
+docs/                      PLAN.md (build plan), TOOLS.md (tools and why), DEPLOY.md (hosting)
 CLAUDE.md                  workflow and engineering rules for contributors and AI agents
 ```
 
