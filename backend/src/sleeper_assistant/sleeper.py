@@ -11,6 +11,10 @@ from pydantic import BaseModel, Field
 BASE_URL = "https://api.sleeper.app/v1"
 
 
+class SleeperNotFoundError(LookupError):
+    """The requested user or league does not exist on Sleeper."""
+
+
 class SleeperUser(BaseModel):
     user_id: str
     username: str | None = None
@@ -77,10 +81,21 @@ class SleeperPlayer(BaseModel):
 class SleeperClient:
     """Read-only; the Sleeper API needs no auth."""
 
-    def __init__(self, client: httpx.Client | None = None) -> None:
+    def __init__(
+        self,
+        client: httpx.Client | None = None,
+        recorder: Callable[[str, Any], None] | None = None,
+    ) -> None:
         self._client = client or httpx.Client(base_url=BASE_URL, timeout=10.0)
         # Called with (path, raw JSON) for every response, e.g. to keep raw snapshots.
-        self.recorder: Callable[[str, Any], None] | None = None
+        self.recorder = recorder
+
+    def with_recorder(self, recorder: Callable[[str, Any], None]) -> SleeperClient:
+        """A view of this client (same HTTP connection pool) with its own recorder.
+
+        Lets concurrent syncs record into their own sessions without sharing mutable state.
+        """
+        return SleeperClient(self._client, recorder)
 
     def get_json(self, path: str) -> Any:
         resp = self._client.get(path)
@@ -94,14 +109,20 @@ class SleeperClient:
         return SleeperState.model_validate(self.get_json("/state/nfl"))
 
     def get_user(self, username: str) -> SleeperUser:
-        return SleeperUser.model_validate(self.get_json(f"/user/{username}"))
+        data = self.get_json(f"/user/{username}")
+        if data is None:  # Sleeper answers 200 with a JSON null for unknown users
+            raise SleeperNotFoundError(f"no Sleeper user {username!r}")
+        return SleeperUser.model_validate(data)
 
     def get_leagues(self, user_id: str, season: str) -> list[SleeperLeague]:
         data = self.get_json(f"/user/{user_id}/leagues/nfl/{season}")
         return [SleeperLeague.model_validate(item) for item in data]
 
     def get_league(self, league_id: str) -> SleeperLeague:
-        return SleeperLeague.model_validate(self.get_json(f"/league/{league_id}"))
+        data = self.get_json(f"/league/{league_id}")
+        if data is None:  # unknown league ids come back as a JSON null
+            raise SleeperNotFoundError(f"no Sleeper league {league_id!r}")
+        return SleeperLeague.model_validate(data)
 
     def get_league_users(self, league_id: str) -> list[SleeperUser]:
         data = self.get_json(f"/league/{league_id}/users")

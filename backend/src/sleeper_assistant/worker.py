@@ -6,7 +6,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant import jobs
 from sleeper_assistant.crosswalk import build_crosswalk
-from sleeper_assistant.db import LeagueRow, make_engine, make_session_factory, utcnow
+from sleeper_assistant.db import LeagueRow, as_utc, make_engine, make_session_factory, utcnow
 from sleeper_assistant.ingest import sync_league, sync_players
 from sleeper_assistant.sleeper import SleeperClient
 
@@ -95,11 +95,6 @@ def run_once(
         return True
 
 
-def _as_utc(value: datetime) -> datetime:
-    """SQLite returns naive datetimes (stored as UTC); Postgres returns aware ones."""
-    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
-
-
 def enqueue_due_syncs(session: Session, now: datetime | None = None) -> int:
     """Enqueue a sync for each active league that has not synced recently. Called by cron."""
     now = now or utcnow()
@@ -107,7 +102,7 @@ def enqueue_due_syncs(session: Session, now: datetime | None = None) -> int:
     count = 0
     for league in session.scalars(stmt):
         last = league.last_synced_at
-        if last is not None and _as_utc(last) > now - SYNC_INTERVAL:
+        if last is not None and as_utc(last) > now - SYNC_INTERVAL:
             continue
         job = jobs.enqueue(
             session,

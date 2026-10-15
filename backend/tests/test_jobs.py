@@ -12,11 +12,12 @@ from sleeper_assistant.db import (
     Base,
     JobRow,
     LeagueRow,
+    as_utc,
     make_engine,
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.worker import _as_utc, enqueue_due_syncs, run_once
+from sleeper_assistant.worker import enqueue_due_syncs, run_once
 
 
 def test_enqueue_and_claim_in_order(session: Session) -> None:
@@ -140,8 +141,8 @@ def test_dedupe_enforced_by_database(session: Session) -> None:
 def test_as_utc_handles_naive_and_aware() -> None:
     naive = datetime(2026, 1, 1, 12, 0)
     aware = datetime(2026, 1, 1, 14, 0, tzinfo=timezone(timedelta(hours=2)))
-    assert _as_utc(naive) == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
-    assert _as_utc(aware) == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    assert as_utc(naive) == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    assert as_utc(aware) == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 
 
 def test_heartbeat_keeps_long_job_from_going_stale(tmp_path: Path) -> None:
