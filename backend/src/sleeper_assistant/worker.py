@@ -49,7 +49,10 @@ CYCLE_BUDGET = timedelta(minutes=10)
 HEARTBEAT_SECONDS = jobs.STALE_AFTER.total_seconds() / 4
 
 
-def default_handlers(client: SleeperClient) -> dict[str, Handler]:
+def default_handlers(
+    client: SleeperClient,
+    http_factory: Callable[[], httpx.Client] = lambda: httpx.Client(timeout=30.0),
+) -> dict[str, Handler]:
     def _sync_league(session: Session, payload: dict[str, Any]) -> None:
         sync_league(session, client, str(payload["league_id"]))
 
@@ -63,7 +66,7 @@ def default_handlers(client: SleeperClient) -> dict[str, Handler]:
 
     def _sync_kickoffs(session: Session, payload: dict[str, Any]) -> None:
         season = str(payload.get("season") or client.get_state().season)
-        with httpx.Client(timeout=30.0) as http:
+        with http_factory() as http:
             sync_kickoffs(session, http, season)
 
     return {
