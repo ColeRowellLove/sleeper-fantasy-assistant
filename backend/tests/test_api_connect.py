@@ -30,6 +30,7 @@ def _routes() -> dict[str, Any]:
         "/league/L1/users": FIXTURE["users"],
         "/league/L1/rosters": FIXTURE["rosters"],
         "/league/999": None,
+        "/players/nfl": FIXTURE["players"],
     }
     routes["/league/1"] = FIXTURE["league"] | {"league_id": "1"}
     routes["/league/1/users"] = FIXTURE["users"]
@@ -162,7 +163,11 @@ def test_dashboard_after_connect(client: TestClient) -> None:
     assert body["rules"]["uses_faab"] is True
     assert [s["team"] for s in body["standings"]] == ["Cole", "Dad"]
     assert body["standings"][0]["points_for"] == 120.42
-    assert body["rosters"][0]["players"][0]["starter"] is True
+    first = body["rosters"][0]["players"][0]
+    assert first["status"] == "starter"
+    assert first["name"] == "Christian McCaffrey"  # player DB loaded on first connect
+    assert first["position"] == "RB"
+    assert first["team"] == "SF"
 
 
 def test_dashboard_rejects_bad_league_id(client: TestClient) -> None:
@@ -187,3 +192,20 @@ def test_dashboard_view_timestamp_is_throttled(client: TestClient) -> None:
     session.refresh(league)
     assert league.last_viewed_at is not None
     assert league.last_viewed_at > recent - timedelta(hours=1)  # stale: refreshed
+
+
+def test_lineups_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/lineups").status_code == 404  # not connected yet
+
+    client.post("/api/leagues/1/connect")
+    body = client.get("/api/leagues/1/lineups").json()
+
+    assert body["week"] == 1  # latest week that has scores (week 2 has none yet)
+    assert body["weeks"] == [1, 2]
+    team = body["matchups"][0]["teams"][0]
+    assert team["team"] == "Cole"
+    assert team["starters"][0]["name"] == "Christian McCaffrey"
+    assert team["starters"][0]["points"] == 20.5
+
+    assert client.get("/api/leagues/1/lineups?week=2").json()["week"] == 2
+    assert client.get("/api/leagues/1/lineups?week=99").status_code == 422

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import (
@@ -85,6 +86,8 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                     owner_id=roster.owner_id,
                     players=roster.players or [],
                     starters=roster.starters or [],
+                    reserve=roster.reserve or [],
+                    taxi=roster.taxi or [],
                     wins=int(rs.get("wins", 0)),
                     losses=int(rs.get("losses", 0)),
                     ties=int(rs.get("ties", 0)),
@@ -105,6 +108,8 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                         points=m.points,
                         starters=m.starters or [],
                         starters_points=m.starters_points or [],
+                        players=m.players or [],
+                        players_points=m.players_points or {},
                     )
                 )
             for t in client.get_transactions(league_id, week):
@@ -150,7 +155,20 @@ def _player_row(p: SleeperPlayer) -> PlayerRow:
 def sync_players(session: Session, client: SleeperClient) -> int:
     """Upsert the shared Sleeper player DB. Returns the number of players synced."""
     players = client.get_players()
+    # One query for existing rows, then update in memory / bulk insert. A merge() per player
+    # costs ~11k SELECT round trips, which is minutes against a remote database.
+    existing = {row.player_id: row for row in session.scalars(select(PlayerRow))}
     for p in players:
-        session.merge(_player_row(p))
+        new = _player_row(p)
+        row = existing.get(p.player_id)
+        if row is None:
+            session.add(new)
+            continue
+        row.full_name = new.full_name
+        row.position = new.position
+        row.team = new.team
+        row.status = new.status
+        row.injury_status = new.injury_status
+        row.external_ids = new.external_ids
     session.commit()
     return len(players)

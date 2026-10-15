@@ -11,12 +11,22 @@ from typing import Annotated
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from pydantic import BaseModel, ValidationError
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant import __version__
-from sleeper_assistant.dashboard import Dashboard, build_dashboard
-from sleeper_assistant.db import LeagueRow, as_utc, make_engine, make_session_factory, utcnow
-from sleeper_assistant.ingest import sync_league
+from sleeper_assistant.crosswalk import build_crosswalk
+from sleeper_assistant.dashboard import Dashboard, Lineups, build_dashboard, build_lineups
+from sleeper_assistant.db import (
+    LeagueRow,
+    PlayerRow,
+    as_utc,
+    make_engine,
+    make_session_factory,
+    utcnow,
+)
+from sleeper_assistant.ingest import sync_league, sync_players
 from sleeper_assistant.rules import LeagueRules, derive_rules
 from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFoundError
 
@@ -115,9 +125,27 @@ def connect_league(
             raise HTTPException(
                 status_code=502, detail="Unexpected response from Sleeper"
             ) from None
+    _ensure_players(session, sleeper)
     row.last_viewed_at = utcnow()
     session.commit()
     return _connected(row)
+
+
+def _ensure_players(session: Session, sleeper: SleeperClient) -> None:
+    """Load Sleeper's player DB (~5 MB) the first time, so rosters show names, not ids.
+
+    After that the worker refreshes it daily; a failure here must not block connecting.
+    """
+    if (session.scalar(select(func.count()).select_from(PlayerRow)) or 0) > 0:
+        return
+    try:
+        sync_players(session, sleeper)
+        build_crosswalk(session)
+    except IntegrityError:  # a concurrent first connect loaded the players; that is fine
+        session.rollback()
+    except (httpx.HTTPError, ValidationError):
+        session.rollback()
+        log.exception("could not load the Sleeper player database; names will show as ids")
 
 
 class DashboardResponse(Dashboard):
@@ -137,6 +165,19 @@ def get_league_dashboard(league_id: LeagueId, session: SessionDep) -> DashboardR
         session.commit()
     connected = _connected(row)
     return DashboardResponse(**build_dashboard(session, row).model_dump(), rules=connected.rules)
+
+
+@app.get("/api/leagues/{league_id}/lineups")
+def get_league_lineups(
+    league_id: LeagueId,
+    session: SessionDep,
+    week: Annotated[int | None, Query(ge=1, le=18)] = None,
+) -> Lineups:
+    """Both teams' lineups (starters by slot, bench, points) per matchup for one week."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    return build_lineups(session, row, week)
 
 
 def _connected(row: LeagueRow) -> ConnectedLeague:

@@ -117,3 +117,30 @@ dl {
 dd {
   margin: 0;
 }
+
+.muted {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.matchup {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 52rem) {
+  .matchup {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+select {
+  font: inherit;
+  min-height: 2.75rem;
+  margin: 0 0.5rem;
+}
+
+caption {
+  font-weight: 600;
+  text-align: left;
+}

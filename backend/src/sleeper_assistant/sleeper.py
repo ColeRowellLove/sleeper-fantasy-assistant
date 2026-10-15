@@ -43,6 +43,8 @@ class SleeperRoster(BaseModel):
     owner_id: str | None = None
     players: list[str] | None = None
     starters: list[str] | None = None
+    reserve: list[str] | None = None  # injured reserve
+    taxi: list[str] | None = None
     settings: dict[str, Any] = {}
 
 
@@ -52,6 +54,8 @@ class SleeperMatchup(BaseModel):
     points: float = 0.0
     starters: list[str] | None = None
     starters_points: list[float | None] | None = None
+    players: list[str] | None = None
+    players_points: dict[str, float | None] | None = None
 
 
 class SleeperTransaction(BaseModel):
