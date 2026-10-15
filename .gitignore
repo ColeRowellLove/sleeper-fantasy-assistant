@@ -12,3 +12,10 @@ htmlcov/
 node_modules/
 .next/
 .DS_Store
+.neon
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm

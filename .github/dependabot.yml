@@ -1,14 +1,32 @@
 version: 2
+# Minor/patch updates are grouped per ecosystem to cut PR noise; majors stay separate PRs.
+# Every Dependabot PR still needs green CI and is squash merged like any other PR.
 updates:
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
     schedule: { interval: weekly }
+    commit-message: { prefix: "chore(deps)" }
+    groups:
+      actions:
+        update-types: ["minor", "patch"]
   - package-ecosystem: uv
     directory: /backend
     target-branch: develop
     schedule: { interval: weekly }
+    commit-message: { prefix: "chore(deps)" }
+    groups:
+      python:
+        update-types: ["minor", "patch"]
   - package-ecosystem: npm
     directory: /frontend
     target-branch: develop
     schedule: { interval: weekly }
+    commit-message: { prefix: "chore(deps)" }
+    groups:
+      npm:
+        update-types: ["minor", "patch"]
+    ignore:
+      # typescript-eslint does not support TS 7 yet (typescript-eslint#10940)
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]

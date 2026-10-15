@@ -17,12 +17,24 @@ jobs:
   backend:
     name: Backend (ruff, mypy, pytest)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sleeper_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/sleeper_test
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
@@ -32,6 +44,13 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy
       - run: uv run pytest
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Backend coverage"
+            uv run coverage report --format=markdown
+          } >> "$GITHUB_STEP_SUMMARY" || true
 
   frontend:
     name: Frontend (tsc, eslint, vitest)
@@ -40,8 +59,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -51,3 +70,14 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  pre-commit:
+    name: Pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      # ruff, mypy and gitleaks already run in the Backend and Secret scan jobs
+      - run: uvx pre-commit run --all-files --show-diff-on-failure
+        env:
+          SKIP: ruff,ruff-format,mypy,gitleaks

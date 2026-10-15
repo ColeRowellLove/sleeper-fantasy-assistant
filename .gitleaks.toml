@@ -1,0 +1,9 @@
+title = "sleeper-fantasy-assistant gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Throwaway credentials for the ephemeral Postgres service container in CI"
+regexes = ['''postgresql\+psycopg://postgres:postgres@localhost''', '''POSTGRES_PASSWORD: postgres''']
+paths = ['''uv\.lock''', '''package-lock\.json''']

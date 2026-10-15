@@ -1,0 +1,146 @@
+:root {
+  color-scheme: light dark;
+  --focus: #0b5fff;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  margin: 0 auto;
+  max-width: 40rem;
+  padding: 1rem;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+input {
+  box-sizing: border-box;
+  font: inherit;
+  min-height: 2.75rem; /* 44px touch target */
+  padding: 0.25rem 0.5rem;
+  width: 100%;
+}
+
+button {
+  font: inherit;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.25rem 1rem;
+}
+
+button[aria-disabled="true"] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li + li {
+  margin-top: 0.5rem;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+input[aria-invalid="true"] {
+  border: 2px solid #b00020;
+}
+
+[role="alert"] {
+  color: #b00020;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --focus: #8ab4ff;
+  }
+  [role="alert"],
+  input[aria-invalid="true"] {
+    color: #ff8a80;
+    border-color: #ff8a80;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 0.5rem 0 1rem;
+  width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+summary {
+  cursor: pointer;
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
+}
+
+dl {
+  display: grid;
+  gap: 0.25rem 1rem;
+  grid-template-columns: max-content 1fr;
+}
+
+dd {
+  margin: 0;
+}
+
+.muted {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.matchup {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 52rem) {
+  .matchup {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+select {
+  font: inherit;
+  min-height: 2.75rem;
+  margin: 0 0.5rem;
+}
+
+caption {
+  font-weight: 600;
+  text-align: left;
+}
