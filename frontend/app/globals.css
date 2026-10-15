@@ -1247,14 +1247,24 @@ table.h2h {
 .cell-meta {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
   gap: 0.3rem;
+  /* never wrap: a wrapped badge would make some rows taller than others */
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
   /* both sides reserve the same lines, so rows stay level and mirror each other */
   min-height: 1.5rem;
 }
 
 .cell-right .cell-meta {
   justify-content: flex-end;
+}
+
+.cell-team {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .h2h .chip {
@@ -1285,7 +1295,11 @@ table.h2h {
   }
 
   .h2h .avatar {
-    display: none;
+    --size: 2rem;
+  }
+
+  .h2h .cell-inner {
+    gap: 0.4rem;
   }
 
   .h2h .game-detail {
