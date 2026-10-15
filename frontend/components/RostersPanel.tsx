@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { Dashboard, RosterPlayer, RosterStatus } from "../lib/api";
 import GameBadge from "./GameBadge";
+import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PositionChip from "./PositionChip";
 
@@ -104,7 +105,10 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
       <span className="player-main">
         <span className="player-name">{player.name}</span>
         <span className="player-sub">{player.team ?? "No team"}</span>
-        <GameBadge game={player.game} />
+        <span className="player-tags">
+          <InjuryBadge injury={player.injury} />
+          <GameBadge game={player.game} />
+        </span>
       </span>
       {player.status === "starter" && player.slot && (
         <span className="slot" title="Lineup slot">

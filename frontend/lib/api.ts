@@ -76,6 +76,11 @@ export interface GameInfo {
   home: boolean | null;
 }
 
+export interface InjuryInfo {
+  status: string;
+  body_part: string | null;
+}
+
 export type RosterStatus = "starter" | "bench" | "ir" | "taxi";
 
 export interface RosterPlayer {
@@ -86,6 +91,7 @@ export interface RosterPlayer {
   status: RosterStatus;
   slot: string | null;
   game?: GameInfo | null;
+  injury?: InjuryInfo | null;
 }
 
 export interface LineupPlayer {
@@ -96,6 +102,7 @@ export interface LineupPlayer {
   team: string | null;
   points: number | null;
   game?: GameInfo | null;
+  injury?: InjuryInfo | null;
 }
 
 export interface TeamLineup {

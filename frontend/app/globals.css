@@ -25,6 +25,9 @@
 
   --game-bye: #fbbf24;
   --game-live: #34d399;
+  --injury-out: #ff7a6b;
+  --injury-doubtful: #fb923c;
+  --injury-questionable: #fbbf24;
 
   --role-starter: #eef0f8;
   --role-bench: #8a91b4;
@@ -60,6 +63,9 @@
 
     --game-bye: #92400e;
     --game-live: #065f46;
+    --injury-out: #b3261e;
+    --injury-doubtful: #9a3412;
+    --injury-questionable: #92400e;
 
     --role-starter: #14172a;
     --role-bench: #565d7e;
@@ -92,6 +98,9 @@
 
   --game-bye: #92400e;
   --game-live: #065f46;
+  --injury-out: #b3261e;
+  --injury-doubtful: #9a3412;
+  --injury-questionable: #92400e;
 
   --role-starter: #14172a;
   --role-bench: #565d7e;
@@ -1312,4 +1321,62 @@ table.h2h {
   align-items: center;
   display: flex;
   gap: 1rem;
+}
+
+/* Injury designations (text always visible; color only reinforces severity) */
+.injury {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  gap: 0.15rem 0.4rem;
+}
+
+.injury-state {
+  background: color-mix(in srgb, var(--tone) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  border-radius: 999px;
+  color: var(--tone);
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.18rem 0.5rem;
+}
+
+.injury-part {
+  color: var(--muted);
+}
+
+.injury-out {
+  --tone: var(--injury-out);
+}
+.injury-doubtful {
+  --tone: var(--injury-doubtful);
+}
+.injury-questionable {
+  --tone: var(--injury-questionable);
+}
+.injury-other {
+  --tone: var(--muted);
+}
+
+.player-tags {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.player-tags .game {
+  margin-top: 0;
+}
+
+.h2h .injury-part {
+  display: none;
+}
+
+@media (min-width: 52rem) {
+  .h2h .injury-part {
+    display: inline;
+  }
 }

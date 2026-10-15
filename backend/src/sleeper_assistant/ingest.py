@@ -159,6 +159,7 @@ def _player_row(p: SleeperPlayer) -> PlayerRow:
         team=p.team,
         status=p.status,
         injury_status=p.injury_status,
+        injury_body_part=p.injury_body_part,
         external_ids={k: v for k, v in external.items() if v is not None},
     )
 
@@ -180,6 +181,7 @@ def sync_players(session: Session, client: SleeperClient) -> int:
         row.team = new.team
         row.status = new.status
         row.injury_status = new.injury_status
+        row.injury_body_part = new.injury_body_part
         row.external_ids = new.external_ids
     session.commit()
     return len(players)

@@ -119,6 +119,13 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     }
   });
 
+  it("injury badge text is readable on its tint, on cards and on the page", () => {
+    for (const token of ["injury-out", "injury-doubtful", "injury-questionable"]) {
+      expect(ratio(rgb(t[token]), chipBackgroundAt(t[token], t.surface, 0.16))).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(rgb(t[token]), chipBackgroundAt(t[token], t.bg, 0.16))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("focus ring and error color stand out from the page", () => {
     expect(ratio(rgb(t.focus), rgb(t.bg))).toBeGreaterThanOrEqual(3);
     expect(ratio(rgb(t.danger), rgb(t.surface))).toBeGreaterThanOrEqual(4.5);

@@ -84,6 +84,7 @@ class SleeperPlayer(BaseModel):
     team: str | None = None
     status: str | None = None
     injury_status: str | None = None
+    injury_body_part: str | None = None
     gsis_id: str | None = None
     espn_id: int | str | None = None
     yahoo_id: int | str | None = None

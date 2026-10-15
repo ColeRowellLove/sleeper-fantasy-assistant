@@ -107,3 +107,15 @@ def test_sync_players_updates_existing_rows(session: Session) -> None:
     assert cmc is not None
     assert (cmc.team, cmc.injury_status) == ("DAL", "Questionable")
     assert _count(session, PlayerRow) == 2  # updated in place, no duplicates
+
+
+def test_sync_players_stores_injury_status_and_body_part(session: Session) -> None:
+    hurt = {**FIXTURE["players"]["4034"], "injury_status": "Doubtful", "injury_body_part": "Knee"}
+    FIXTURE["players"]["4034"] = hurt
+    try:
+        sync_players(session, _client())
+    finally:
+        FIXTURE["players"]["4034"] = {**hurt, "injury_status": None, "injury_body_part": None}
+    cmc = session.get(PlayerRow, "4034")
+    assert cmc is not None
+    assert (cmc.injury_status, cmc.injury_body_part) == ("Doubtful", "Knee")
