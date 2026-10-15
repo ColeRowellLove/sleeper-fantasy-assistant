@@ -84,6 +84,7 @@ function Cell({
             {state !== "played" && <InjuryBadge injury={player.injury} />}
           </span>
           <span className="cell-meta">
+            {player.team && <span className="cell-team">{player.team}</span>}
             <GameBadge game={player.game} />
           </span>
         </span>
@@ -155,7 +156,9 @@ export default function MatchupCard({
             <th scope="col" className="slot-col">
               Slot
             </th>
-            <th scope="col">Pts</th>
+            <th scope="col" className="num-col">
+              Pts
+            </th>
             <th scope="col" className="right-col">
               {b.team}
             </th>
