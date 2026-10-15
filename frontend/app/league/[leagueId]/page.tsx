@@ -74,7 +74,9 @@ export default async function LeaguePage({
           week={dashboard.week ?? null}
         />
       )}
-      {tab === "lineups" && lineups && <WeeklyLineups data={lineups} />}
+      {tab === "lineups" && lineups && (
+        <WeeklyLineups data={lineups} leagueId={leagueId} myRosterId={myRosterId} />
+      )}
       <p className="back">
         <Link href="/">Connect another league</Link>
       </p>
