@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -24,6 +25,7 @@ Handler = Callable[[Session, dict[str, Any]], None]
 ACTIVE_WINDOW = timedelta(days=14)  # leagues viewed within this window sync on schedule
 SYNC_INTERVAL = timedelta(minutes=15)
 POLL_SECONDS = 5.0
+HEARTBEAT_SECONDS = jobs.STALE_AFTER.total_seconds() / 4
 
 
 def default_handlers(client: SleeperClient) -> dict[str, Handler]:
@@ -37,8 +39,41 @@ def default_handlers(client: SleeperClient) -> dict[str, Handler]:
     return {"sync_league": _sync_league, "sync_players": _sync_players}
 
 
+class Heartbeat:
+    """Refreshes a running job's ``locked_at`` from a background thread (own DB session).
+
+    Keeps a healthy long job from being treated as stale by ``jobs.requeue_stale``.
+    """
+
+    def __init__(self, factory: sessionmaker[Session], job_id: int, interval: float) -> None:
+        self._factory = factory
+        self._job_id = job_id
+        self._interval = interval
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, name=f"heartbeat-{job_id}", daemon=True)
+
+    def _run(self) -> None:
+        while not self._stop.wait(self._interval):
+            try:
+                with self._factory() as session:
+                    jobs.heartbeat(session, self._job_id)
+            except Exception:  # a missed beat must not kill the job; the next one may succeed
+                log.exception("heartbeat for job %s failed", self._job_id)
+
+    def __enter__(self) -> Heartbeat:
+        self._thread.start()
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self._stop.set()
+        self._thread.join(timeout=5)  # never let a hung beat block job completion
+
+
 def run_once(
-    factory: sessionmaker[Session], handlers: dict[str, Handler], now: datetime | None = None
+    factory: sessionmaker[Session],
+    handlers: dict[str, Handler],
+    now: datetime | None = None,
+    heartbeat_seconds: float = HEARTBEAT_SECONDS,
 ) -> bool:
     """Claim and run a single job. Returns False if nothing was due."""
     with factory() as session:
@@ -49,7 +84,8 @@ def run_once(
         try:
             if handler is None:
                 raise LookupError(f"no handler for job kind {job.kind!r}")
-            handler(session, job.payload)
+            with Heartbeat(factory, job.id, heartbeat_seconds):
+                handler(session, job.payload)
         except Exception as exc:  # job failures must never kill the worker
             session.rollback()
             log.exception("job %s (%s) failed", job.id, job.kind)

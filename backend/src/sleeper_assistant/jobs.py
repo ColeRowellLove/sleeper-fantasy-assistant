@@ -91,6 +91,16 @@ def fail(session: Session, job: JobRow, error: str, now: datetime | None = None)
     session.commit()
 
 
+def heartbeat(session: Session, job_id: int, now: datetime | None = None) -> None:
+    """Mark a running job as still alive so it is not requeued as stale."""
+    session.execute(
+        update(JobRow)
+        .where(JobRow.id == job_id, JobRow.status == "running")
+        .values(locked_at=now or utcnow())
+    )
+    session.commit()
+
+
 def requeue_stale(session: Session, now: datetime | None = None) -> int:
     """Return jobs from a crashed worker to the queue. Returns how many were recovered."""
     now = now or utcnow()

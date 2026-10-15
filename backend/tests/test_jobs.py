@@ -1,4 +1,6 @@
+import time
 from datetime import UTC, datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -6,7 +8,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import jobs
-from sleeper_assistant.db import JobRow, LeagueRow, make_session_factory, utcnow
+from sleeper_assistant.db import (
+    Base,
+    JobRow,
+    LeagueRow,
+    make_engine,
+    make_session_factory,
+    utcnow,
+)
 from sleeper_assistant.worker import _as_utc, enqueue_due_syncs, run_once
 
 
@@ -133,3 +142,38 @@ def test_as_utc_handles_naive_and_aware() -> None:
     aware = datetime(2026, 1, 1, 14, 0, tzinfo=timezone(timedelta(hours=2)))
     assert _as_utc(naive) == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
     assert _as_utc(aware) == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+
+
+def test_heartbeat_keeps_long_job_from_going_stale(tmp_path: Path) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'hb.db'}")
+    Base.metadata.create_all(engine)
+    factory = make_session_factory(engine)
+    seen: list[datetime] = []
+
+    def slow(session: Session, _payload: dict[str, object]) -> None:
+        job = session.query(JobRow).one()
+        session.refresh(job)
+        first = job.locked_at
+        assert first is not None
+        deadline = time.monotonic() + 5  # poll rather than sleep a fixed time (slow CI runners)
+        while time.monotonic() < deadline:
+            session.refresh(job)
+            assert job.locked_at is not None
+            if job.locked_at > first:
+                break
+            time.sleep(0.02)
+        seen.extend([first, job.locked_at])
+
+    with factory() as s:
+        jobs.enqueue(s, "slow")
+    assert run_once(factory, {"slow": slow}, heartbeat_seconds=0.02)
+    assert seen[1] > seen[0]
+    engine.dispose()
+
+
+def test_heartbeat_ignores_finished_jobs(session: Session) -> None:
+    job = jobs.enqueue(session, "x")
+    assert job is not None
+    jobs.heartbeat(session, job.id)  # still queued: untouched
+    session.refresh(job)
+    assert job.locked_at is None
