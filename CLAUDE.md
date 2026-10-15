@@ -67,6 +67,9 @@ npm run dev
   via Testing Library, keyboard reachability for interactive elements) and (2) lightweight
   screenshots in the PR description when feasible (before/after, desktop and mobile width,
   compressed PNG, no secrets or real user data). See issue #50 for the tooling.
+- **Review before pushing.** Run the `code-review` skill on the branch diff before pushing code
+  changes and fix its findings first. Also run `a11y-enforcer:a11y-check` for UI changes and
+  `security-review` for anything touching auth, user input, secrets or external requests.
 - Commits use Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`).
 
 ## Conventions
