@@ -227,12 +227,21 @@ def test_run_cycle_enqueues_and_drains(engine: Engine) -> None:
         )
         s.commit()
 
-    result = run_cycle(factory, {"sync_league": record, "sync_players": record})
+    result = run_cycle(
+        factory,
+        {"sync_league": record, "sync_players": record, "sync_schedule": lambda _s, _p: None},
+    )
 
-    assert result.enqueued == 2  # the league sync and the daily player sync
-    assert result.ran == 2
+    assert result.enqueued == 3  # the league sync, the daily player sync and the schedule refresh
+    assert result.ran == 3
     assert sorted(ran) == ["L1", "players"]
-    assert run_cycle(factory, {"sync_league": record, "sync_players": record}).ran == 0
+    assert (
+        run_cycle(
+            factory,
+            {"sync_league": record, "sync_players": record, "sync_schedule": lambda _s, _p: None},
+        ).ran
+        == 0
+    )
 
 
 def test_run_cycle_respects_max_jobs(engine: Engine) -> None:

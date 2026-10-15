@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { Dashboard, RosterPlayer, RosterStatus } from "../lib/api";
+import GameBadge from "./GameBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PositionChip from "./PositionChip";
 
@@ -19,9 +20,11 @@ const GROUPS: { status: RosterStatus; title: string; note: string }[] = [
 export default function RostersPanel({
   rosters,
   myRosterId,
+  week = null,
 }: {
   rosters: Roster[];
   myRosterId: number | null;
+  week?: number | null;
 }) {
   const ordered = [
     ...rosters.filter((r) => r.roster_id === myRosterId),
@@ -52,6 +55,12 @@ export default function RostersPanel({
           ))}
         </select>
       </div>
+
+      {week !== null && (
+        <p className="note">
+          Game status is for NFL week {week}: upcoming, live, played, or bye.
+        </p>
+      )}
 
       <p role="status" className="visually-hidden">
         Showing {selected.team}: {selected.players.filter((p) => p.status === "starter").length}{" "}
@@ -95,6 +104,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
       <span className="player-main">
         <span className="player-name">{player.name}</span>
         <span className="player-sub">{player.team ?? "No team"}</span>
+        <GameBadge game={player.game} />
       </span>
       {player.status === "starter" && player.slot && (
         <span className="slot" title="Lineup slot">

@@ -22,13 +22,14 @@ from sleeper_assistant.crosswalk import build_crosswalk
 from sleeper_assistant.dashboard import Dashboard, Lineups, build_dashboard, build_lineups
 from sleeper_assistant.db import (
     LeagueRow,
+    NflGameRow,
     PlayerRow,
     as_utc,
     make_engine,
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.ingest import sync_league, sync_players
+from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
 from sleeper_assistant.rules import LeagueRules, derive_rules
 from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFoundError
 
@@ -180,9 +181,29 @@ def connect_league(
                 status_code=502, detail="Unexpected response from Sleeper"
             ) from None
     _ensure_players(session, sleeper)
+    _ensure_schedule(session, sleeper, row.season)
     row.last_viewed_at = utcnow()
     session.commit()
     return _connected(row)
+
+
+def _ensure_schedule(session: Session, sleeper: SleeperClient, season: str) -> None:
+    """Load the season schedule the first time (one small request) so bye weeks and game state show.
+
+    The worker refreshes it afterwards; a failure here must not block connecting.
+    """
+    has_games = session.scalar(
+        select(func.count()).select_from(NflGameRow).where(NflGameRow.season == season)
+    )
+    if has_games:
+        return
+    try:
+        sync_schedule(session, sleeper, season)
+    except IntegrityError:  # a concurrent first connect loaded the schedule; that is fine
+        session.rollback()
+    except (httpx.HTTPError, ValidationError):
+        session.rollback()
+        log.exception("could not load the NFL schedule; bye weeks and game state will be missing")
 
 
 def _ensure_players(session: Session, sleeper: SleeperClient) -> None:

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
+    NflGameRow,
     PlayerRow,
     RawSnapshotRow,
     RosterRow,
@@ -43,6 +44,13 @@ def _weeks_to_sync(client: SleeperClient, season: str) -> range:
     if state.season_type == "post":
         return range(1, MAX_WEEKS + 1)
     return range(0)
+
+
+def _regular_season_weeks(settings: dict[str, Any]) -> range:
+    """Weeks before the playoffs start (all weeks when the league has no playoff week set)."""
+    start = settings.get("playoff_week_start")
+    last = start - 1 if isinstance(start, int) and start > 1 else MAX_WEEKS
+    return range(1, min(last, MAX_WEEKS) + 1)
 
 
 def sync_league(session: Session, client: SleeperClient, league_id: str) -> LeagueRow:
@@ -97,7 +105,10 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                 )
             )
 
-        for week in _weeks_to_sync(client, league.season):
+        played_weeks = set(_weeks_to_sync(client, league.season))
+        # Sleeper also returns future pairings (with each team's current starters and 0 points),
+        # so sync every regular-season week to be able to show upcoming opponents.
+        for week in sorted(played_weeks | set(_regular_season_weeks(league.settings))):
             for m in client.get_matchups(league_id, week):
                 session.merge(
                     MatchupRow(
@@ -112,7 +123,7 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                         players_points=m.players_points or {},
                     )
                 )
-            for t in client.get_transactions(league_id, week):
+            for t in client.get_transactions(league_id, week) if week in played_weeks else []:
                 session.merge(
                     TransactionRow(
                         league_id=league_id,
@@ -172,3 +183,23 @@ def sync_players(session: Session, client: SleeperClient) -> int:
         row.external_ids = new.external_ids
     session.commit()
     return len(players)
+
+
+def sync_schedule(session: Session, client: SleeperClient, season: str) -> int:
+    """Upsert the season's games (dates and statuses). Returns the number of games synced."""
+    games = client.get_schedule(season)
+    existing = {row.game_id: row for row in session.scalars(select(NflGameRow))}
+    now = utcnow()
+    for g in games:
+        row = existing.get(g.game_id)
+        if row is None:
+            row = NflGameRow(game_id=g.game_id, season=season)
+            session.add(row)
+        row.week = g.week
+        row.home = g.home
+        row.away = g.away
+        row.game_date = g.date
+        row.status = g.status
+        row.updated_at = now
+    session.commit()
+    return len(games)

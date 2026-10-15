@@ -30,6 +30,7 @@ def _handler(request: httpx.Request) -> httpx.Response:
         "/league/L1/users": FIXTURE["users"],
         "/league/L1/rosters": FIXTURE["rosters"],
         "/players/nfl": FIXTURE["players"],
+        "/schedule/nfl/regular/2026": FIXTURE["schedule"],
     }
     for week, items in FIXTURE["matchups"].items():
         routes[f"/league/L1/matchups/{week}"] = items
@@ -63,7 +64,7 @@ def test_sync_league(session: Session) -> None:
     assert empty is not None
     assert empty.players == []
 
-    assert _count(session, MatchupRow) == 4  # weeks 1-2, two rosters each
+    assert _count(session, MatchupRow) == 6  # weeks 1-3 (week 3 is an upcoming pairing)
     assert _count(session, TransactionRow) == 1
     assert _count(session, RawSnapshotRow) > 0
 
@@ -77,7 +78,7 @@ def test_sync_is_idempotent_and_keeps_last_viewed(session: Session) -> None:
     viewed = league.last_viewed_at
 
     sync_league(session, _client(), "L1")
-    assert _count(session, MatchupRow) == 4
+    assert _count(session, MatchupRow) == 6
     assert _count(session, RosterRow) == 2
     refreshed = session.get(LeagueRow, "L1")
     assert refreshed is not None
