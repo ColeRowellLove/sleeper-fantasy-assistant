@@ -31,6 +31,10 @@ Install the hooks once with `uv run pre-commit install` (from `backend/`).
 
 ## Standards
 
+CI runs the backend and frontend jobs only for PRs that change those folders (or `ci.yml`); a skipped
+job reports as skipped, which counts as passing for the required checks. Pushes to `develop` and `main`
+always run everything.
+
 - Python: ruff, `mypy --strict`, pytest with an 80% coverage floor.
 - Every parser for an external data source needs a fixture test.
 - League rules are read from Sleeper, never hard-coded.
