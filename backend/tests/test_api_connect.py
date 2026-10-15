@@ -209,3 +209,13 @@ def test_lineups_endpoint(client: TestClient) -> None:
 
     assert client.get("/api/leagues/1/lineups?week=2").json()["week"] == 2
     assert client.get("/api/leagues/1/lineups?week=99").status_code == 422
+
+
+def test_read_endpoints_are_briefly_cacheable_but_errors_are_not(client: TestClient) -> None:
+    assert "cache-control" not in client.get("/api/leagues/1").headers  # 404: never cached
+    client.post("/api/leagues/1/connect")
+
+    for path in ("/api/leagues/1", "/api/leagues/1/lineups"):
+        cache = client.get(path).headers["cache-control"]
+        assert "s-maxage=30" in cache
+        assert "public" in cache

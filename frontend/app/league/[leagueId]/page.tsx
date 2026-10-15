@@ -11,7 +11,8 @@ export const metadata = { title: "League dashboard", robots: { index: false } };
 const API_URL = process.env.API_URL ?? "http://localhost:8000";
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { cache: "no-store" });
+  // data only changes when a sync runs, so a short shared cache keeps repeat views instant
+  const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 30 } });
   if (res.status === 404) notFound();
   if (!res.ok) throw new Error("Could not load the league. Please try again.");
   return (await res.json()) as T;

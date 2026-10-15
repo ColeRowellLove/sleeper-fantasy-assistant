@@ -36,6 +36,9 @@ log = logging.getLogger(__name__)
 
 RESYNC_COOLDOWN = timedelta(seconds=60)  # connect reuses a sync newer than this
 VIEW_TOUCH_INTERVAL = timedelta(hours=1)  # last_viewed_at is refreshed at most this often
+# Read endpoints are identical for everyone and only change when a sync runs, so let the CDN
+# serve them briefly instead of hitting the database on every page view.
+READ_CACHE = "public, s-maxage=30, stale-while-revalidate=120"
 
 app = FastAPI(title="Sleeper Fantasy Assistant", version=__version__)
 
@@ -192,7 +195,9 @@ class DashboardResponse(Dashboard):
 
 
 @app.get("/api/leagues/{league_id}")
-def get_league_dashboard(league_id: LeagueId, session: SessionDep) -> DashboardResponse:
+def get_league_dashboard(
+    league_id: LeagueId, session: SessionDep, response: Response
+) -> DashboardResponse:
     """Standings, rosters and the league rules card for a connected league (read-only)."""
     row = session.get(LeagueRow, league_id)
     if row is None:
@@ -203,6 +208,7 @@ def get_league_dashboard(league_id: LeagueId, session: SessionDep) -> DashboardR
         row.last_viewed_at = now
         session.commit()
     connected = _connected(row)
+    response.headers["Cache-Control"] = READ_CACHE
     return DashboardResponse(**build_dashboard(session, row).model_dump(), rules=connected.rules)
 
 
@@ -210,12 +216,14 @@ def get_league_dashboard(league_id: LeagueId, session: SessionDep) -> DashboardR
 def get_league_lineups(
     league_id: LeagueId,
     session: SessionDep,
+    response: Response,
     week: Annotated[int | None, Query(ge=1, le=18)] = None,
 ) -> Lineups:
     """Both teams' lineups (starters by slot, bench, points) per matchup for one week."""
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = READ_CACHE
     return build_lineups(session, row, week)
 
 
