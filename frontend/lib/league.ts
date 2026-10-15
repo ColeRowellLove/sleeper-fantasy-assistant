@@ -6,6 +6,7 @@ export const TABS = [
   { key: "standings", label: "Standings" },
   { key: "rosters", label: "Rosters" },
   { key: "lineups", label: "Lineups" },
+  { key: "settings", label: "Settings" },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];
