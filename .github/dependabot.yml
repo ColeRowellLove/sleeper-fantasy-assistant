@@ -12,3 +12,7 @@ updates:
     directory: /frontend
     target-branch: develop
     schedule: { interval: weekly }
+    ignore:
+      # typescript-eslint does not support TS 7 yet (typescript-eslint#10940)
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
