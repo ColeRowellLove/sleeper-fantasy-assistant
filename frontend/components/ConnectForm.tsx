@@ -67,7 +67,7 @@ export default function ConnectForm() {
   }
 
   return (
-    <section aria-labelledby="connect-heading">
+    <section className="card" aria-labelledby="connect-heading">
       <h2 id="connect-heading">Connect your league</h2>
 
       {step.kind === "username" && (
@@ -80,13 +80,16 @@ export default function ConnectForm() {
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
+            placeholder="your_username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             aria-describedby={error ? "username-help connect-error" : "username-help"}
             aria-invalid={error ? true : undefined}
           />
-          <p id="username-help">No password needed. We only read public league data.</p>
-          <button type="submit" aria-disabled={busy}>
+          <p id="username-help" className="help">
+            No password needed. We only read public league data.
+          </p>
+          <button type="submit" className="btn" aria-disabled={busy}>
             {busy ? "Looking…" : "Find my leagues"}
           </button>
         </form>
@@ -94,19 +97,26 @@ export default function ConnectForm() {
 
       {step.kind === "pick" && (
         <div>
-          <p id="pick-help" ref={pickRef} tabIndex={-1}>
+          <p id="pick-help" ref={pickRef} tabIndex={-1} className="help">
             Choose a league to connect:
           </p>
-          <ul aria-labelledby="pick-help">
+          <ul aria-labelledby="pick-help" className="league-list">
             {step.leagues.map((league) => (
               <li key={league.league_id}>
-                <button type="button" aria-disabled={busy} onClick={() => connect(league.league_id)}>
-                  {league.name} ({league.season}, {league.total_rosters} teams)
+                <button
+                  type="button"
+                  className="league-option"
+                  aria-disabled={busy}
+                  onClick={() => connect(league.league_id)}
+                >
+                  <span>
+                    {league.name} ({league.season}, {league.total_rosters} teams)
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
-          <button type="button" onClick={() => setStep({ kind: "username" })}>
+          <button type="button" className="btn btn-quiet" onClick={() => setStep({ kind: "username" })}>
             Use a different username
           </button>
         </div>
@@ -114,19 +124,21 @@ export default function ConnectForm() {
 
       {step.kind === "connected" && (
         <div>
-          <p ref={connectedRef} tabIndex={-1}>
+          <p ref={connectedRef} tabIndex={-1} className="notice">
             Connected <strong>{step.league.name}</strong>. Reception scoring:{" "}
             {step.league.rules.reception_scoring}; {step.league.rules.uses_faab ? "FAAB" : "priority"}{" "}
             waivers.
           </p>
-          <a href={`/league/${encodeURIComponent(step.league.league_id)}`}>Open league dashboard</a>
+          <a className="btn" href={`/league/${encodeURIComponent(step.league.league_id)}`}>
+            Open league dashboard
+          </a>
         </div>
       )}
 
-      <p id="connect-error" role="alert">
+      <p id="connect-error" role="alert" className="error">
         {error}
       </p>
-      <p role="status" aria-live="polite">
+      <p role="status" aria-live="polite" className="status">
         {busy ? "Working…" : ""}
       </p>
     </section>
