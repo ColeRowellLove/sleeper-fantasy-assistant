@@ -142,16 +142,30 @@ describe("sorting", () => {
     expect(teams()).toEqual(["Sis", "Dad", "Cole", "alex"]);
   });
 
-  it("keeps each team's real rank, playoff marks and You highlight when reordered", async () => {
+  it("keeps each team's real rank and You highlight when reordered", async () => {
     renderLeague(1);
     await sortBy(/^Team/);
     const rows = screen.getAllByRole("row").slice(1);
     const cole = rows.find((r) => within(r).queryByText("Cole"))!;
     expect(within(cole).getByText("2")).toBeInTheDocument(); // still rank 2, not row 2
     expect(cole).toHaveAttribute("aria-current", "true");
-    expect(cole.className).toContain("cutoff");
-    expect(rows[3].className).not.toContain("playoff"); // Sis, rank 3, sorts last-but-one
     expect(screen.getAllByText("You")).toHaveLength(1);
+  });
+
+  it("shows the playoff marker only while sorted by rank, best first", async () => {
+    renderLeague();
+    expect(screen.getAllByText("(playoff position)")).toHaveLength(2);
+    for (const name of [/^Team/, /^Record/, /^PF/, /^PA/]) {
+      await sortBy(name);
+      expect(screen.queryByText("(playoff position)")).not.toBeInTheDocument();
+      expect(screen.queryByText(/make the playoffs/i)).not.toBeInTheDocument();
+      expect(screen.getAllByRole("row").some((r) => /playoff|cutoff/.test(r.className))).toBe(false);
+    }
+    await sortBy(/^Rank/); // back to rank, best first
+    expect(screen.getAllByText("(playoff position)")).toHaveLength(2);
+    expect(screen.getByText(/top 2 teams make the playoffs/i)).toBeInTheDocument();
+    await sortBy(/^Rank/); // worst first: the line would sit in the wrong place
+    expect(screen.queryByText("(playoff position)")).not.toBeInTheDocument();
   });
 
   it("has no accessibility violations while sorted", async () => {
