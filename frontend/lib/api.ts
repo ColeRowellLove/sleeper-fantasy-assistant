@@ -67,6 +67,8 @@ export interface StandingsRow {
   ties: number;
   points_for: number;
   points_against: number;
+  /** Current run as Sleeper reports it: "3W", "2L" or "1T". */
+  streak?: string | null;
 }
 
 export interface GameInfo {

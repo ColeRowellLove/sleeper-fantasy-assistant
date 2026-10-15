@@ -7,6 +7,7 @@ import { formatRecord } from "../lib/league";
 import {
   DEFAULT_SORT,
   nextSort,
+  parseStreak,
   sortStandings,
   type SortKey,
   type SortState,
@@ -16,9 +17,31 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "rank", label: "Rank" },
   { key: "team", label: "Team" },
   { key: "record", label: "Record" },
+  { key: "streak", label: "Streak" },
   { key: "points_for", label: "PF", numeric: true },
   { key: "points_against", label: "PA", numeric: true },
 ];
+
+function StreakBadge({ streak }: { streak: string | null | undefined }) {
+  const parsed = parseStreak(streak);
+  if (!parsed) return <span className="streak streak-none">&ndash;</span>;
+  const [one, many] = {
+    W: ["win", "wins"],
+    L: ["loss", "losses"],
+    T: ["tie", "ties"],
+  }[parsed.kind];
+  return (
+    <span className={`streak streak-${parsed.kind}`}>
+      <span aria-hidden="true">
+        {parsed.kind}
+        {parsed.length}
+      </span>
+      <span className="visually-hidden">
+        {parsed.length} {parsed.length === 1 ? one : many} in a row
+      </span>
+    </span>
+  );
+}
 
 function describe(sort: SortState): string {
   const column = COLUMNS.find((c) => c.key === sort.key)?.label ?? "";
@@ -111,6 +134,9 @@ export default function StandingsTable({
                     {mine && <span className="you">You</span>}
                   </th>
                   <td className="num">{formatRecord(row.wins, row.losses, row.ties)}</td>
+                  <td className="num">
+                    <StreakBadge streak={row.streak} />
+                  </td>
                   <td className="num num-col">{row.points_for.toFixed(2)}</td>
                   <td className="num num-col">{row.points_against.toFixed(2)}</td>
                 </tr>

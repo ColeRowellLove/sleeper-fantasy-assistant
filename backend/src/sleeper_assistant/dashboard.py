@@ -62,6 +62,7 @@ class StandingsRow(BaseModel):
     ties: int
     points_for: float
     points_against: float
+    streak: str | None = None  # e.g. "3W" (three straight wins) or "2L"
 
 
 class RosterPlayer(BaseModel):
@@ -237,6 +238,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
             ties=r.ties,
             points_for=round(r.points_for, 2),
             points_against=round(r.points_against, 2),
+            streak=r.streak,
         )
         for i, r in enumerate(ordered, start=1)
     ]

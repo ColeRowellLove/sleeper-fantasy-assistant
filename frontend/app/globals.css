@@ -712,6 +712,23 @@ table.standings {
   color: var(--text);
 }
 
+.streak {
+  font-weight: 700;
+}
+
+.streak-W {
+  color: var(--game-live);
+}
+
+.streak-L {
+  color: var(--injury-out);
+}
+
+.streak-T,
+.streak-none {
+  color: var(--muted);
+}
+
 .sort-arrow {
   font-size: 0.7rem;
   opacity: 0.75;

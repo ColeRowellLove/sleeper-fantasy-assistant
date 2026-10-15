@@ -168,6 +168,7 @@ def test_dashboard_after_connect(client: TestClient) -> None:
     assert body["rules"]["uses_faab"] is True
     assert [s["team"] for s in body["standings"]] == ["Cole", "Dad"]
     assert body["standings"][0]["points_for"] == 120.42
+    assert [s["streak"] for s in body["standings"]] == ["2W", None]  # a missing streak is None
     first = body["rosters"][0]["players"][0]
     assert body["week"] == 2  # current NFL week, from the schedule loaded on connect
     assert first["game"] == {

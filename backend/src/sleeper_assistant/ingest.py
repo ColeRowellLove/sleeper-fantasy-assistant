@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -53,6 +54,14 @@ def _regular_season_weeks(settings: dict[str, Any]) -> range:
     return range(1, min(last, MAX_WEEKS) + 1)
 
 
+def _streak(metadata: dict[str, Any] | None) -> str | None:
+    """Sleeper's "3W" / "2L" / "1T" streak, or None when it is missing or unrecognisable."""
+    value = (metadata or {}).get("streak")
+    if isinstance(value, str) and re.fullmatch(r"\d{1,2}[WLT]", value):
+        return value
+    return None
+
+
 def sync_league(session: Session, client: SleeperClient, league_id: str) -> LeagueRow:
     """Fetch and upsert league settings, users, rosters, matchups and transactions."""
     client = client.with_recorder(
@@ -102,6 +111,7 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                     points_for=float(rs.get("fpts", 0)) + float(rs.get("fpts_decimal", 0)) / 100,
                     points_against=float(rs.get("fpts_against", 0))
                     + float(rs.get("fpts_against_decimal", 0)) / 100,
+                    streak=_streak(roster.metadata),
                 )
             )
 
