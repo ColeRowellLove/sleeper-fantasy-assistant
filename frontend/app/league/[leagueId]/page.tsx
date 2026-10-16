@@ -14,11 +14,13 @@ import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
 import RankingsPanel from "../../../components/RankingsPanel";
+import AccuracyTable from "../../../components/AccuracyTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
   Dashboard,
   LeagueSettings,
   BestLineup,
+  LineupAccuracy,
   StartSitComparison,
   Rankings,
   Lineups,
@@ -71,33 +73,45 @@ export default async function LeaguePage({
       : "";
 
   // the header needs the dashboard on every tab; lineups are only fetched for their own tab
-  const [dashboard, lineups, rankings, leagueSettings, players, playerDetail, depth, depthDialog] =
-    await Promise.all([
-      getJson<Dashboard>(`/api/leagues/${leagueId}`),
-      tab === "lineups"
-        ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
-        : Promise.resolve(null),
-      tab === "rankings"
-        ? getJson<Rankings>(`/api/leagues/${leagueId}/rankings${weekQuery}`)
-        : Promise.resolve(null),
-      tab === "settings"
-        ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
-        : Promise.resolve(null),
-      tab === "players"
-        ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
-        : Promise.resolve(null),
-      // an unknown or malformed ?player= simply opens nothing
-      player && /^[A-Za-z0-9]{1,12}$/.test(player)
-        ? getJson<PlayerDetail>(`/api/leagues/${leagueId}/players/${player}`).catch(() => null)
-        : Promise.resolve(null),
-      tab === "teams" && isTeamCode(team)
-        ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${team}`)
-        : Promise.resolve(null),
-      // a team opened as a pop-up from any team code; an unknown code opens nothing
-      isTeamCode(depthParam)
-        ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${depthParam}`).catch(() => null)
-        : Promise.resolve(null),
-    ]);
+  const [
+    dashboard,
+    lineups,
+    rankings,
+    accuracy,
+    leagueSettings,
+    players,
+    playerDetail,
+    depth,
+    depthDialog,
+  ] = await Promise.all([
+    getJson<Dashboard>(`/api/leagues/${leagueId}`),
+    tab === "lineups"
+      ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
+      : Promise.resolve(null),
+    tab === "rankings"
+      ? getJson<Rankings>(`/api/leagues/${leagueId}/rankings${weekQuery}`)
+      : Promise.resolve(null),
+    tab === "accuracy"
+      ? getJson<LineupAccuracy>(`/api/leagues/${leagueId}/accuracy`)
+      : Promise.resolve(null),
+    tab === "settings"
+      ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
+      : Promise.resolve(null),
+    tab === "players"
+      ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
+      : Promise.resolve(null),
+    // an unknown or malformed ?player= simply opens nothing
+    player && /^[A-Za-z0-9]{1,12}$/.test(player)
+      ? getJson<PlayerDetail>(`/api/leagues/${leagueId}/players/${player}`).catch(() => null)
+      : Promise.resolve(null),
+    tab === "teams" && isTeamCode(team)
+      ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${team}`)
+      : Promise.resolve(null),
+    // a team opened as a pop-up from any team code; an unknown code opens nothing
+    isTeamCode(depthParam)
+      ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${depthParam}`).catch(() => null)
+      : Promise.resolve(null),
+  ]);
 
   // closing the pop-up returns to this same page without ?player
   const closeParams = new URLSearchParams();
@@ -184,6 +198,9 @@ export default async function LeaguePage({
           best={startSit.best}
           comparison={startSit.comparison}
         />
+      )}
+      {tab === "accuracy" && accuracy && (
+        <AccuracyTable data={accuracy} leagueId={leagueId} myRosterId={myRosterId} />
       )}
       {tab === "players" && players && (
         <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />

@@ -341,6 +341,25 @@ export interface Dashboard {
   rules: ConnectedLeague["rules"];
 }
 
+/** Sit vs start accuracy for one team, from the totals Sleeper reports on its roster. */
+export interface TeamAccuracy {
+  roster_id: number;
+  team: string;
+  /** Sleeper's season points for the team. */
+  points: number;
+  /** Sleeper's potential points: what the best lineups would have scored. Null if not reported. */
+  potential: number | null;
+  /** Points over potential, 0 to 1; null when Sleeper reports no potential points. */
+  accuracy: number | null;
+  left_on_bench: number | null;
+}
+
+export interface LineupAccuracy {
+  league_id: string;
+  /** Most accurate first; teams without a figure last. */
+  teams: TeamAccuracy[];
+}
+
 export interface RankedPlayer {
   player_id: string;
   name: string;
