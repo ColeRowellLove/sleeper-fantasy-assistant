@@ -73,6 +73,9 @@ export interface PlayerDetail {
   bio?: Record<string, unknown> | null;
   owner_roster_id?: number | null;
   owner_team?: string | null;
+  /** The owning manager's Sleeper username, and the league, for linking to their roster. */
+  owner_manager?: string | null;
+  league_id?: string | null;
   adds?: number | null;
   drops?: number | null;
   season: { points: number; games: number; average?: number | null; rank?: number | null };

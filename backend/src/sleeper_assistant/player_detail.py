@@ -86,6 +86,8 @@ class PlayerDetail(BaseModel):
     bio: dict[str, Any] | None = None
     owner_roster_id: int | None = None
     owner_team: str | None = None
+    owner_manager: str | None = None  # the owning manager's Sleeper username
+    league_id: str | None = None  # so the page can link to the owning team's roster
     adds: int | None = None
     drops: int | None = None
     season: SeasonSummary
@@ -179,7 +181,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team_name, _ = _team_names(session, rosters)
+    team_name, manager_name = _team_names(session, rosters)
     owner = next(
         (r.roster_id for r in rosters if player_id in [*r.players, *r.reserve, *r.taxi]), None
     )
@@ -240,6 +242,8 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         bio=player.bio,
         owner_roster_id=owner,
         owner_team=team_name.get(owner) if owner is not None else None,
+        owner_manager=manager_name.get(owner) if owner is not None else None,
+        league_id=league.league_id,
         adds=trend.adds if trend else None,
         drops=trend.drops if trend else None,
         season=SeasonSummary(

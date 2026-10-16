@@ -157,6 +157,8 @@ def test_bio_ownership_and_trend_come_through(session: Session) -> None:
     assert detail is not None
     assert detail.bio == {"age": 25, "college": "BYU", "height": "74"}
     assert (detail.owner_roster_id, detail.owner_team) == (1, "Team 1")
+    assert detail.league_id == "L1"
+    assert detail.owner_manager == "Team 1"  # no Sleeper user stored: falls back to the team label
     assert (detail.adds, detail.drops) == (None, 120)
     free = build_player_detail(session, _setup_again(session), "2")
     assert free is not None and free.owner_roster_id is None  # available in this league
