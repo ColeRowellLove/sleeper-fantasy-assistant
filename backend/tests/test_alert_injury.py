@@ -233,3 +233,56 @@ def test_a_second_ruling_after_returning_alerts_again_and_an_old_one_does_not(
 def test_registered_with_the_engine() -> None:
     assert alerts.DETECTORS["injury_out"] is alert_injury.detect_ruled_out
     assert alerts.PRE_RUN["injury_status"] is alert_injury.track_injuries
+
+
+def test_a_starter_in_an_unknown_slot_is_not_called_a_bench_player(session: Session) -> None:
+    league = _setup(session)
+    roster = session.get(RosterRow, ("L1", 2))
+    assert roster is not None
+    roster.starters = ["star", "wr", "hurt"]  # three starters for a league with two starting slots
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = next(a.why for a in session.scalars(select(AlertRow)) if a.roster_id == 2)
+    assert why.endswith("He is in your starting lineup.")
+    assert "bench" not in why
+
+
+def test_a_doubtful_or_teamless_bench_player_is_never_offered_as_the_replacement(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    session.add(_player("doubtful", "RB", "Doubtful Back", status="Doubtful"))
+    session.add(_player("cut", "RB", "Cut Back", team=None))  # type: ignore[arg-type]
+    session.add_all([_proj("doubtful", 200.0), _proj("cut", 300.0)])
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    roster.players = ["hurt", "bench", "wr", "doubtful", "cut"]
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = next(a.why for a in session.scalars(select(AlertRow)) if a.roster_id == 1)
+    assert "Best replacement on your bench: Bench Back" in why  # not the two with bigger numbers
+
+
+def test_a_depth_chart_next_man_on_a_team_with_no_name_is_called_rostered(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    session.add(_player("next", "RB", "Backup Back"))
+    chart = {"offense": {"rb": [
+        {"name": "Hurt Back", "sleeper_id": "hurt", "espn_id": "1", "injury": "Out"},
+        {"name": "Backup Back", "sleeper_id": "next", "espn_id": "2", "injury": None},
+    ]}, "defense": {}, "special": {}}  # fmt: skip
+    session.add(TeamDepthChartRow(team="SF", source="ESPN", chart=chart, fetched_at=utcnow()))
+    other = session.get(RosterRow, ("L1", 3))
+    assert other is not None
+    other.players = ["hurt", "next"]
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = next(a.why for a in session.scalars(select(AlertRow)) if a.roster_id == 1)
+    assert "(on " in why and "None" not in why

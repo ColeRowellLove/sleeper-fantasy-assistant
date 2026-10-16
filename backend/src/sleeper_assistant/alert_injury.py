@@ -37,11 +37,10 @@ def _clean(status: str | None) -> str | None:
 
 @register_pre_run("injury_status")
 def track_injuries(session: Session, now: datetime) -> None:
-    """Record every active player's injury status; note when it changes."""
+    """Record every player's injury status (also those without a team, so a player who is cut and
+    signed again is compared with his own last status); note when it changes."""
     known = {row.player_id: row for row in session.scalars(select(PlayerInjuryRow))}
-    for player_id, raw in session.execute(
-        select(PlayerRow.player_id, PlayerRow.injury_status).where(PlayerRow.team.is_not(None))
-    ):
+    for player_id, raw in session.execute(select(PlayerRow.player_id, PlayerRow.injury_status)):
         status = _clean(raw)
         row = known.get(player_id)
         if row is None:
@@ -81,7 +80,9 @@ def _replacement(
         p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(bench)))
         if p.position in eligible_positions(slot, out.position or "")
+        and p.team is not None  # on an NFL team
         and (p.injury_status or "") not in OUT_STATUSES
+        and p.injury_status != "Doubtful"  # not someone who probably will not play either
     ]
     if not fit:
         return "Nobody on your bench fits that slot."
@@ -106,10 +107,11 @@ def _next_up(session: Session, league: LeagueRow, out: PlayerRow) -> str | None:
                 continue
             for player in slot.players:
                 if player.next_up:
-                    status = (
-                        "available" if player.owner_roster_id is None else f"on {player.owner_team}"
-                    )
-                    return f"Next on the {out.team} depth chart: {player.name} ({status})."
+                    if player.owner_roster_id is None:
+                        owner = "available"
+                    else:
+                        owner = f"on {player.owner_team}" if player.owner_team else "rostered"
+                    return f"Next on the {out.team} depth chart: {player.name} ({owner})."
     return None
 
 
@@ -123,8 +125,15 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
+    # one projection lookup for everyone who matters, and one depth chart sentence per player
+    wanted = {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    projections = (
+        projected_points(session, league.season, week, league.scoring_settings, wanted)
+        if week
+        else {}
+    )
     raised: list[NewAlert] = []
-    for status, player in news:
+    for injury, player in news:
         owners = [r for r in rosters if player.player_id in [*r.players, *r.reserve, *r.taxi]]
         if not owners:
             continue
@@ -133,19 +142,11 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
             f" with a {player.injury_body_part.lower()} injury" if player.injury_body_part else ""
         )
         depth = _next_up(session, league, player)
-        ruled_at = as_utc(status.changed_at).isoformat() if status.changed_at else ""
+        ruled_at = as_utc(injury.changed_at).isoformat() if injury.changed_at else ""
         for roster in owners:
             starts = player.player_id in roster.starters
             index = roster.starters.index(player.player_id) if starts else -1
             slot = slots[index] if 0 <= index < len(slots) else None
-            projections = (
-                projected_points(
-                    session, league.season, week, league.scoring_settings,
-                    [*roster.players, player.player_id],
-                )
-                if week
-                else {}
-            )  # fmt: skip
             sentences = [f"{name} was ruled out{part}."]
             if starts and slot:
                 mine = projections.get(player.player_id)
@@ -154,6 +155,8 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                 replacement = _replacement(session, roster, slot, player, projections)
                 if replacement:
                     sentences.append(replacement)
+            elif starts:
+                sentences.append("He is in your starting lineup.")
             elif player.player_id in roster.reserve:
                 sentences.append("He is already on your injured reserve.")
             elif player.player_id in roster.taxi:
@@ -174,7 +177,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                         "week": week,
                         "slot": slot,
                         "starter": starts,
-                        "previous": status.previous,
+                        "previous": injury.previous,
                     },
                 )
             )
