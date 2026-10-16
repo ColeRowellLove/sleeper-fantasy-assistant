@@ -228,6 +228,33 @@
   color: var(--muted);
 }
 
+/* matchup difficulty: green easy, amber average, red tough; the chip always says the word too */
+.game-rank {
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.05rem 0.5rem;
+}
+
+.rank-easy {
+  background: color-mix(in srgb, var(--game-live) 18%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--game-live) 55%, var(--line));
+}
+
+.rank-average {
+  background: color-mix(in srgb, var(--game-bye) 14%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--game-bye) 50%, var(--line));
+}
+
+.rank-tough {
+  background: color-mix(in srgb, var(--injury-out) 18%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--injury-out) 55%, var(--line));
+}
+
 .game-bye .game-state {
   background: color-mix(in srgb, var(--game-bye) 16%, var(--surface));
   color: var(--game-bye);
@@ -749,29 +776,4 @@
 
 .verdict-out {
   border-style: dashed; /* the words say it; the dashed edge only adds to them */
-}
-
-/* matchup difficulty: green easy, amber average, red tough; the chip always says the word too */
-.game-rank {
-  border: 1px solid var(--line);
-  font-variant-numeric: tabular-nums;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 0.05rem 0.5rem;
-}
-
-.rank-easy {
-  background: color-mix(in srgb, var(--game-live) 18%, var(--surface-2));
-  border-color: color-mix(in srgb, var(--game-live) 55%, var(--line));
-}
-
-.rank-average {
-  background: color-mix(in srgb, var(--game-bye) 14%, var(--surface-2));
-  border-color: color-mix(in srgb, var(--game-bye) 50%, var(--line));
-}
-
-.rank-tough {
-  background: color-mix(in srgb, var(--injury-out) 18%, var(--surface-2));
-  border-color: color-mix(in srgb, var(--injury-out) 55%, var(--line));
 }

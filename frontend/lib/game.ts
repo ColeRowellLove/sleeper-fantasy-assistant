@@ -81,16 +81,16 @@ export function ordinal(n: number): string {
   return `${n}${suffix}`;
 }
 
-/** The easiest quarter of teams are "easy" matchups, the hardest quarter "tough". */
-export const EASY_SHARE = 0.25;
-export const TOUGH_SHARE = 0.75;
+// The easiest quarter of teams are "easy" matchups and the hardest quarter "tough".
+const QUARTILE = 0.25;
 
 export type Difficulty = "easy" | "average" | "tough";
 
 /** How hard a matchup is: rank 1 is the best matchup for the player (see matchupText). */
 export function matchupDifficulty(matchup: MatchupRank): Difficulty {
-  if (matchup.rank <= matchup.teams * EASY_SHARE) return "easy";
-  if (matchup.rank > matchup.teams * TOUGH_SHARE) return "tough";
+  if (!(matchup.teams > 0)) return "average"; // no sensible team count: say nothing strong
+  if (matchup.rank <= matchup.teams * QUARTILE) return "easy";
+  if (matchup.rank > matchup.teams * (1 - QUARTILE)) return "tough";
   return "average";
 }
 
@@ -133,7 +133,7 @@ export function matchupText(
       difficulty,
       word,
       text: rank,
-      spoken: `${matchup.opponent} offense ranks ${rank} easiest for a defense`,
+      spoken: `${matchup.opponent} offense ranks ${rank} easiest for a defense (${word.toLowerCase()} matchup)`,
       description: `${matchup.opponent} scores the ${rank} fewest fantasy points ${numbers}`,
     };
   }
@@ -142,7 +142,7 @@ export function matchupText(
     difficulty,
     word,
     text: rank,
-    spoken: `${matchup.opponent} ranks ${rank} against ${position ? `${position}s` : "the position"}`,
+    spoken: `${matchup.opponent} ranks ${rank} against ${position ? `${position}s` : "the position"} (${word.toLowerCase()} matchup)`,
     description: `${matchup.opponent} allows the ${rank} most fantasy points${spot} ${numbers}`,
   };
 }

@@ -64,9 +64,7 @@ export default function GameBadge({
           <span aria-hidden="true">
             {rank.text} · {rank.word}
           </span>
-          <span className="visually-hidden">
-            {rank.spoken}: {rank.word.toLowerCase()} matchup
-          </span>
+          <span className="visually-hidden">{rank.spoken}</span>
         </span>
       )}
     </span>
