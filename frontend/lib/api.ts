@@ -78,6 +78,10 @@ export interface PlayerDetail {
     home?: boolean | null;
     points: number;
     stats: Record<string, number>;
+    /** Projected before kickoff; null/absent when none was stored. */
+    projected?: number | null;
+    /** The game is over, so points can be compared with the projection. */
+    final?: boolean;
   }[];
   past_seasons: { season: string; games: number; points: number; rank?: number | null }[];
 }

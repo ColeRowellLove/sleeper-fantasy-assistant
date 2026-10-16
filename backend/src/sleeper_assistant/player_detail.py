@@ -45,6 +45,10 @@ class WeekLine(BaseModel):
     home: bool | None = None
     points: float
     stats: dict[str, float]  # the stats that earned (or cost) points this week
+    projected: float | None = None  # what was projected before kickoff; None = none was stored
+    final: bool = (
+        False  # the game is over, so the points can fairly be compared with the projection
+    )
 
 
 class SeasonLine(BaseModel):
@@ -96,7 +100,10 @@ def _rank(points: float, same_position: list[float]) -> int:
     return 1 + sum(1 for other in same_position if other > points)
 
 
-def _opponents(session: Session, season: str, team: str | None) -> dict[int, tuple[str, bool]]:
+def _opponents(
+    session: Session, season: str, team: str | None
+) -> dict[int, tuple[str, bool, bool]]:
+    """Week -> (opponent, playing at home, game is over) for a team's games this season."""
     if not team:
         return {}
     games = session.scalars(
@@ -104,7 +111,14 @@ def _opponents(session: Session, season: str, team: str | None) -> dict[int, tup
             NflGameRow.season == season, (NflGameRow.home == team) | (NflGameRow.away == team)
         )
     )
-    return {g.week: ((g.away, True) if g.home == team else (g.home, False)) for g in games}
+    return {
+        g.week: (
+            (g.away, True, g.status == "complete")
+            if g.home == team
+            else (g.home, False, g.status == "complete")
+        )
+        for g in games
+    }
 
 
 def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> PlayerDetail | None:
@@ -132,13 +146,23 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         )
     }
     opponents = _opponents(session, season, player.team)
+    expected = {
+        row.week: score_projection(row.stats, scoring)
+        for row in session.scalars(
+            select(PlayerProjectionRow).where(
+                PlayerProjectionRow.season == season, PlayerProjectionRow.player_id == player_id
+            )
+        )
+    }
     weeks = [
         WeekLine(
             week=week,
-            opponent=opponents.get(week, (None, None))[0],
-            home=opponents.get(week, (None, None))[1],
+            opponent=opponents.get(week, (None, None, False))[0],
+            home=opponents.get(week, (None, None, False))[1],
+            final=opponents.get(week, (None, None, False))[2],
             points=score_stats(stats, scoring),
             stats=display_stats(stats, scoring),
+            projected=expected.get(week),
         )
         for week, stats in sorted(weekly.items())
     ]

@@ -308,6 +308,73 @@ describe("PlayerDialog", () => {
     ).toEqual(["22.5", "10", "6.6", "106.8", "0.8", "–"]);
   });
 
+  it("compares each finished week's points with its projection", () => {
+    const withProjections: PlayerDetail = {
+      ...detail,
+      weeks: [
+        { ...detail.weeks[0], projected: 14, final: true }, // 24.5 against 14.0
+        { ...detail.weeks[1], projected: 9.5, final: false }, // still being played: no comparison
+      ],
+    };
+    render(
+      <PlayerDialog
+        detail={withProjections}
+        closeHref="/league/1?tab=players"
+      />,
+    );
+    const table = screen.getByRole("table", {
+      name: /points and stats by week/i,
+    });
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    expect(headers.slice(0, 5)).toEqual([
+      "Week",
+      "Opponent",
+      "Points",
+      "Proj",
+      "+/-",
+    ]);
+    const week1 = within(table).getByRole("row", { name: /^1 vs SEA/ });
+    expect(
+      within(week1)
+        .getAllByRole("cell")
+        .slice(1, 4)
+        .map((c) => c.textContent),
+    ).toEqual(["24.5", "14.0", "+10.5"]);
+    const week2 = within(table).getByRole("row", { name: /^2 at SF/ });
+    expect(
+      within(week2)
+        .getAllByRole("cell")
+        .slice(1, 4)
+        .map((c) => c.textContent),
+    ).toEqual([
+      "6.0",
+      "9.5",
+      "–", // not final yet
+    ]);
+    // the totals row has no projection total or difference unless every game is over
+    const totals = within(table).getByRole("row", { name: /Season total/ });
+    expect(
+      within(totals)
+        .getAllByRole("cell")
+        .slice(0, 3)
+        .map((c) => c.textContent),
+    ).toEqual(["146.6", "23.5", "–"]);
+  });
+
+  it("leaves the projection columns out when no week has a stored projection", () => {
+    renderDialog();
+    const table = screen.getByRole("table", {
+      name: /points and stats by week/i,
+    });
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    expect(headers).not.toContain("Proj");
+    expect(headers).not.toContain("+/-");
+  });
+
   it("copes with a player who has no bio, no projection and no games", () => {
     renderDialog({
       ...detail,

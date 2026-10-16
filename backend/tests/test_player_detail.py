@@ -101,6 +101,8 @@ def test_the_weekly_log_names_the_opponent_and_whether_it_was_home(session: Sess
     assert detail is not None
     assert (detail.weeks[0].opponent, detail.weeks[0].home) == ("SEA", True)
     assert (detail.weeks[1].opponent, detail.weeks[1].home) == ("SF", False)
+    # week 1's game is complete; week 2's has not been played, so it is not final
+    assert [w.final for w in detail.weeks] == [True, False]
 
 
 def test_rank_is_within_position_under_this_leagues_scoring(session: Session) -> None:
@@ -111,6 +113,32 @@ def test_rank_is_within_position_under_this_leagues_scoring(session: Session) ->
     assert nacua is not None and second is not None and third is not None
     # totals: Nacua 30.5, Second WR 20.0, Third WR 1.0
     assert (nacua.season.rank, second.season.rank, third.season.rank) == (1, 2, 3)
+
+
+def test_each_week_carries_the_projection_that_was_stored_before_kickoff(session: Session) -> None:
+    league = _setup(session)
+    session.add(
+        PlayerProjectionRow(
+            season="2026", week=1, player_id="1", team="LAR",
+            stats={"rec": 5.0, "rec_yd": 60.0, "rec_td": 0.5, "gp": 1.0}, fetched_at=utcnow(),
+        )
+    )  # fmt: skip
+    session.commit()
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None
+    by_week = {w.week: w.projected for w in detail.weeks}
+    assert by_week[1] == 5.0 + 6.0 + 3.0  # projected 14.0 against an actual 24.5
+    assert by_week[2] == 6.0 + 8.0 + 3.0  # week 2 was projected in the shared setup
+    assert detail.weeks[0].points - (by_week[1] or 0) == 10.5  # a big week: beat the projection
+
+
+def test_a_week_with_no_stored_projection_shows_none_not_zero(session: Session) -> None:
+    league = _setup(session)
+    session.add(_stats(3, "1", {"gp": 1, "rec": 2, "rec_yd": 20.0}))  # played, never projected
+    session.commit()
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None
+    assert {w.week: w.projected for w in detail.weeks}[3] is None
 
 
 def test_projection_shows_the_projected_stat_line(session: Session) -> None:
