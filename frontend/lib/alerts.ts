@@ -137,7 +137,7 @@ export const ALERT_NOTES = [
   },
   {
     title: "Text messages",
-    text: "Not on yet. Alerts are shown here; texting them to your phone is planned, and will follow the choices you make here.",
+    text: "Not on yet. Alerts are shown here; texting them to your phone is planned.",
   },
 ] as const;
 

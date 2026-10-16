@@ -114,13 +114,14 @@ export default function AlertsPanel({
   off?: string[];
 }) {
   const router = useRouter();
+  const [startOpen] = useState(() => visibleAlerts(data.alerts, off).length === 0); // never re-folds
   const [switchedOff, setSwitchedOff] = useState<string[]>(off);
   const mine = myRosterId !== null && data.roster_id === myRosterId;
   const alerts = visibleAlerts(data.alerts, switchedOff);
   const hidden = data.alerts.length - alerts.length;
   const unread = mine ? unreadAlerts(alerts, seen) : [];
   const unreadIds = new Set(unread.map((a) => a.id));
-  const newest = newestAlertTime(data.alerts);
+  const newest = newestAlertTime(alerts); // hidden kinds are not marked as read
 
   const choose = (kind: string, wanted: boolean) => {
     const next = wanted ? switchedOff.filter((k) => k !== kind) : [...switchedOff, kind];
@@ -143,7 +144,7 @@ export default function AlertsPanel({
         Things worth knowing about {mine ? "your team" : team}, from the last 14 days.
       </p>
 
-      <details className="alert-kinds" open={alerts.length === 0}>
+      <details className="alert-kinds" open={startOpen}>
         <summary>Which alerts do you want?</summary>
         <fieldset>
           <legend className="visually-hidden">Alert types to show</legend>
@@ -198,6 +199,12 @@ export default function AlertsPanel({
           <button type="button" className="btn btn-quiet" onClick={markRead}>
             Mark all as read
           </button>
+        </p>
+      )}
+
+      {hidden > 0 && alerts.length > 0 && (
+        <p className="note">
+          {hidden} {hidden === 1 ? "alert is" : "alerts are"} hidden by your choices above.
         </p>
       )}
 

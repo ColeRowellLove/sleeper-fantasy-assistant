@@ -449,6 +449,25 @@ describe("alert choices", () => {
     expect(refresh).toHaveBeenCalled();
     await user.click(screen.getByRole("checkbox", { name: /ruled out/ })); // and back on
     expect(screen.getByText("J. Smith was ruled out")).toBeInTheDocument();
+    // the panel stays open while the choices change (it does not fold under the cursor)
+    expect(screen.getByText("Which alerts do you want?").closest("details")).toHaveAttribute(
+      "open",
+    );
+  });
+
+  it("says how many alerts are hidden even when some are still shown", () => {
+    render(
+      <AlertsPanel
+        data={data}
+        rosters={rosters}
+        leagueId="1"
+        myRosterId={1}
+        seen={null}
+        off={["injury_out"]}
+      />,
+    );
+    expect(screen.getByText(/1 alert is hidden by your choices/)).toBeInTheDocument();
+    expect(screen.getByText(/Waiver targets for Tuesday/)).toBeInTheDocument();
   });
 
   it("says when every alert is hidden by the choices", () => {

@@ -304,6 +304,7 @@ export default async function LeaguePage({
       )}
       {tab === "alerts" && (
         <AlertsPanel
+          key={alertsOff.join(",")} // new saved choices from the server start the panel afresh
           data={shownAlerts ?? { league_id: leagueId, roster_id: alertsTeam ?? 0, alerts: [] }}
           rosters={dashboard.rosters}
           leagueId={leagueId}
