@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -99,6 +99,14 @@ def heartbeat(session: Session, job_id: int, now: datetime | None = None) -> Non
         .values(locked_at=now or utcnow())
     )
     session.commit()
+
+
+def forget_failed(session: Session) -> int:
+    """Delete the jobs recorded as failed, so their failure cooldowns end and the next batch
+    retries those syncs at once (after the cause, such as a missing migration, is fixed)."""
+    result = session.execute(delete(JobRow).where(JobRow.status == "failed"))
+    session.commit()
+    return int(result.rowcount or 0)  # type: ignore[attr-defined]
 
 
 def requeue_stale(session: Session, now: datetime | None = None) -> int:

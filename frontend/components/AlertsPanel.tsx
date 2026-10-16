@@ -1,18 +1,35 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import type { AlertItem, AlertsData, Dashboard } from "../lib/api";
 import {
+  ALERT_NOTES,
+  ALERT_TYPES,
   alertAdvice,
   alertTime,
   newestAlertTime,
+  serializeOff,
   unreadAlerts,
+  visibleAlerts,
   waiverTargets,
+  type WaiverTarget,
 } from "../lib/alerts";
 import { leaguePath } from "../lib/league";
-import { alertsSeenCookie, setCookie } from "../lib/myTeam";
+import { alertsOffCookie, alertsSeenCookie, setCookie } from "../lib/myTeam";
 import PlayerLink from "./PlayerLink";
+
+const SHOWN_TARGETS = 3; // pickups shown at once; the rest are one click away
+
+function TargetItem({ target: t }: { target: WaiverTarget }) {
+  return (
+    <li>
+      <PlayerLink playerId={t.player_id}>{t.name}</PlayerLink>
+      {t.detail !== undefined ? ` ${t.detail}` : t.line.replace(t.name, "")}
+    </li>
+  );
+}
 
 /** One alert: title, what happened, and for a waiver alert the pickups as a linked, numbered list. */
 function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
@@ -41,14 +58,23 @@ function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
         </div>
       )}
       {targets.length > 0 ? (
-        <ol className="alert-targets">
-          {targets.map((t) => (
-            <li key={t.player_id}>
-              <PlayerLink playerId={t.player_id}>{t.name}</PlayerLink>
-              {t.detail !== undefined ? ` ${t.detail}` : t.line.replace(t.name, "")}
-            </li>
-          ))}
-        </ol>
+        <>
+          <ol className="alert-targets">
+            {targets.slice(0, SHOWN_TARGETS).map((t) => (
+              <TargetItem key={t.player_id} target={t} />
+            ))}
+          </ol>
+          {targets.length > SHOWN_TARGETS && (
+            <details className="alert-more">
+              <summary>Show {targets.length - SHOWN_TARGETS} more</summary>
+              <ol className="alert-targets" start={SHOWN_TARGETS + 1}>
+                {targets.slice(SHOWN_TARGETS).map((t) => (
+                  <TargetItem key={t.player_id} target={t} />
+                ))}
+              </ol>
+            </details>
+          )}
+        </>
       ) : (
         <p className="alert-why">{alert.why}</p>
       )}
@@ -76,6 +102,7 @@ export default function AlertsPanel({
   leagueId,
   myRosterId,
   seen,
+  off = [],
 }: {
   data: AlertsData;
   rosters: Dashboard["rosters"];
@@ -83,12 +110,25 @@ export default function AlertsPanel({
   myRosterId: number | null;
   /** When the viewer last cleared their alerts (from the cookie). */
   seen: string | null;
+  /** The alert kinds the viewer has switched off (from their cookie). */
+  off?: string[];
 }) {
   const router = useRouter();
+  const [startOpen] = useState(() => visibleAlerts(data.alerts, off).length === 0); // never re-folds
+  const [switchedOff, setSwitchedOff] = useState<string[]>(off);
   const mine = myRosterId !== null && data.roster_id === myRosterId;
-  const unread = mine ? unreadAlerts(data.alerts, seen) : [];
+  const alerts = visibleAlerts(data.alerts, switchedOff);
+  const hidden = data.alerts.length - alerts.length;
+  const unread = mine ? unreadAlerts(alerts, seen) : [];
   const unreadIds = new Set(unread.map((a) => a.id));
-  const newest = newestAlertTime(data.alerts);
+  const newest = newestAlertTime(alerts); // hidden kinds are not marked as read
+
+  const choose = (kind: string, wanted: boolean) => {
+    const next = wanted ? switchedOff.filter((k) => k !== kind) : [...switchedOff, kind];
+    setSwitchedOff(next);
+    setCookie(alertsOffCookie(leagueId), serializeOff(next));
+    router.refresh(); // the tab's new-alert count follows the choice
+  };
   const team =
     rosters.find((r) => r.roster_id === data.roster_id)?.team ?? `Team ${data.roster_id}`;
 
@@ -104,7 +144,38 @@ export default function AlertsPanel({
         Things worth knowing about {mine ? "your team" : team}, from the last 14 days.
       </p>
 
-      <form method="get" action={leaguePath(leagueId)} className="players-controls">
+      <details className="alert-kinds" open={startOpen}>
+        <summary>Which alerts do you want?</summary>
+        <fieldset>
+          <legend className="visually-hidden">Alert types to show</legend>
+          <ul className="alert-choices">
+            {ALERT_TYPES.map((t) => (
+              <li key={t.kind}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!switchedOff.includes(t.kind)}
+                    onChange={(event) => choose(t.kind, event.target.checked)}
+                  />
+                  <span>
+                    <strong>{t.title}.</strong> {t.text}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+        <ul className="alert-notes">
+          {ALERT_NOTES.map((k) => (
+            <li key={k.title}>
+              <strong>{k.title}.</strong> {k.text}
+            </li>
+          ))}
+        </ul>
+        <p className="muted">Your choices are kept in this browser.</p>
+      </details>
+
+      <form method="get" action={leaguePath(leagueId)} className="inline-form">
         <input type="hidden" name="tab" value="alerts" />
         <label>
           Team{" "}
@@ -131,14 +202,21 @@ export default function AlertsPanel({
         </p>
       )}
 
-      {data.alerts.length === 0 ? (
+      {hidden > 0 && alerts.length > 0 && (
         <p className="note">
-          No alerts yet. Alerts for this team appear here as they are raised, and the last 14 days
-          are kept.
+          {hidden} {hidden === 1 ? "alert is" : "alerts are"} hidden by your choices above.
+        </p>
+      )}
+
+      {alerts.length === 0 ? (
+        <p className="note">
+          {hidden > 0
+            ? `${hidden} ${hidden === 1 ? "alert is" : "alerts are"} hidden by your choices above.`
+            : `No alerts yet for ${mine ? "your team" : team}. When one is raised it appears here, and the last 14 days are kept.`}
         </p>
       ) : (
         <ul className="alert-list">
-          {data.alerts.map((alert) => (
+          {alerts.map((alert) => (
             <AlertCard key={alert.id} alert={alert} isNew={unreadIds.has(alert.id)} />
           ))}
         </ul>

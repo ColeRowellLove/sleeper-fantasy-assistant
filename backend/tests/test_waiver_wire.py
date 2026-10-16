@@ -4,10 +4,18 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.alert_waiver import detect_waiver_targets
+from sleeper_assistant.alert_waiver import Pickup, detect_waiver_targets
 from sleeper_assistant.alerts import run_alerts
-from sleeper_assistant.db import AlertRow, PlayerOwnershipRow, PlayerProjectionRow, utcnow
-from sleeper_assistant.waiver_wire import build_waiver_wire, next_waiver_date
+from sleeper_assistant.db import (
+    AlertRow,
+    PlayerOwnershipRow,
+    PlayerProjectionRow,
+    PlayerRow,
+    PlayerWeekStatsRow,
+    utcnow,
+)
+from sleeper_assistant.matchup_rank import MatchupRank
+from sleeper_assistant.waiver_wire import build_waiver_wire, next_waiver_date, reasons_for
 from test_alert_waiver import MONDAY_EVENING, _league, _setup
 
 SUNDAY = datetime(2026, 10, 18, 16, 0, tzinfo=UTC)
@@ -35,7 +43,9 @@ def test_the_list_has_the_same_players_in_the_same_order_as_the_alert(session: S
     assert (wire.waiver_day, wire.waiver_date, wire.week) == ("Tuesday", date(2026, 10, 20), 7)
 
 
-def test_each_entry_shows_its_signals_and_how_many_back_it(session: Session) -> None:
+def test_each_entry_lists_only_the_reasons_that_apply_marked_for_or_against(
+    session: Session,
+) -> None:
     league = _setup(session)
     session.add(
         PlayerOwnershipRow(player_id="fa_wr", owned=41.5, started=12.0, fetched_at=utcnow())
@@ -44,16 +54,69 @@ def test_each_entry_shows_its_signals_and_how_many_back_it(session: Session) -> 
     wire = build_waiver_wire(session, league, 1, MONDAY_EVENING)
     horton = next(e for e in wire.entries if e.player_id == "fa_wr")
     assert (horton.projected, horton.gain, horton.owned) == (11.4, 3.4, 41.5)
-    assert horton.backing == 1  # trending adds; no depth chart opening
-    assert [(s.source, s.backs) for s in horton.signals] == [
-        ("Sleeper trending adds", True),
-        ("NFL depth chart", False),
-    ]
+    stances = [(r.label, r.stance) for r in horton.reasons]
+    assert ("Adds points", "for") in stances and ("Trending adds", "for") in stances
+    assert ("Ownership", "info") in stances
+    # no depth chart opening: that is simply absent, never listed as a mark against him
+    assert all(r.label != "Starter out ahead" for r in horton.reasons)
+    assert all(r.stance != "against" or r.label != "Starter out ahead" for r in horton.reasons)
+    assert horton.for_count == 2 and horton.against_count == 0
     assert (
         "added in 8,200 leagues" in horton.reason and "+3.4 over Second Receiver" in horton.reason
     )
     back = next(e for e in wire.entries if e.player_id == "fa_rb")
-    assert back.backing == 0 and back.owned is None
+    assert back.owned is None and not any(r.label == "Ownership" for r in back.reasons)
+
+
+def test_a_questionable_player_and_a_cold_streak_count_against(session: Session) -> None:
+    league = _setup(session)
+    session.get(PlayerRow, "fa_wr").injury_status = "Questionable"  # type: ignore[union-attr]
+    session.add(
+        PlayerWeekStatsRow(season="2026", week=5, player_id="fa_wr", team="SF",
+                           stats={"gp": 1, "rec_yd": 20.0}, fetched_at=utcnow())
+    )  # fmt: skip
+    session.commit()
+    wire = build_waiver_wire(session, league, 1, MONDAY_EVENING)
+    horton = next(e for e in wire.entries if e.player_id == "fa_wr")
+    against = {r.label for r in horton.reasons if r.stance == "against"}
+    assert {"Injury", "Cold lately"} <= against
+    assert horton.against_count == len(against)
+
+
+def test_a_soft_or_tough_matchup_is_a_reason(session: Session) -> None:
+    player = PlayerRow(player_id="p", full_name="P", position="WR", team="SF", external_ids={})
+    base = {"player": player, "projected": 12.0, "gain": 4.0, "slot": "WR", "over": "over X at WR",
+            "adds": None, "out_starter": None}  # fmt: skip
+
+    def labels(rank: int) -> set[str]:
+        m = MatchupRank(opponent="JAX", rank=rank, teams=32, points=20.0, games=5)
+        return {r.label for r in reasons_for(Pickup(**base, matchup=m), None)}
+
+    assert "Soft matchup" in labels(3)
+    assert "Tough matchup" in labels(30)
+    assert not {"Soft matchup", "Tough matchup"} & labels(16)
+
+
+def test_one_defense_does_not_fill_the_list_and_defenses_are_named(session: Session) -> None:
+    league = _setup(session)
+    for code in ("CLE", "NYJ", "TEN", "CAR", "DEN"):
+        session.add(PlayerRow(player_id=f"d_{code}", full_name=code, position="DEF", team=code,
+                              external_ids={}))  # fmt: skip
+        session.add(_proj_def(f"d_{code}", code))
+    session.commit()
+    wire = build_waiver_wire(session, league, 1, MONDAY_EVENING)
+    defenses = [e for e in wire.entries if e.position == "DEF"]
+    assert 0 < len(defenses) <= 4  # capped, however many are free
+    assert defenses[0].name.endswith(" defense")  # "CLE defense", not just "CLE"
+    top_defenses = [e for e in wire.entries if e.player_id in wire.top and e.position == "DEF"]
+    assert len(top_defenses) <= 1  # the mixed view has one slot's worth
+    assert len(wire.top) <= 10
+
+
+def _proj_def(pid: str, team: str) -> PlayerProjectionRow:
+    return PlayerProjectionRow(
+        season="2026", week=7, player_id=pid, team=team, stats={"rec_yd": 90.0}, fetched_at=utcnow()
+    )  # fmt: skip  (scored: 9.0 points)
 
 
 def test_only_available_playable_players_appear(session: Session) -> None:

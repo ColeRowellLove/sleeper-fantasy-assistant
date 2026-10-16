@@ -104,6 +104,43 @@ describe("Start/Sit tool", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Pick at least two players");
   });
 
+  it("shows each player as a row with his face, matchup, injury and projection", async () => {
+    const withRoster: BestLineup = {
+      ...best,
+      roster: [
+        cand({ player_id: "1", name: "Star Back", projected: 9.04 }),
+        cand({ player_id: "2", name: "Bench Back", projected: null }),
+      ],
+    };
+    const ui = <StartSitTool {...props} picks={["1"]} best={withRoster} />;
+    const { container } = render(ui);
+    const group = screen.getByRole("group", { name: /Players to compare/ });
+    const rows = within(group).getAllByRole("checkbox");
+    expect(rows).toHaveLength(2);
+    expect(within(group).getByText("Proj 9.0")).toBeInTheDocument();
+    expect(within(group).getByText("No projection yet")).toBeInTheDocument();
+    expect(container.querySelectorAll(".pick-row .avatar")).toHaveLength(2);
+    expect(rows[0]).toBeChecked();
+    expect(within(group).queryByText(/Can't start/)).not.toBeInTheDocument();
+    await expectNoA11yViolations(ui);
+  });
+
+  it("says why a player cannot be started, but not when he only lacks a projection", async () => {
+    const withOut: BestLineup = {
+      ...best,
+      roster: [
+        cand({ player_id: "9", name: "Hurt Back", projected: 12.3, out: "listed Out" }),
+        cand({ player_id: "8", name: "No Data", projected: null, out: "no projection this week" }),
+      ],
+    };
+    const ui = <StartSitTool {...props} best={withOut} />;
+    render(ui);
+    expect(screen.getByText(/Can't start: listed Out/)).toBeInTheDocument();
+    expect(screen.getByText("No projection yet")).toBeInTheDocument();
+    expect(screen.queryByText(/Can't start: no projection/)).not.toBeInTheDocument();
+    await expectNoA11yViolations(ui);
+  });
+
   it("shows the best lineup with the swaps and why", () => {
     render(<StartSitTool {...props} best={best} />);
     const table = screen.getByRole("table", { name: /Best projected lineup/ });
@@ -135,6 +172,27 @@ describe("Start/Sit tool", () => {
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(
       <StartSitTool {...props} picks={["1", "2"]} best={best} comparison={comparison} />,
+    );
+  });
+});
+
+describe("recommendation table", () => {
+  it("shows the verdict as a short chip and says when no game was found", () => {
+    const comparison2: StartSitComparison = {
+      ...comparison,
+      candidates: [cand({ player_id: "2", name: "Bench Back", projected: 15, game: null })],
+    };
+    const { container } = render(
+      <StartSitTool {...props} picks={["2", "1"]} comparison={comparison2} />,
+    );
+    expect(container.querySelector(".verdict-start")).toHaveTextContent("Start (close call)");
+    expect(screen.getByText("No game found")).toBeInTheDocument();
+    expect(screen.getByText("Start (close call)")).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations with start, sit and can't-start verdicts", async () => {
+    await expectNoA11yViolations(
+      <StartSitTool {...props} picks={["1", "2", "9"]} comparison={comparison} />,
     );
   });
 });

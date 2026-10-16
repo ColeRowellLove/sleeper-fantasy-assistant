@@ -1,6 +1,12 @@
+"use client";
+
+import { useState } from "react";
+
 import type { Dashboard, WaiverWireData, WireEntry } from "../lib/api";
 import { leaguePath } from "../lib/league";
-import PlayerLink from "./PlayerLink";
+import { VIEWS, entriesFor, stanceWord, type WireView } from "../lib/waiverView";
+import FilterChips from "./FilterChips";
+import PlayerIdentity from "./PlayerIdentity";
 
 /** "Tue, Oct 20" from an ISO date, the same on the server and in the browser. */
 export function waiverDateLabel(iso: string): string {
@@ -14,43 +20,56 @@ export function waiverDateLabel(iso: string): string {
   });
 }
 
-/** "Also backed by 1 of 2 other signals": the count in words, never only a color. */
-export function backingLabel(entry: WireEntry): string {
-  return `Also backed by ${entry.backing} of ${entry.signals.length} other signals`;
+/** "2 for, 1 against": the count in words. */
+export function reasonCounts(entry: WireEntry): string {
+  return `${entry.for_count} for, ${entry.against_count} against`;
 }
 
 function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
   return (
     <li className="card wire-entry">
-      <h3>
-        <span className="wire-rank">{rank}.</span>{" "}
-        <PlayerLink playerId={entry.player_id}>{entry.name}</PlayerLink>
-        <span className="muted">
-          {" "}
-          ({entry.position ?? "?"}, {entry.team ?? "FA"})
+      <div className="wire-title">
+        <span className="wire-rank">{rank}</span>
+        <PlayerIdentity
+          player_id={entry.player_id}
+          name={entry.name}
+          position={entry.position}
+          team={entry.team}
+        />
+        <span className="wire-numbers">
+          <strong>{entry.projected.toFixed(1)}</strong> proj
+          <span className="wire-gain">+{entry.gain.toFixed(1)}</span>
         </span>
-      </h3>
-      <p className="wire-numbers">
-        Projected {entry.projected.toFixed(1)}, +{entry.gain.toFixed(1)} {entry.over}.{" "}
-        <strong>{backingLabel(entry)}.</strong>
-        {entry.owned !== null && ` Owned in ${entry.owned.toFixed(0)}% of ESPN leagues.`}
-      </p>
-      <ul className="wire-signals">
-        {entry.signals.map((s) => (
-          <li key={s.source}>
-            <span className="wire-signal-state">{s.backs ? "Backs it" : "Does not back it"}</span>{" "}
-            {s.source}: {s.detail}
-          </li>
-        ))}
+      </div>
+      <ul className="wire-reasons" aria-label={`Reasons for and against: ${reasonCounts(entry)}`}>
+        {entry.reasons
+          .filter((r) => r.stance !== "info")
+          .map((r) => (
+            <li key={r.label} className={`reason reason-${r.stance}`}>
+              <span className="reason-word">{stanceWord(r.stance)}</span> {r.label}
+            </li>
+          ))}
       </ul>
+      <details className="wire-why">
+        <summary>Details</summary>
+        <ul className="wire-signals">
+          {entry.reasons.map((r) => (
+            <li key={r.label}>
+              <span className={`reason-word reason-${r.stance}`}>{stanceWord(r.stance)}</span>{" "}
+              <strong>{r.label}:</strong> {r.detail}
+            </li>
+          ))}
+        </ul>
+      </details>
     </li>
   );
 }
 
 /**
- * The waiver wire for one team: this cycle's most recommended adds, best first. Which team is a
- * plain GET form (works without JavaScript). The list is for the league's next waiver day and
- * rebuilds itself when the next cycle starts.
+ * The waiver wire for one team: this cycle's most recommended adds, best first, by position view
+ * (Top adds, QB, RB, WR, TE, Flex, K, DEF). Each pick shows its reasons for and against as chips
+ * marked in words as well as colour, with the full sentences under "Details". Which team is a
+ * plain GET form (works without JavaScript).
  */
 export default function WaiverWirePanel({
   data,
@@ -65,6 +84,8 @@ export default function WaiverWirePanel({
   rosterId: number | null;
   myRosterId: number | null;
 }) {
+  const [view, setView] = useState<WireView>("top");
+  const entries = data ? entriesFor(data, view) : [];
   return (
     <section aria-labelledby="wire-heading">
       <h2 id="wire-heading">Waiver wire</h2>
@@ -79,7 +100,7 @@ export default function WaiverWirePanel({
         <p className="note">The waiver wire could not be loaded. Try again in a moment.</p>
       )}
 
-      <form method="get" action={leaguePath(leagueId)} className="players-controls">
+      <form method="get" action={leaguePath(leagueId)} className="inline-form">
         <input type="hidden" name="tab" value="waiver" />
         <label>
           Team{" "}
@@ -98,11 +119,18 @@ export default function WaiverWirePanel({
       </form>
 
       {data && data.entries.length > 0 && (
+        <FilterChips label="Position" options={VIEWS} value={view} onChange={setView} />
+      )}
+
+      {entries.length > 0 && (
         <ol className="wire-list">
-          {data.entries.map((entry, i) => (
+          {entries.map((entry, i) => (
             <Entry key={entry.player_id} entry={entry} rank={i + 1} />
           ))}
         </ol>
+      )}
+      {data && data.entries.length > 0 && entries.length === 0 && (
+        <p className="note">Nobody available would improve this team at that position.</p>
       )}
       {data && data.entries.length === 0 && (
         <p className="note">{data.note ?? "No suggestions right now."}</p>

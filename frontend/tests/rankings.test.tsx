@@ -112,7 +112,7 @@ describe("RankingsPanel", () => {
     expect(within(row).getByText("15.0")).toBeInTheDocument();
     expect(within(row).getByText("12.5")).toBeInTheDocument();
     expect(within(row).getByText("90%")).toBeInTheDocument();
-    expect(within(row).getByText("(3rd)")).toBeInTheDocument(); // the opponent's rank vs RBs
+    expect(within(row).getByText("3rd · Easy")).toBeInTheDocument(); // the opponent's rank vs RBs
     expect(within(row).getByText("On your team")).toBeInTheDocument();
     expect(within(row).getByText("2 sources agree")).toBeInTheDocument();
     expect(within(table).getByText("3 sources, 2 places apart")).toBeInTheDocument();
@@ -133,6 +133,12 @@ describe("RankingsPanel", () => {
     await user.click(screen.getByRole("button", { name: "My team" }));
     await user.click(screen.getByRole("button", { name: "QB" }));
     expect(screen.getByText("No players match these filters.")).toBeInTheDocument();
+  });
+
+  it("says projections have not loaded when there are no players at all", () => {
+    render(<RankingsPanel data={{ ...data, players: [] }} leagueId="1" myRosterId={1} />);
+    expect(screen.getByText(/projections for week 6 are not in yet/i)).toBeInTheDocument();
+    expect(screen.queryByText("No players match these filters.")).not.toBeInTheDocument();
   });
 
   it("links the week chips back to the rankings tab", () => {
@@ -159,7 +165,7 @@ describe("choosing which sources the ranks use", () => {
       vegas: "Vegas implied points",
     },
     selected: ["projection", "vegas"],
-    unavailable: { fantasypros: "FantasyPros (not connected: needs a license)" },
+    unavailable: { fantasypros: "FantasyPros (needs a paid license)" },
   };
 
   it("offers every available source as a checkbox with the chosen ones ticked", () => {
@@ -190,7 +196,37 @@ describe("choosing which sources the ranks use", () => {
 
   it("says which sources are not connected instead of faking them", () => {
     render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
-    expect(screen.getByText(/Not connected yet: FantasyPros/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Not included yet: FantasyPros \(needs a paid license\)/),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the source choices keyboard reachable and accessible, and the empty states too", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+    const first = screen.getAllByRole("checkbox")[0];
+    await user.tab();
+    await user.tab();
+    await user.tab();
+    await user.tab();
+    await user.tab();
+    await user.tab();
+    expect(document.body.contains(first)).toBe(true);
+    first.focus();
+    expect(first).toHaveFocus();
+    await user.keyboard(" ");
+    expect(first).not.toBeChecked();
+    expect(container.querySelector("fieldset legend")).toHaveTextContent("Ranked by");
+    await expectNoA11yViolations(
+      <RankingsPanel data={{ ...withSources, players: [] }} leagueId="1" myRosterId={1} />,
+    );
+    await expectNoA11yViolations(
+      <RankingsPanel
+        data={{ ...withSources, players: [], week: null }}
+        leagueId="1"
+        myRosterId={1}
+      />,
+    );
   });
 
   it("says which sources the ranks come from, and keeps them on the week links", () => {

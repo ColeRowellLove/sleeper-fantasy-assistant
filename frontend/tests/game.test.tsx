@@ -9,6 +9,7 @@ import {
   formatGameDate,
   formatKickoff,
   gameLabel,
+  matchupDifficulty,
   matchupText,
   ordinal,
   playerUnitLabel,
@@ -103,8 +104,10 @@ describe("defense rank against a position", () => {
 
   it("explains the rank in a full sentence", () => {
     expect(matchupText(jax, "RB")).toEqual({
+      difficulty: "easy",
+      word: "Easy",
       text: "3rd",
-      spoken: "JAX ranks 3rd against RBs",
+      spoken: "JAX ranks 3rd against RBs (easy matchup)",
       description:
         "JAX allows the 3rd most fantasy points to RBs of 32 teams (24.1 per game over 5 games)",
     });
@@ -122,8 +125,10 @@ describe("defense rank against a position", () => {
       side: "offense" as const,
     };
     expect(matchupText(offense, "DEF")).toEqual({
+      difficulty: "easy",
+      word: "Easy",
       text: "2nd",
-      spoken: "CHI offense ranks 2nd easiest for a defense",
+      spoken: "CHI offense ranks 2nd easiest for a defense (easy matchup)",
       description:
         "CHI scores the 2nd fewest fantasy points of 32 teams (11.3 per game over 4 games)",
     });
@@ -131,9 +136,54 @@ describe("defense rank against a position", () => {
 
   it("shows the rank next to the opponent, readable without color", async () => {
     render(<GameBadge game={upcoming} matchup={jax} position="RB" />);
-    expect(screen.getByText("(3rd)")).toBeInTheDocument();
-    expect(screen.getByText("JAX ranks 3rd against RBs")).toBeInTheDocument();
+    expect(screen.getByText("3rd · Easy")).toBeInTheDocument();
+    expect(screen.getByText("JAX ranks 3rd against RBs (easy matchup)")).toBeInTheDocument();
     await expectNoA11yViolations(<GameBadge game={upcoming} matchup={jax} position="RB" />);
+  });
+
+  it("names how hard a matchup is: the easiest quarter easy, the hardest tough", () => {
+    const at = (rank: number) => matchupDifficulty({ ...jax, rank, teams: 32 });
+    expect(at(1)).toBe("easy");
+    expect(at(8)).toBe("easy");
+    expect(at(9)).toBe("average");
+    expect(at(24)).toBe("average");
+    expect(at(25)).toBe("tough");
+    expect(at(32)).toBe("tough");
+    const small = (rank: number, teams: number) => matchupDifficulty({ ...jax, rank, teams });
+    expect(small(7, 30)).toBe("easy"); // 30 teams: the easiest 7.5
+    expect(small(8, 30)).toBe("average");
+    expect(small(23, 30)).toBe("tough");
+    expect(small(1, 0)).toBe("average"); // no team count: not a confident label
+  });
+
+  it("colours the chip by difficulty and always says the word", () => {
+    const { container, rerender } = render(
+      <GameBadge game={upcoming} matchup={jax} position="RB" />,
+    );
+    expect(container.querySelector(".rank-easy")).toHaveTextContent("3rd · Easy");
+    rerender(<GameBadge game={upcoming} matchup={{ ...jax, rank: 28 }} position="RB" />);
+    expect(container.querySelector(".rank-tough")).toHaveTextContent("28th · Tough");
+    rerender(<GameBadge game={upcoming} matchup={{ ...jax, rank: 16 }} position="RB" />);
+    expect(container.querySelector(".rank-average")).toHaveTextContent("16th · Average");
+    const offense = {
+      opponent: "CHI",
+      rank: 30,
+      teams: 32,
+      points: 24,
+      games: 4,
+      side: "offense" as const,
+    };
+    rerender(<GameBadge game={upcoming} matchup={offense} position="DEF" />);
+    expect(container.querySelector(".rank-tough")).toHaveTextContent("30th · Tough");
+  });
+
+  it("has no accessibility violations on the average and tough chips", async () => {
+    await expectNoA11yViolations(
+      <GameBadge game={upcoming} matchup={{ ...jax, rank: 16 }} position="RB" />,
+    );
+    await expectNoA11yViolations(
+      <GameBadge game={upcoming} matchup={{ ...jax, rank: 30 }} position="RB" />,
+    );
   });
 
   it("shows no rank on a bye week", () => {
@@ -144,7 +194,7 @@ describe("defense rank against a position", () => {
         position="RB"
       />,
     );
-    expect(screen.queryByText("(3rd)")).not.toBeInTheDocument();
+    expect(screen.queryByText("3rd · Easy")).not.toBeInTheDocument();
   });
 });
 
@@ -183,8 +233,8 @@ describe("rosters with game status", () => {
     expect(screen.getByText("Bye week")).toBeInTheDocument();
     expect(screen.getByText("Sun, Sep 20 vs CHI")).toBeInTheDocument();
     expect(screen.getByText(/NFL week 6/)).toBeInTheDocument();
-    expect(screen.getByText("(3rd)")).toBeInTheDocument(); // the opponent's rank for his position
-    expect(screen.getByText("CHI ranks 3rd against RBs")).toBeInTheDocument();
+    expect(screen.getByText("3rd · Easy")).toBeInTheDocument(); // the opponent's rank for his position
+    expect(screen.getByText("CHI ranks 3rd against RBs (easy matchup)")).toBeInTheDocument();
     await expectNoA11yViolations(
       <RostersPanel leagueId="1" rosters={rosters} myRosterId={1} week={6} />,
     );

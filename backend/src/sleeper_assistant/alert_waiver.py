@@ -38,17 +38,46 @@ from sleeper_assistant.db import (
     RosterRow,
 )
 from sleeper_assistant.lineup_slots import assign_lineup, eligible_positions
+from sleeper_assistant.matchup_rank import (
+    DefenseTable,
+    MatchupRank,
+    build_defense_table,
+    matchup_rank,
+)
 from sleeper_assistant.projections import projected_points
+from sleeper_assistant.rankings import recent_form
 from sleeper_assistant.team_depth import OUT_STATUSES, build_team_depth
 
 EASTERN = ZoneInfo("America/New_York")
 DEFAULT_WAIVER_DAY = 2  # Tuesday, with Sunday as 0 (Sleeper's numbering)
 TARGETS = 5  # how many pickups an alert lists
+ALERT_CAPS = {"QB": 2, "TE": 2, "K": 1, "DEF": 1}  # one slot each: do not list four defenses
 MIN_GAIN = 1.0  # projected points a pickup must add to be worth a mention
 FIRST_HOUR = 9  # no alert before 9 am Eastern, so the overnight syncs have landed
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
 NOT_PLAYABLE = OUT_STATUSES | {"Doubtful"}  # someone who probably will not play is no pickup
 _DAYS = ("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+
+
+def display_name(p: PlayerRow) -> str:
+    """A player's name for people: a team defense is "CLE defense", not just "CLE"."""
+    if p.position == "DEF" and p.team:
+        return f"{p.team} defense"
+    return p.full_name or p.player_id
+
+
+def capped(picks: list[Pickup], caps: dict[str, int], limit: int | None = None) -> list[Pickup]:
+    """The best-first ``picks`` with at most ``caps[position]`` of a position, then the best
+    ``limit``: only one defense can start, so a list of four is not four defenses."""
+    counts: dict[str, int] = {}
+    kept: list[Pickup] = []
+    for pick in picks:
+        position = pick.player.position or ""
+        if counts.get(position, 0) >= caps.get(position, len(picks)):
+            continue
+        counts[position] = counts.get(position, 0) + 1
+        kept.append(pick)
+    return kept[:limit]
 
 
 def waiver_day(league: LeagueRow) -> int:
@@ -184,6 +213,10 @@ class Pickup:
     over: str  # "over Second Receiver at WR" or "at an open RB spot"
     adds: int | None  # Sleeper leagues that added him in the last day
     out_starter: str | None  # the out starter ahead of him on his NFL depth chart
+    matchup: MatchupRank | None = None  # how the opponent's defense ranks against his position
+    form: float | None = None  # points a game over his last three, under this league's scoring
+    status: str | None = None  # his injury designation (Questionable, ...) if any
+    drop: str | None = None  # the player he would take the place of, if any
 
 
 class WaiverBoard:
@@ -211,9 +244,10 @@ class WaiverBoard:
         self.projections = projected_points(
             session, league.season, week, league.scoring_settings, projected_ids
         )
-        self.byes = {
-            t for t, g in games_for_week(session, league.season, week).items() if g.state == "bye"
-        }
+        self.games = games_for_week(session, league.season, week)
+        self.byes = {t for t, g in self.games.items() if g.state == "bye"}
+        self._defense: DefenseTable | None = None
+        self._form: dict[str, float] | None = None
         self.players = {
             p.player_id: p
             for p in session.scalars(
@@ -242,6 +276,24 @@ class WaiverBoard:
         self.slots = starter_slots(league)
         self._depth: dict[str, dict[str, str]] = {}
 
+    @property
+    def defense(self) -> DefenseTable:
+        """The defense-rank table, built the first time it is needed (the alert never needs it)."""
+        if self._defense is None:
+            self._defense = build_defense_table(
+                self.session, self.league.season, self.league.scoring_settings
+            )
+        return self._defense
+
+    @property
+    def form(self) -> dict[str, float]:
+        """Each player's recent points a game, built the first time it is needed."""
+        if self._form is None:
+            self._form = recent_form(
+                self.session, self.league.season, self.week, self.league.scoring_settings
+            )
+        return self._form
+
     def playable(self, p: PlayerRow) -> bool:
         return (
             p.team is not None
@@ -262,10 +314,16 @@ class WaiverBoard:
         return assign_lineup(self.slots, healthy)
 
     def pickups(
-        self, roster: RosterRow, lineup: list[tuple[str, str]], limit: int | None = None
+        self,
+        roster: RosterRow,
+        lineup: list[tuple[str, str]],
+        limit: int | None = None,
+        caps: dict[str, int] | None = None,
+        detail: bool = False,
     ) -> list[Pickup]:
         """The available players who would help this team by ``MIN_GAIN`` or more, best first
-        (the best ``limit`` when given; the depth chart is only read for those)."""
+        (at most ``caps[position]`` of a position, then the best ``limit``; the depth chart is
+        only read for those)."""
         found: list[Pickup] = []
         for p in self.free:
             slot, base, holder = replaced_by(self.slots, lineup, self.projections, p.position or "")
@@ -275,7 +333,7 @@ class WaiverBoard:
             if holder is None:
                 over = f"at an open {slot} spot"
             else:
-                over = f"over {self.players[holder].full_name or holder} at {slot}"
+                over = f"over {display_name(self.players[holder])} at {slot}"
             trend = self.trends.get(p.player_id)
             found.append(
                 Pickup(
@@ -286,18 +344,31 @@ class WaiverBoard:
                     over,
                     trend.adds if trend else None,
                     None,
+                    None,
+                    None,
+                    p.injury_status or None,
+                    display_name(self.players[holder]) if holder else None,
                 )
             )
         found.sort(key=lambda x: (-x.gain, -x.projected, x.player.player_id))
-        return [
-            replace(
-                pick,
-                out_starter=_opening(
-                    self.session, self.league, pick.player.team or "", self._depth
-                ).get(pick.player.player_id),
-            )
-            for pick in found[:limit]
-        ]
+        if caps is not None:
+            found = capped(found, caps)
+        return [self._fill(pick, detail) for pick in found[:limit]]
+
+    def _fill(self, pick: Pickup, detail: bool) -> Pickup:
+        """Add what is only worth reading for the picks that are kept: the depth chart opening,
+        and (for the page, not the alert) the matchup and recent form."""
+        p = pick.player
+        opening = _opening(self.session, self.league, p.team or "", self._depth).get(p.player_id)
+        if not detail:
+            return replace(pick, out_starter=opening)
+        game = self.games.get(p.team or "")
+        return replace(
+            pick,
+            out_starter=opening,
+            matchup=matchup_rank(self.defense, p.position or "", game.opponent if game else None),
+            form=self.form.get(p.player_id),
+        )
 
 
 @register("waiver_targets")
@@ -314,14 +385,14 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
     raised: list[NewAlert] = []
     for roster in board.rosters:
         lineup = board.lineup(roster)
-        top = board.pickups(roster, lineup, TARGETS)
+        top = board.pickups(roster, lineup, TARGETS, ALERT_CAPS)
         if not top:
             continue  # nothing useful for this team: no alert, nothing padded
         lines: list[str] = []
         targets: list[dict[str, object]] = []
         for pick in top:
             p, pid = pick.player, pick.player.player_id
-            name = p.full_name or pid
+            name = display_name(p)
             detail = (
                 f"({p.position}, {p.team}): projected {pick.projected:.1f}, "
                 f"+{pick.gain:.1f} {pick.over}."
