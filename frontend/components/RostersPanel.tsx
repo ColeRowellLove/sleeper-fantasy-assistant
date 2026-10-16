@@ -116,7 +116,9 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
           <GameBadge game={player.game} />
         </span>
       </span>
-      {player.points !== null && player.points !== undefined && (
+      {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with
+          no value keeps its (empty) column */}
+      {player.points !== null && player.points !== undefined ? (
         <span className="player-proj player-pts num">
           <span className="visually-hidden">Points this week </span>
           {player.points.toFixed(1)}
@@ -124,8 +126,10 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
             pts
           </span>
         </span>
+      ) : (
+        <span className="player-proj player-pts" aria-hidden="true" />
       )}
-      {player.projected !== null && player.projected !== undefined && (
+      {player.projected !== null && player.projected !== undefined ? (
         <span className="player-proj num">
           <span className="visually-hidden">Projected </span>
           {player.projected.toFixed(1)}
@@ -133,14 +137,20 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
             proj
           </span>
         </span>
+      ) : (
+        <span className="player-proj" aria-hidden="true" />
       )}
-      {player.status === "starter" && player.slot && (
+      {player.status === "starter" && player.slot ? (
         <span className="slot" title="Lineup slot">
           <span className="visually-hidden">Slot </span>
           {player.slot}
         </span>
+      ) : (
+        <span className="slot" aria-hidden="true" />
       )}
-      <PositionChip position={player.position} />
+      <span className="player-chip">
+        <PositionChip position={player.position} />
+      </span>
     </li>
   );
 }
