@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 import threading
 import time
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -195,8 +197,13 @@ def run_once(
     handlers: dict[str, Handler],
     now: datetime | None = None,
     heartbeat_seconds: float = HEARTBEAT_SECONDS,
+    failures: list[str] | None = None,
 ) -> bool:
-    """Claim and run a single job. Returns False if nothing was due."""
+    """Claim and run a single job. Returns False if nothing was due.
+
+    A job that raises is retried with backoff. Once it has used up its attempts (it is marked
+    failed for good) its kind is added to ``failures`` (when given), so a one-shot run can end with
+    a failing exit code instead of looking healthy, while a blip that a retry fixes stays quiet."""
     with factory() as session:
         job = jobs.claim_next(session, now)
         if job is None:
@@ -211,6 +218,8 @@ def run_once(
             session.rollback()
             log.exception("job %s (%s) failed", job.id, job.kind)
             jobs.fail(session, job, f"{type(exc).__name__}: {exc}")
+            if failures is not None and job.status == "failed":
+                failures.append(job.kind)
         else:
             jobs.complete(session, job)
         return True
@@ -350,6 +359,7 @@ def run_cycle(
     *,
     max_jobs: int = CYCLE_MAX_JOBS,
     budget: timedelta = CYCLE_BUDGET,
+    failures: list[str] | None = None,
 ) -> CycleResult:
     """One scheduled batch: recover stale jobs, enqueue due work, run jobs within a budget."""
     started = utcnow()
@@ -369,7 +379,11 @@ def run_cycle(
             + int(enqueue_alerts_if_due(session))
         )
     ran = 0
-    while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):
+    while (
+        ran < max_jobs
+        and utcnow() - started < budget
+        and run_once(factory, handlers, failures=failures)
+    ):
         ran += 1
     log.info("worker cycle: enqueued %d, ran %d", enqueued, ran)
     return CycleResult(enqueued=enqueued, ran=ran)
@@ -381,6 +395,7 @@ def run_batch(
     *,
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], datetime] = utcnow,
+    failures: list[str] | None = None,
 ) -> int:
     """One scheduled batch, repeated about once a minute while a game is on.
 
@@ -389,11 +404,11 @@ def run_batch(
     window closes or ``LIVE_LOOP_BUDGET`` is used up, leaving the next scheduled run to carry on.
     Each repeated cycle has its own short time budget, a failed one is logged and the loop goes on,
     and the workflow's concurrency group stops two runs overlapping.
-    Returns how many cycles ran.
+    Returns how many cycles ran. The kinds of jobs that failed are added to ``failures``.
     """
     started = clock()
     cycles = 1
-    run_cycle(factory, handlers)
+    run_cycle(factory, handlers, failures=failures)
     while clock() - started + timedelta(seconds=LIVE_CYCLE_SECONDS) < LIVE_LOOP_BUDGET:
         with factory() as session:
             if not live_window_open(session, now=clock()):
@@ -401,11 +416,30 @@ def run_batch(
         sleep(LIVE_CYCLE_SECONDS)
         remaining = LIVE_LOOP_BUDGET - (clock() - started)
         try:
-            run_cycle(factory, handlers, budget=min(LIVE_CYCLE_BUDGET, remaining))
+            run_cycle(
+                factory, handlers, budget=min(LIVE_CYCLE_BUDGET, remaining), failures=failures
+            )
         except Exception:  # a dropped connection or a source down must not end the live loop
             log.exception("live worker cycle failed; trying again next minute")
+            if failures is not None:
+                failures.append("(a whole worker cycle)")
         cycles += 1
     return cycles
+
+
+def exit_code(failures: list[str]) -> int:
+    """1 when any job failed for good during a one-shot batch (so the workflow run shows red)."""
+    return 1 if failures else 0
+
+
+def run_one_shot(factory: sessionmaker[Session], handlers: dict[str, Handler]) -> int:
+    """The cron entry point: one batch, then the process exit code (1 when jobs failed for good)."""
+    failures: list[str] = []
+    run_batch(factory, handlers, failures=failures)
+    if failures:
+        counts = ", ".join(f"{kind} x{n}" for kind, n in sorted(Counter(failures).items()))
+        log.error("worker batch finished with jobs failed for good: %s", counts)
+    return exit_code(failures)
 
 
 def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process entry point
@@ -415,7 +449,7 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process e
     if args.once:
         logging.basicConfig(level=logging.INFO)
         factory = make_session_factory(make_engine())
-        run_batch(factory, default_handlers(SleeperClient()))
+        sys.exit(run_one_shot(factory, default_handlers(SleeperClient())))
     else:
         run_forever()
 
