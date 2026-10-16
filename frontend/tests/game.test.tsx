@@ -4,10 +4,20 @@ import { describe, expect, it } from "vitest";
 import GameBadge from "../components/GameBadge";
 import RostersPanel from "../components/RostersPanel";
 import type { Dashboard, GameInfo } from "../lib/api";
-import { formatGameDate, formatKickoff, gameLabel } from "../lib/game";
+import {
+  formatGameDate,
+  formatKickoff,
+  gameLabel,
+  scoreText,
+} from "../lib/game";
 import { expectNoA11yViolations } from "./a11y";
 
-const upcoming: GameInfo = { state: "upcoming", date: "2026-09-20", opponent: "CHI", home: true };
+const upcoming: GameInfo = {
+  state: "upcoming",
+  date: "2026-09-20",
+  opponent: "CHI",
+  home: true,
+};
 
 describe("game labels", () => {
   it("formats dates as UTC so server and browser agree", () => {
@@ -17,7 +27,9 @@ describe("game labels", () => {
   });
 
   it("describes each state in words", () => {
-    expect(gameLabel({ state: "bye", date: null, opponent: null, home: null })).toEqual({
+    expect(
+      gameLabel({ state: "bye", date: null, opponent: null, home: null }),
+    ).toEqual({
       state: "bye",
       text: "Bye week",
       detail: null,
@@ -27,7 +39,9 @@ describe("game labels", () => {
       text: "Upcoming",
       detail: "Sun, Sep 20 vs CHI",
     });
-    expect(gameLabel({ ...upcoming, home: false })?.detail).toBe("Sun, Sep 20 at CHI");
+    expect(gameLabel({ ...upcoming, home: false })?.detail).toBe(
+      "Sun, Sep 20 at CHI",
+    );
     expect(gameLabel({ ...upcoming, state: "live" })).toEqual({
       state: "live",
       text: "Live",
@@ -46,7 +60,9 @@ describe("GameBadge", () => {
   it("has no accessibility violations for every state", async () => {
     await expectNoA11yViolations(
       <div>
-        <GameBadge game={{ state: "bye", date: null, opponent: null, home: null }} />
+        <GameBadge
+          game={{ state: "bye", date: null, opponent: null, home: null }}
+        />
         <GameBadge game={upcoming} />
         <GameBadge game={{ ...upcoming, state: "live" }} />
         <GameBadge game={{ ...upcoming, state: "final" }} />
@@ -55,7 +71,11 @@ describe("GameBadge", () => {
   });
 
   it("puts the state in visible text, not only color", () => {
-    render(<GameBadge game={{ state: "bye", date: null, opponent: null, home: null }} />);
+    render(
+      <GameBadge
+        game={{ state: "bye", date: null, opponent: null, home: null }}
+      />,
+    );
     expect(screen.getByText("Bye week")).toBeInTheDocument();
   });
 
@@ -99,7 +119,9 @@ describe("rosters with game status", () => {
     expect(screen.getByText("Bye week")).toBeInTheDocument();
     expect(screen.getByText("Sun, Sep 20 vs CHI")).toBeInTheDocument();
     expect(screen.getByText(/NFL week 6/)).toBeInTheDocument();
-    await expectNoA11yViolations(<RostersPanel rosters={rosters} myRosterId={1} week={6} />);
+    await expectNoA11yViolations(
+      <RostersPanel rosters={rosters} myRosterId={1} week={6} />,
+    );
   });
 
   it("omits the week note when the week is unknown", () => {
@@ -109,7 +131,10 @@ describe("rosters with game status", () => {
 });
 
 describe("kickoff time", () => {
-  const withKickoff: GameInfo = { ...upcoming, kickoff: "2026-09-20T17:00:00Z" };
+  const withKickoff: GameInfo = {
+    ...upcoming,
+    kickoff: "2026-09-20T17:00:00Z",
+  };
 
   it("formats the instant in the viewer's own zone, with the zone named", () => {
     const text = formatKickoff("2026-09-20T17:00:00Z");
@@ -134,5 +159,90 @@ describe("kickoff time", () => {
   it("falls back to the date when the schedule has no time yet", () => {
     render(<GameBadge game={{ ...upcoming, kickoff: null }} />);
     expect(screen.getByText("Sun, Sep 20 vs CHI")).toBeInTheDocument();
+  });
+});
+
+describe("live and final game status", () => {
+  const live: GameInfo = {
+    state: "live",
+    date: "2026-10-18",
+    opponent: "DEN",
+    home: false,
+    team: "SEA",
+    team_score: 3,
+    opponent_score: 14,
+    period_text: "Q2 2:24",
+  };
+
+  it("writes the score from the player's side, team first", () => {
+    expect(scoreText(live)).toBe("SEA 3 - DEN 14");
+    expect(
+      scoreText({
+        ...live,
+        team: "DEN",
+        opponent: "SEA",
+        team_score: 14,
+        opponent_score: 3,
+      }),
+    ).toBe("DEN 14 - SEA 3");
+    expect(scoreText({ ...live, team_score: null })).toBeNull(); // no score yet: nothing invented
+    expect(scoreText({ ...live, team: null })).toBeNull();
+    expect(scoreText({ ...live, team_score: 0, opponent_score: 0 })).toBe(
+      "SEA 0 - DEN 0",
+    ); // 0 is a score
+  });
+
+  it("shows the clock and the score on a game in progress", () => {
+    expect(gameLabel(live)).toEqual({
+      state: "live",
+      text: "Live",
+      detail: "Q2 2:24, SEA 3 - DEN 14",
+    });
+    expect(gameLabel({ ...live, period_text: "Halftime" })?.detail).toBe(
+      "Halftime, SEA 3 - DEN 14",
+    );
+  });
+
+  it("falls back to the opponent when the live data is missing", () => {
+    const bare: GameInfo = {
+      state: "live",
+      date: "2026-10-18",
+      opponent: "DEN",
+      home: false,
+    };
+    expect(gameLabel(bare)).toEqual({
+      state: "live",
+      text: "Live",
+      detail: "at DEN",
+    });
+    expect(gameLabel({ ...bare, period_text: "Q3 10:00" })?.detail).toBe(
+      "Q3 10:00",
+    ); // clock, no score yet
+  });
+
+  it("shows the final score once a game is over", () => {
+    const final: GameInfo = {
+      ...live,
+      state: "final",
+      period_text: "Final",
+      team_score: 17,
+      opponent_score: 24,
+    };
+    expect(gameLabel(final)).toEqual({
+      state: "final",
+      text: "Played",
+      detail: "Final, SEA 17 - DEN 24",
+    });
+    expect(
+      gameLabel({ state: "final", date: null, opponent: "DEN", home: true })
+        ?.detail,
+    ).toBe("vs DEN");
+  });
+
+  it("renders in the badge and has no accessibility violations", async () => {
+    render(<GameBadge game={live} />);
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getByText("Q2 2:24, SEA 3 - DEN 14")).toBeInTheDocument();
+    await expectNoA11yViolations(<GameBadge game={live} />);
   });
 });

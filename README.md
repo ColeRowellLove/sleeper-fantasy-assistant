@@ -36,7 +36,7 @@ Connect a league by Sleeper username and the app shows, for each league:
 - **Standings:** sortable by any column (rank, team, record, streak, points for and against), with
   each manager's team name and your own team highlighted, plus the playoff line.
 - **Rosters:** starters, bench, injured reserve and taxi, with injury status and each player's NFL
-  game (kickoff in your time zone, live, final, or bye week).
+  game (kickoff in your time zone, the quarter, clock and score while it is live, the final score, or bye week).
 - **Lineups:** every matchup side by side for any week, in the Sleeper starter order.
 - **Players:** every relevant NFL player through your league: filter by position and availability, search, and sort by Sleeper adds and drops, ESPN owned and start percentages, positional rank, season points under your scoring, and projected points.
 - **Player pop-up:** click any player (rosters, lineups, Players tab) for their bio, position rank, week-by-week points with every stat that counted, this week's projected stats, and past seasons, all scored with your league's rules.

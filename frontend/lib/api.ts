@@ -180,6 +180,12 @@ export interface GameInfo {
   date: string | null;
   /** ISO UTC timestamp; absent until the schedule publishes a time. */
   kickoff?: string | null;
+  /** The NFL team this game is for, and the score from that team's side once it has started. */
+  team?: string | null;
+  team_score?: number | null;
+  opponent_score?: number | null;
+  /** Where a live game is ("Q2 2:24", "Halftime"), or "Final". */
+  period_text?: string | null;
   opponent: string | null;
   home: boolean | null;
 }

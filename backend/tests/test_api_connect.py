@@ -191,6 +191,10 @@ def test_dashboard_after_connect(client: TestClient) -> None:
         "state": "upcoming",
         "date": "2026-09-20",
         "kickoff": None,
+        "team": "SF",
+        "team_score": None,  # not started: no score
+        "opponent_score": None,
+        "period_text": None,
         "opponent": "CHI",
         "home": True,
     }

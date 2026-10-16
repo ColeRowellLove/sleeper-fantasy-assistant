@@ -56,7 +56,7 @@ check each provider's pricing page before relying on a number.
 - **Why:** it is public, covers what the app needs, and never requires users' credentials.
 - **Trade-offs:** it has no projections or live game state; those come from other sources later (issues #109, #131).
 
-### ESPN fantasy API (ownership, start percentages and depth charts)
+### ESPN fantasy API (ownership, start percentages, depth charts and live games)
 
 - **What it is:** ESPN's public fantasy football API. It is undocumented, needs no key, and is the one free
   source we found for "what share of leagues roster and start this player".
@@ -70,6 +70,12 @@ check each provider's pricing page before relying on a number.
   request per team. The worker refreshes all 32 every few hours (a few seconds in total) and matches the
   players to Sleeper's by ESPN id or name within the team (99% matched on real data). Sleeper's own depth
   chart fields are the fallback when ESPN has nothing, and a failed pull keeps the last good chart.
+- **Live games:** ESPN's scoreboard (one small request for the whole week) gives each game's score,
+  quarter and clock to the minute. The API asks for it only while a game could be on (from an hour before
+  a kickoff to five hours after, or while Sleeper says a game is in progress) and keeps the answer for 45
+  seconds in memory, so many viewers cause one request. If ESPN is down the badge falls back to Sleeper's
+  state, and final scores come from the nflverse schedule. Where ESPN and Sleeper disagree about whether
+  a game has started, ESPN's answer is shown, because it is fresher.
 - **Why:** Sleeper publishes no such numbers, and this is free.
 - **Trade-offs:** it can change without notice, so the parser is tested against a recorded shape and a
   failed or empty pull leaves the previous numbers in place. Personal, non-commercial use only; revisit if
