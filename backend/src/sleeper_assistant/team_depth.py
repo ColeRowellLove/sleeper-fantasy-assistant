@@ -25,6 +25,7 @@ from sleeper_assistant.dashboard import (
 )
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow, TeamDepthChartRow
 from sleeper_assistant.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
+from sleeper_assistant.team_stats import TeamStat, all_team_stats, build_team_stats
 
 # designations that mean a player will not play
 OUT_STATUSES = {"Out", "IR", "PUP", "Sus", "DNR", "Injured Reserve", "Suspended"}
@@ -61,6 +62,7 @@ class TeamDepth(BaseModel):
     source: str | None = None  # ESPN, or Sleeper when ESPN had no chart
     updated_at: datetime | None = None
     game: GameInfo | None = None
+    stats: list[TeamStat] = []  # the team's per-game numbers with league ranks
     groups: list[DepthGroup]
 
 
@@ -151,5 +153,6 @@ def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDept
         source=row.source if row else None,
         updated_at=row.fetched_at if row else None,
         game=game,
+        stats=all_team_stats(build_team_stats(session, league.season), team),
         groups=groups,
     )

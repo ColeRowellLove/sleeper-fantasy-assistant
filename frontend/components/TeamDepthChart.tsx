@@ -2,6 +2,7 @@ import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
 import { depthRows, groupSlots, SLIDE_FROM, TEAM_NAMES } from "../lib/depth";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
+import TeamStatsTable from "./TeamStatsTable";
 import PlayerLink from "./PlayerLink";
 
 function PlayerCell({ player, myRosterId }: { player: DepthPlayer; myRosterId: number | null }) {
@@ -136,6 +137,14 @@ export default function TeamDepthChart({
             </details>
           ))}
         </>
+      )}
+      {data.stats && data.stats.length > 0 && (
+        <TeamStatsTable
+          stats={data.stats}
+          team={data.team}
+          headingId={`${headingId}-stats`}
+          title="Team stats"
+        />
       )}
       <p className="note">
         Depth order is 1 for the starter. A &quot;Next up&quot; tag shows who is first in line when
