@@ -160,8 +160,8 @@
   font-size: 0.8rem;
   font-stretch: 118%;
   font-weight: 700;
-  min-width: 2.6rem;
-  text-align: right;
+  flex: 0 0 3.6rem; /* a fixed column, so the slot lines up on every row */
+  text-align: center;
 }
 
 @media (max-width: 40rem) {
@@ -172,6 +172,22 @@
 
   .roster-group header {
     padding: 0.9rem 0.9rem 0.4rem;
+  }
+
+  /* narrower fixed columns on phones so the player's name keeps room */
+  .player-proj {
+    flex-basis: 2.4rem;
+  }
+
+  .slot,
+  .player-chip {
+    flex-basis: 2.6rem;
+  }
+
+  .player-chip .chip {
+    font-size: 0.65rem;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
   }
 }
 
@@ -256,9 +272,15 @@
   flex-direction: column;
   font-size: 0.95rem;
   font-weight: 600;
+  flex: 0 0 3.4rem; /* a fixed column: points and projection line up on every row */
   line-height: 1.1;
-  min-width: 2.6rem;
   text-align: right;
+}
+
+.player-chip {
+  display: flex;
+  flex: 0 0 3.6rem; /* the position chip's column */
+  justify-content: flex-end;
 }
 
 .player-proj-label {

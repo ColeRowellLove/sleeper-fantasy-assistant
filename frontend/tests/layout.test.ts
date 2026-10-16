@@ -78,3 +78,12 @@ describe("Players list rows", () => {
     expect(rule(".players tbody tr")).toBe("");
   });
 });
+
+describe("roster row columns", () => {
+  // each trailing column has a fixed width so numbers, slot and position line up from row to row
+  it("fixes the width of the points, projection, slot and position columns", () => {
+    for (const selector of [".player-proj", ".slot", ".player-chip"]) {
+      expect(rule(selector)).toMatch(/flex: 0 0 [\d.]+rem/);
+    }
+  });
+});
