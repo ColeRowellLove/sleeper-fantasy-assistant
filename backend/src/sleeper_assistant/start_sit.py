@@ -23,6 +23,7 @@ from sleeper_assistant.rankings import RankedPlayer, build_rankings
 _OUT = {"Out", "IR", "PUP", "Suspended", "NA", "DNR", "COV"}
 CLOSE_CALL = 1.5  # projected points apart, or fewer, is a close call
 MAX_COMPARE = 6
+_POSITION_ORDER = {pos: i for i, pos in enumerate(("QB", "RB", "WR", "TE", "K", "DEF"))}
 
 
 class Candidate(BaseModel):
@@ -71,6 +72,7 @@ class BestLineup(BaseModel):
     current_projected: float
     changes: list[LineupChange]
     why: str
+    roster: list[Candidate] = []  # everyone who can be picked to compare, with the same numbers
 
 
 def _candidate(pid: str, ranked: dict[str, RankedPlayer], info: dict[str, PlayerRow]) -> Candidate:
@@ -226,4 +228,12 @@ def best_lineup(
         current_projected=current_projected,
         changes=changes,
         why=why,
+        roster=sorted(
+            cands.values(),
+            key=lambda c: (
+                _POSITION_ORDER.get(c.position or "", len(_POSITION_ORDER)),
+                -(c.projected or 0.0),
+                c.name,
+            ),
+        ),
     )

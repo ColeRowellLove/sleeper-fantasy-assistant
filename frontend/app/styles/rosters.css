@@ -476,3 +476,48 @@
 .wire-signal-state {
   font-weight: 600;
 }
+
+/* Start/Sit: one row per player, the checkbox beside his face, name, matchup and projection */
+.pick-rows {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0 0 1rem;
+  max-width: 48rem;
+  padding: 0;
+}
+
+.pick-row {
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  font-weight: 500;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.pick-row:has(input:checked) {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+}
+
+.pick-row:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.pick-main {
+  display: grid;
+  flex: 1;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.pick-proj {
+  color: var(--muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}

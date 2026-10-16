@@ -124,6 +124,18 @@ def test_the_best_lineup_fills_the_leagues_slots_and_lists_the_swaps(session: Se
     assert "start R1" in result.why or "start W1" in result.why
 
 
+def test_the_roster_list_carries_every_pickable_player_with_his_numbers(session: Session) -> None:
+    result = best_lineup(session, _setup(session), 1)
+    assert result is not None
+    ids = [c.player_id for c in result.roster]
+    assert "r3" in ids and "w2" in ids  # bench players are there to compare
+    assert all(c.player_id not in {"parked"} for c in result.roster)  # nobody on IR or taxi
+    positions = [c.position for c in result.roster]
+    assert positions == sorted(positions, key=["QB", "RB", "WR", "TE", "K", "DEF"].index)
+    rbs = [c.projected or 0.0 for c in result.roster if c.position == "RB"]
+    assert rbs == sorted(rbs, reverse=True)  # best projection first within a position
+
+
 def test_a_lineup_already_at_its_best_says_so(session: Session) -> None:
     league = _setup(session)
     roster = session.get(RosterRow, ("L1", 1))

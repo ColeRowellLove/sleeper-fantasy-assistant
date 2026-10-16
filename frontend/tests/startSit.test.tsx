@@ -104,6 +104,26 @@ describe("Start/Sit tool", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Pick at least two players");
   });
 
+  it("shows each player as a row with his face, matchup, injury and projection", async () => {
+    const withRoster: BestLineup = {
+      ...best,
+      roster: [
+        cand({ player_id: "1", name: "Star Back", projected: 9.04 }),
+        cand({ player_id: "2", name: "Bench Back", projected: null }),
+      ],
+    };
+    const ui = <StartSitTool {...props} picks={["1"]} best={withRoster} />;
+    const { container } = render(ui);
+    const group = screen.getByRole("group", { name: /Players to compare/ });
+    const rows = within(group).getAllByRole("checkbox");
+    expect(rows).toHaveLength(2);
+    expect(within(group).getByText("Proj 9.0")).toBeInTheDocument();
+    expect(within(group).getByText("No projection yet")).toBeInTheDocument();
+    expect(container.querySelectorAll(".pick-row .avatar")).toHaveLength(2);
+    expect(rows[0]).toBeChecked();
+    await expectNoA11yViolations(ui);
+  });
+
   it("shows the best lineup with the swaps and why", () => {
     render(<StartSitTool {...props} best={best} />);
     const table = screen.getByRole("table", { name: /Best projected lineup/ });
