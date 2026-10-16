@@ -58,6 +58,8 @@ const detail: PlayerDetail = {
   },
   owner_roster_id: 1,
   owner_team: "Cole",
+  owner_manager: "colerowell",
+  league_id: "L1",
   adds: null,
   drops: 120,
   season: { points: 146.6, games: 5, average: 29.3, rank: 1 },
@@ -128,10 +130,10 @@ describe("player detail helpers", () => {
       { label: "Height", value: "6'2\"" },
       { label: "Weight", value: "216 lb" },
       { label: "College", value: "BYU" },
-      { label: "Experience", value: "3 seasons" },
+      { label: "Years in league", value: "3 years" },
       { label: "Jersey", value: "#12" },
     ]);
-    expect(bioRows({ years_exp: 0 })).toEqual([{ label: "Experience", value: "Rookie" }]);
+    expect(bioRows({ years_exp: 0 })).toEqual([{ label: "Years in league", value: "Rookie" }]);
     expect(bioRows({ depth_chart_position: "RWR", depth_chart_order: 1 })).toEqual([
       { label: "Depth chart", value: "RWR 1" },
     ]);
@@ -248,7 +250,17 @@ describe("PlayerDialog", () => {
     renderDialog();
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
     expect(dialog).toHaveAttribute("open");
-    expect(within(dialog).getByText("On Cole")).toBeInTheDocument();
+    expect(within(dialog).getByText(/^On/)).toHaveTextContent("On Cole (colerowell)");
+  });
+
+  it("links the owning team to its roster and says how long the player has been in the league", () => {
+    renderDialog();
+    const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
+    expect(within(dialog).getByRole("link", { name: "Cole" })).toHaveAttribute(
+      "href",
+      "/league/L1?tab=rosters&roster=1",
+    );
+    expect(within(dialog).getByText("3 years")).toBeInTheDocument();
   });
 
   it("shows bio, season, projection, weekly log and past seasons", () => {

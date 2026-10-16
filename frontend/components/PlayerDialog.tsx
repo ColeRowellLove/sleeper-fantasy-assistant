@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import type { PlayerDetail } from "../lib/api";
@@ -12,6 +13,7 @@ import {
   statColumns,
   statTotals,
 } from "../lib/playerDetail";
+import { rosterPath } from "../lib/league";
 import { projectionDelta } from "../lib/lineups";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
@@ -215,7 +217,22 @@ export default function PlayerDialog({
               {detail.owner_team === null || detail.owner_team === undefined ? (
                 <span className="status-available">Available in this league</span>
               ) : (
-                <span className="status-owned">On {detail.owner_team}</span>
+                <span className="status-owned">
+                  On{" "}
+                  {detail.league_id && detail.owner_roster_id != null ? (
+                    <Link
+                      href={rosterPath(detail.league_id, detail.owner_roster_id)}
+                      className="member-link"
+                    >
+                      {detail.owner_team}
+                    </Link>
+                  ) : (
+                    detail.owner_team
+                  )}
+                  {detail.owner_manager && detail.owner_manager !== detail.owner_team
+                    ? ` (${detail.owner_manager})`
+                    : ""}
+                </span>
               )}
             </p>
           </div>

@@ -29,7 +29,7 @@ function formatExperience(value: unknown): string | null {
   const years = Number(raw);
   if (!Number.isFinite(years)) return raw;
   if (years === 0) return "Rookie";
-  return `${years} ${years === 1 ? "season" : "seasons"}`;
+  return `${years} ${years === 1 ? "year" : "years"}`;
 }
 
 /** The bio facts Sleeper has for the player, in reading order. Missing facts are left out. */
@@ -40,7 +40,7 @@ export function bioRows(bio: Bio): BioRow[] {
     ["Height", formatHeight(bio.height)],
     ["Weight", text(bio.weight) ? `${text(bio.weight)} lb` : null],
     ["College", text(bio.college)],
-    ["Experience", formatExperience(bio.years_exp)],
+    ["Years in league", formatExperience(bio.years_exp)],
     ["Jersey", text(bio.number) ? `#${text(bio.number)}` : null],
     [
       "Depth chart",
