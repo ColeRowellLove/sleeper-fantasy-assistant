@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AlertsPanel from "../components/AlertsPanel";
@@ -205,7 +206,7 @@ describe("waiver target alerts", () => {
     id: 9,
     kind: "waiver_targets",
     title: "Top waiver targets for Tuesday, Oct 20",
-    why: "1. T. Horton (WR, SEA): projected 11.4, +4.2 over your WR3 (Smith). 2. Free Back (RB, SF): projected 9.0, +9.0 at RB1, an open starter spot.",
+    why: "1. T. Horton (WR, SEA): projected 11.4, +4.2 over Smith at WR. 2. Free Back (RB, SF): projected 9.0, +9.0 at an open RB spot.",
     created_at: "2026-10-19T14:00:00Z",
     data: {
       targets: [
@@ -216,7 +217,9 @@ describe("waiver target alerts", () => {
           team: "SEA",
           projected: 11.4,
           gain: 4.2,
-          line: "T. Horton (WR, SEA): projected 11.4, +4.2 over your WR3 (Smith). Added in 8,200 leagues in the last day.",
+          detail:
+            "(WR, SEA): projected 11.4, +4.2 over Smith at WR. Added in 8,200 leagues in the last day.",
+          line: "T. Horton (WR, SEA): projected 11.4, +4.2 over Smith at WR. Added in 8,200 leagues in the last day.",
         },
         {
           player_id: "12",
@@ -225,7 +228,7 @@ describe("waiver target alerts", () => {
           team: "SF",
           projected: 9,
           gain: 9,
-          line: "Free Back (RB, SF): projected 9.0, +9.0 at RB1, an open starter spot.",
+          line: "Free Back (RB, SF): projected 9.0, +9.0 at an open RB spot.",
         },
       ],
     },
@@ -255,13 +258,15 @@ describe("waiver target alerts", () => {
     const items = screen.getAllByRole("listitem").filter((li) => li.closest("ol"));
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent(
-      "T. Horton (WR, SEA): projected 11.4, +4.2 over your WR3 (Smith). Added in 8,200 leagues",
+      "T. Horton (WR, SEA): projected 11.4, +4.2 over Smith at WR. Added in 8,200 leagues",
     );
     expect(screen.getByRole("link", { name: "T. Horton" })).toHaveAttribute(
       "href",
       expect.stringContaining("player=11"),
     );
-    expect(items[1]).toHaveTextContent("open starter spot");
+    expect(items[1]).toHaveTextContent(
+      "Free Back (RB, SF): projected 9.0, +9.0 at an open RB spot.",
+    );
   });
 
   it("falls back to the one-line text for an alert with no structured targets", () => {
@@ -279,5 +284,48 @@ describe("waiver target alerts", () => {
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(panel(null));
+  });
+});
+
+describe("keyboard", () => {
+  it("reaches the player links in an alert with the Tab key", async () => {
+    const user = userEvent.setup();
+    render(
+      <AlertsPanel
+        data={{
+          league_id: "1",
+          roster_id: 2,
+          alerts: [
+            {
+              id: 5,
+              kind: "waiver_targets",
+              title: "Top waiver targets for Tuesday, Oct 20",
+              why: "1. T. Horton (WR, SEA): projected 11.4, +4.2 over Smith at WR.",
+              created_at: "2026-10-19T14:00:00Z",
+              data: {
+                targets: [
+                  {
+                    player_id: "11",
+                    name: "T. Horton",
+                    projected: 11.4,
+                    gain: 4.2,
+                    detail: "(WR, SEA): projected 11.4, +4.2 over Smith at WR.",
+                    line: "T. Horton (WR, SEA): projected 11.4, +4.2 over Smith at WR.",
+                  },
+                ],
+              },
+            },
+          ],
+        }}
+        rosters={rosters}
+        leagueId="1"
+        myRosterId={1}
+        seen={null}
+      />,
+    );
+    await user.tab(); // the team picker
+    await user.tab(); // its button
+    await user.tab(); // the first alert's player link
+    expect(screen.getByRole("link", { name: "T. Horton" })).toHaveFocus();
   });
 });

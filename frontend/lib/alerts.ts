@@ -7,6 +7,9 @@ export interface WaiverTarget {
   team?: string | null;
   projected: number;
   gain: number;
+  /** The sentence after the name: "(WR, SEA): projected 11.4, +4.2 over ...". */
+  detail?: string;
+  /** The whole sentence, name included (used if there is no detail). */
   line: string;
 }
 
@@ -20,7 +23,9 @@ export function waiverTargets(alert: AlertItem): WaiverTarget[] {
       t !== null &&
       typeof (t as WaiverTarget).player_id === "string" &&
       typeof (t as WaiverTarget).name === "string" &&
-      typeof (t as WaiverTarget).line === "string",
+      typeof (t as WaiverTarget).line === "string" &&
+      typeof (t as WaiverTarget).projected === "number" &&
+      typeof (t as WaiverTarget).gain === "number",
   );
 }
 

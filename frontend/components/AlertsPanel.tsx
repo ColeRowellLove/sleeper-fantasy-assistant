@@ -2,11 +2,45 @@
 
 import { useRouter } from "next/navigation";
 
-import type { AlertsData, Dashboard } from "../lib/api";
+import type { AlertItem, AlertsData, Dashboard } from "../lib/api";
 import { alertTime, newestAlertTime, unreadAlerts, waiverTargets } from "../lib/alerts";
 import { leaguePath } from "../lib/league";
 import { alertsSeenCookie, setCookie } from "../lib/myTeam";
 import PlayerLink from "./PlayerLink";
+
+/** One alert: title, what happened, and for a waiver alert the pickups as a linked, numbered list. */
+function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
+  const targets = waiverTargets(alert);
+  return (
+    <li className={`card alert${isNew ? " unread" : ""}`}>
+      <h3>
+        {isNew && <span className="alert-new">New</span>}
+        {alert.title}
+      </h3>
+      {targets.length > 0 ? (
+        <ol className="alert-targets">
+          {targets.map((t) => (
+            <li key={t.player_id}>
+              <PlayerLink playerId={t.player_id}>{t.name}</PlayerLink>
+              {t.detail !== undefined ? ` ${t.detail}` : t.line.replace(t.name, "")}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="alert-why">{alert.why}</p>
+      )}
+      <p className="muted alert-meta">
+        {alertTime(alert.created_at)}
+        {alert.player_id && (
+          <>
+            {" · "}
+            <PlayerLink playerId={alert.player_id}>View player</PlayerLink>
+          </>
+        )}
+      </p>
+    </li>
+  );
+}
 
 /**
  * A team's alerts, newest first. Which team is a plain GET form (works without JavaScript). Read
@@ -82,33 +116,7 @@ export default function AlertsPanel({
       ) : (
         <ul className="alert-list">
           {data.alerts.map((alert) => (
-            <li key={alert.id} className={`card alert${unreadIds.has(alert.id) ? " unread" : ""}`}>
-              <h3>
-                {unreadIds.has(alert.id) && <span className="alert-new">New</span>}
-                {alert.title}
-              </h3>
-              {waiverTargets(alert).length > 0 ? (
-                <ol className="alert-targets">
-                  {waiverTargets(alert).map((t) => (
-                    <li key={t.player_id}>
-                      <PlayerLink playerId={t.player_id}>{t.name}</PlayerLink>
-                      {t.line.startsWith(t.name) ? t.line.slice(t.name.length) : ` ${t.line}`}
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="alert-why">{alert.why}</p>
-              )}
-              <p className="muted alert-meta">
-                {alertTime(alert.created_at)}
-                {alert.player_id && (
-                  <>
-                    {" · "}
-                    <PlayerLink playerId={alert.player_id}>View player</PlayerLink>
-                  </>
-                )}
-              </p>
-            </li>
+            <AlertCard key={alert.id} alert={alert} isNew={unreadIds.has(alert.id)} />
           ))}
         </ul>
       )}
