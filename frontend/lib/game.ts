@@ -1,4 +1,4 @@
-import type { GameInfo, MatchupRank } from "./api";
+import type { GameConditions, GameInfo, MatchupRank } from "./api";
 
 /** "Sun, Sep 20" from an ISO date. Always UTC so server and browser render the same text. */
 export function formatGameDate(date: string | null): string | null {
@@ -116,4 +116,56 @@ export function matchupText(
     spoken: `${matchup.opponent} ranks ${rank} against ${position ? `${position}s` : "the position"}`,
     description: `${matchup.opponent} allows the ${rank} most fantasy points${spot} ${numbers}`,
   };
+}
+
+const WINDY_MPH = 15;
+const FREEZING_F = 32;
+
+/** "SF -3.5", "DAL +3.5" or "SF pick'em" for a team's spread. */
+export function spreadText(team: string | null | undefined, spread: number): string {
+  const who = team ? `${team} ` : "";
+  if (spread === 0) return `${who}pick'em`;
+  return `${who}${spread > 0 ? "+" : ""}${spread}`;
+}
+
+export interface ConditionsLabel {
+  /** Roof and weather: "Dome" or "53°F, wind 15 mph (windy)". Null when unknown. */
+  setting: string | null;
+  /** The surface, "Grass"; null when unknown or compact. */
+  surface: string | null;
+  /** The betting line: "SF -3.5, O/U 44.5". Null when unknown. */
+  line: string | null;
+}
+
+/**
+ * Plain words for a game's conditions. Weather only applies outdoors; a dome or closed roof says
+ * so instead. Every state is text, so nothing relies on color.
+ */
+export function conditionsLabel(
+  game: GameInfo | null | undefined,
+  compact = false,
+): ConditionsLabel | null {
+  const c: GameConditions | null | undefined = game?.conditions;
+  if (!game || !c || game.state === "bye") return null;
+  const indoors = c.roof === "dome" || c.roof === "closed";
+  let setting: string | null = null;
+  if (indoors) {
+    setting = c.roof === "closed" ? "Closed roof" : "Dome";
+  } else {
+    const parts: string[] = [];
+    if (c.temp !== null && c.temp !== undefined) {
+      parts.push(`${c.temp}°F${c.temp <= FREEZING_F ? " (freezing)" : ""}`);
+    }
+    if (c.wind !== null && c.wind !== undefined) {
+      parts.push(`wind ${c.wind} mph${c.wind >= WINDY_MPH ? " (windy)" : ""}`);
+    }
+    setting = parts.length > 0 ? parts.join(", ") : c.roof === "outdoors" ? "Outdoors" : null;
+  }
+  const surface = !compact && c.surface ? c.surface[0].toUpperCase() + c.surface.slice(1) : null;
+  const bits: string[] = [];
+  if (c.spread !== null && c.spread !== undefined) bits.push(spreadText(game.team, c.spread));
+  if (c.total !== null && c.total !== undefined) bits.push(`O/U ${c.total}`);
+  const line = compact ? null : bits.length > 0 ? bits.join(", ") : null;
+  if (!setting && !surface && !line) return null;
+  return { setting, surface, line };
 }

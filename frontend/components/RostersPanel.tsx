@@ -119,7 +119,12 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
           <InjuryBadge injury={player.injury} />
         </span>
         <span className="player-tags">
-          <GameBadge game={player.game} matchup={player.matchup} position={player.position} />
+          <GameBadge
+            game={player.game}
+            matchup={player.matchup}
+            position={player.position}
+            conditions="compact"
+          />
         </span>
       </span>
       {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with

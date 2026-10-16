@@ -54,6 +54,18 @@ class InjuryInfo(BaseModel):
     body_part: str | None = None
 
 
+class GameConditions(BaseModel):
+    """The setting of a game: roof, surface, weather and the betting line, from this team's side."""
+
+    roof: str | None = None  # outdoors, dome, closed or open
+    surface: str | None = None
+    stadium: str | None = None
+    temp: int | None = None  # degrees Fahrenheit
+    wind: int | None = None  # miles per hour
+    spread: float | None = None  # this team's spread: -3.5 means favoured by 3.5, +3.5 an underdog
+    total: float | None = None  # the over/under for the game
+
+
 class GameInfo(BaseModel):
     """A player's NFL game in a week: upcoming, live, final, or the team is on a bye."""
 
@@ -67,6 +79,7 @@ class GameInfo(BaseModel):
     elapsed: float | None = None  # share of the game played, 0 to 1; None when the clock is unknown
     opponent: str | None = None
     home: bool | None = None
+    conditions: GameConditions | None = None
 
 
 class StandingsRow(BaseModel):
@@ -250,6 +263,25 @@ def _live_games(week_games: list[NflGameRow], week: int) -> dict[tuple[str, str]
     return {(g.home, g.away): g for g in current_games() if g.week in (None, week)}
 
 
+def _conditions(g: NflGameRow) -> tuple[GameConditions | None, GameConditions | None]:
+    """(home side, away side) conditions of a game; None when nothing is known."""
+    if all(
+        v is None
+        for v in (g.roof, g.surface, g.stadium, g.temp, g.wind, g.spread_line, g.total_line)
+    ):
+        return None, None
+    common = {
+        "roof": g.roof, "surface": g.surface, "stadium": g.stadium, "temp": g.temp,
+        "wind": g.wind, "total": g.total_line,
+    }  # fmt: skip
+    home_spread = None if g.spread_line is None else -g.spread_line
+    away_spread = g.spread_line
+    return (
+        GameConditions(**common, spread=home_spread),
+        GameConditions(**common, spread=away_spread),
+    )
+
+
 def games_for_week(session: Session, season: str, week: int) -> dict[str, GameInfo]:
     """NFL team -> that team's game in the week; teams with no game in the week are on a bye."""
     games = list(session.scalars(select(NflGameRow).where(NflGameRow.season == season)))
@@ -274,15 +306,16 @@ def games_for_week(session: Session, season: str, week: int) -> dict[str, GameIn
         played = {"upcoming": 0.0, "final": 1.0}.get(game_state)
         if live is not None and game_state == "live":
             played = fraction_elapsed(live)
+        home_cond, away_cond = _conditions(g)
         out[g.home] = GameInfo(
             state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.away, home=True,
             team=g.home, team_score=home_score, opponent_score=away_score, period_text=words,
-            elapsed=played,
+            elapsed=played, conditions=home_cond,
         )  # fmt: skip
         out[g.away] = GameInfo(
             state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.home, home=False,
             team=g.away, team_score=away_score, opponent_score=home_score, period_text=words,
-            elapsed=played,
+            elapsed=played, conditions=away_cond,
         )  # fmt: skip
     if week_games:  # without any games in the week we cannot tell a bye from missing data
         for team in all_teams - playing:

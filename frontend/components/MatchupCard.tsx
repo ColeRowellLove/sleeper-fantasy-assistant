@@ -202,7 +202,12 @@ function Cell({
                 <TeamLink team={player.team}>{player.team}</TeamLink>
               </span>
             )}
-            <GameBadge game={player.game} matchup={player.matchup} position={player.position} />
+            <GameBadge
+              game={player.game}
+              matchup={player.matchup}
+              position={player.position}
+              conditions="compact"
+            />
           </span>
         </span>
       </div>

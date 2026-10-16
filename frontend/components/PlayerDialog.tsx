@@ -215,7 +215,12 @@ export default function PlayerDialog({
                 <span className="muted">Free agent</span>
               )}
               <InjuryBadge injury={detail.injury} />
-              <GameBadge game={detail.game} matchup={detail.matchup} position={detail.position} />
+              <GameBadge
+                game={detail.game}
+                matchup={detail.matchup}
+                position={detail.position}
+                conditions="full"
+              />
             </p>
             <p className="player-dialog-owner">
               {detail.owner_team === null || detail.owner_team === undefined ? (

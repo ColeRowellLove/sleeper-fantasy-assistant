@@ -198,6 +198,21 @@ export interface StandingsRow {
   streak?: string | null;
 }
 
+/** The setting of a game, from the player's team's side. Any part can be missing. */
+export interface GameConditions {
+  roof?: string | null;
+  surface?: string | null;
+  stadium?: string | null;
+  /** Degrees Fahrenheit (outdoor games). */
+  temp?: number | null;
+  /** Miles per hour (outdoor games). */
+  wind?: number | null;
+  /** This team's spread: -3.5 favoured by 3.5, +3.5 an underdog. */
+  spread?: number | null;
+  /** The over/under. */
+  total?: number | null;
+}
+
 export interface GameInfo {
   state: "upcoming" | "live" | "final" | "bye";
   date: string | null;
@@ -213,6 +228,7 @@ export interface GameInfo {
   elapsed?: number | null;
   opponent: string | null;
   home: boolean | null;
+  conditions?: GameConditions | null;
 }
 
 /** How the opponent's defense ranks against a player's position: 1 = allows the most points. */
