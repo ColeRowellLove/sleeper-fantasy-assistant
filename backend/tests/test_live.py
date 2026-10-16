@@ -116,7 +116,7 @@ def test_the_scoreboard_is_cached_and_a_failure_falls_back_to_the_last_answer(
 
     monkeypatch.setattr(live, "FETCHER", fetcher)
     assert current_games(now=100.0) == games and calls["n"] == 1
-    assert current_games(now=120.0) == games and calls["n"] == 1  # still fresh: no new request
+    assert current_games(now=110.0) == games and calls["n"] == 1  # still fresh: no new request
     assert current_games(now=200.0) == games and calls["n"] == 2  # stale: asked again, ESPN is down
     assert current_games(now=900.0) == []  # too old to trust once ESPN has stayed down
 

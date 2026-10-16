@@ -6,7 +6,7 @@ whole week) adds the score and the game clock and is fresh to the minute. It is 
 failed or changed response must never break a page: callers fall back to Sleeper's state.
 
 The scoreboard is only requested while a game could be on (a short window around kickoffs), and the
-answer is cached for under a minute in the running process, so many viewers cause one request.
+answer is cached for a few seconds in the running process, so many viewers cause one request.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from pydantic import BaseModel
 log = logging.getLogger(__name__)
 
 SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
-CACHE_SECONDS = 45.0  # a viewer sees a score at most this old
+CACHE_SECONDS = 15.0  # a viewer sees a score at most this old (only asked for during live windows)
 STALE_SECONDS = 600.0  # if ESPN is down, a score this old is still better than none
 WINDOW_BEFORE = timedelta(hours=1)  # start looking this long before a kickoff
 WINDOW_AFTER = timedelta(hours=5)  # a game is over well within this long after kickoff

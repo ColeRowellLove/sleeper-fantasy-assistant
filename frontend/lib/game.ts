@@ -233,3 +233,26 @@ export function situationLabel(game: GameInfo | null | undefined): SituationLabe
     redZone: s.red_zone === true,
   };
 }
+
+/** An upcoming game this close to (or past) its kickoff is about to be live. */
+const SOON_MS = 60 * 60 * 1000;
+
+/**
+ * Whether a page should start refreshing itself: any of the given games (any number of lists, with
+ * gaps) is live, or is upcoming but within an hour of kickoff or already past it, so a page opened
+ * before the games starts updating by itself when they begin.
+ */
+export function needsLiveRefresh(
+  lists: (GameInfo | null | undefined)[][],
+  now: number = Date.now(),
+): boolean {
+  return lists.some((games) =>
+    games.some((game) => {
+      if (!game) return false;
+      if (game.state === "live") return true;
+      if (game.state !== "upcoming" || !game.kickoff) return false;
+      const kickoff = Date.parse(game.kickoff);
+      return Number.isFinite(kickoff) && kickoff - now <= SOON_MS && now - kickoff < 8 * SOON_MS;
+    }),
+  );
+}

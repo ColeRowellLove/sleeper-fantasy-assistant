@@ -13,6 +13,7 @@ import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
+import LiveRefresh from "../../../components/LiveRefresh";
 import GamesPanel from "../../../components/GamesPanel";
 import RankingsPanel from "../../../components/RankingsPanel";
 import AccuracyTable from "../../../components/AccuracyTable";
@@ -33,6 +34,7 @@ import type {
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
 import { leaguePath, parseTab } from "../../../lib/league";
+import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
 import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 
@@ -42,8 +44,9 @@ export const metadata = { title: "League", robots: { index: false } };
 const API_URL = resolveApiUrl();
 
 async function getJson<T>(path: string): Promise<T> {
-  // data only changes when a sync runs, so a short shared cache keeps repeat views instant
-  const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 30 } });
+  // a few seconds of cache here keeps repeat views instant; behind it the API's CDN cache (10
+  // seconds while a game is on, 30 otherwise) is what protects the backend, so this stays short
+  const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 10 } });
   if (res.status === 404) notFound();
   if (!res.ok) throw new Error("Could not load the league. Please try again.");
   return (await res.json()) as T;
@@ -152,6 +155,16 @@ export default async function LeaguePage({
   const closeQuery = closeParams.toString();
   const closeHref = `${leaguePath(leagueId)}${closeQuery ? `?${closeQuery}` : ""}`;
 
+  // refresh by itself while any game the page shows is live
+  const liveNow = needsLiveRefresh([
+    dashboard.rosters.flatMap((r) => r.players.map((p) => p.game)),
+    lineups?.matchups.flatMap((m) =>
+      m.teams.flatMap((t) => [...t.starters, ...t.bench].map((p) => p.game)),
+    ) ?? [],
+    games?.games.map((g) => g.game) ?? [],
+    [playerDetail?.game, depth?.game, depthDialog?.game],
+  ]);
+
   const jar = await cookies();
   const myRosterId = findMyRosterId(dashboard.standings, {
     team: jar.get(teamCookie(leagueId))?.value,
@@ -196,6 +209,7 @@ export default async function LeaguePage({
     <main id="main" className="container">
       <LeagueHeader data={dashboard} myRosterId={myRosterId} />
       <LeagueTabs leagueId={leagueId} active={tab} />
+      <LiveRefresh active={liveNow} />
       {tab === "standings" && (
         <StandingsTable
           leagueId={leagueId}

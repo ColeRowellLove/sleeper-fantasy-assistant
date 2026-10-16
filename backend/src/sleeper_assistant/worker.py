@@ -29,6 +29,7 @@ from sleeper_assistant.depth_sync import sync_depth_charts
 from sleeper_assistant.espn import fetch_ownership
 from sleeper_assistant.ingest import MAX_WEEKS, sync_league, sync_players, sync_schedule
 from sleeper_assistant.kickoffs import sync_kickoffs
+from sleeper_assistant.live_window import live_window_open
 from sleeper_assistant.player_data import (
     stored_weeks,
     sync_ownership,
@@ -52,12 +53,18 @@ PLAYER_SYNC_INTERVAL = timedelta(
 PLAYER_SYNC_FAILURE_COOLDOWN = timedelta(hours=6)  # do not hammer a failing /players endpoint
 SCHEDULE_SYNC_INTERVAL = timedelta(minutes=10)
 SCHEDULE_FAILURE_COOLDOWN = timedelta(minutes=30)
+SCHEDULE_SYNC_INTERVAL_LIVE = timedelta(minutes=3)  # game states and scores, while a game is on
 PROJECTION_SYNC_INTERVAL = timedelta(hours=3)  # projections move with injuries and depth charts
 PROJECTION_FAILURE_COOLDOWN = timedelta(hours=3)
 TRENDING_SYNC_INTERVAL = timedelta(hours=1)  # Sleeper's add/drop counts move all day
 TRENDING_FAILURE_COOLDOWN = timedelta(hours=1)
 STATS_SYNC_INTERVAL = timedelta(hours=1)  # the current week's stats grow during games
 STATS_FAILURE_COOLDOWN = timedelta(hours=3)
+STATS_SYNC_INTERVAL_LIVE = timedelta(minutes=2)  # stat lines grow play by play while a game is on
+STATS_FAILURE_COOLDOWN_LIVE = timedelta(minutes=5)  # back off a little if the source fails
+LIVE_CYCLE_SECONDS = 60.0  # how often a batch repeats inside its job while a game is on
+LIVE_LOOP_BUDGET = timedelta(minutes=11)  # stop well before the 15-minute job limit
+LIVE_CYCLE_BUDGET = timedelta(minutes=2)  # one repeated cycle never runs longer than this
 HISTORY_SYNC_INTERVAL = timedelta(days=7)  # past seasons never change; this only fills gaps
 HISTORY_FAILURE_COOLDOWN = timedelta(hours=12)
 HISTORY_SEASONS = 2  # how many finished seasons the player pop-up shows
@@ -253,10 +260,10 @@ def enqueue_player_sync_if_due(session: Session, now: datetime | None = None) ->
 
 
 def enqueue_schedule_sync_if_due(session: Session, now: datetime | None = None) -> bool:
-    """Refresh the NFL schedule (game statuses) about every cycle; it is one small request."""
-    return _enqueue_periodic(
-        session, "sync_schedule", SCHEDULE_SYNC_INTERVAL, SCHEDULE_FAILURE_COOLDOWN, now
-    )
+    """Refresh the NFL schedule (game states): every few minutes while a game is on, else slower."""
+    live = live_window_open(session, now=now)
+    interval = SCHEDULE_SYNC_INTERVAL_LIVE if live else SCHEDULE_SYNC_INTERVAL
+    return _enqueue_periodic(session, "sync_schedule", interval, SCHEDULE_FAILURE_COOLDOWN, now)
 
 
 def enqueue_projection_sync_if_due(session: Session, now: datetime | None = None) -> bool:
@@ -278,7 +285,11 @@ def enqueue_trending_sync_if_due(session: Session, now: datetime | None = None) 
 
 
 def enqueue_stats_sync_if_due(session: Session, now: datetime | None = None) -> bool:
-    """Refresh the weekly stat lines about hourly."""
+    """Refresh the weekly stat lines: every couple of minutes while a game is on, else hourly."""
+    if live_window_open(session, now=now):
+        return _enqueue_periodic(
+            session, "sync_stats", STATS_SYNC_INTERVAL_LIVE, STATS_FAILURE_COOLDOWN_LIVE, now
+        )
     return _enqueue_periodic(
         session, "sync_stats", STATS_SYNC_INTERVAL, STATS_FAILURE_COOLDOWN, now
     )
@@ -348,6 +359,39 @@ def run_cycle(
     return CycleResult(enqueued=enqueued, ran=ran)
 
 
+def run_batch(
+    factory: sessionmaker[Session],
+    handlers: dict[str, Handler],
+    *,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], datetime] = utcnow,
+) -> int:
+    """One scheduled batch, repeated about once a minute while a game is on.
+
+    Outside a live window this is a single cycle, exactly as before. While a game is on it keeps
+    cycling (so the stat lines, which sync every couple of minutes then, stay fresh) until the
+    window closes or ``LIVE_LOOP_BUDGET`` is used up, leaving the next scheduled run to carry on.
+    Each repeated cycle has its own short time budget, a failed one is logged and the loop goes on,
+    and the workflow's concurrency group stops two runs overlapping.
+    Returns how many cycles ran.
+    """
+    started = clock()
+    cycles = 1
+    run_cycle(factory, handlers)
+    while clock() - started + timedelta(seconds=LIVE_CYCLE_SECONDS) < LIVE_LOOP_BUDGET:
+        with factory() as session:
+            if not live_window_open(session, now=clock()):
+                break
+        sleep(LIVE_CYCLE_SECONDS)
+        remaining = LIVE_LOOP_BUDGET - (clock() - started)
+        try:
+            run_cycle(factory, handlers, budget=min(LIVE_CYCLE_BUDGET, remaining))
+        except Exception:  # a dropped connection or a source down must not end the live loop
+            log.exception("live worker cycle failed; trying again next minute")
+        cycles += 1
+    return cycles
+
+
 def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process entry point
     parser = argparse.ArgumentParser(description="Sleeper assistant worker")
     parser.add_argument("--once", action="store_true", help="run one batch and exit (cron mode)")
@@ -355,7 +399,7 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process e
     if args.once:
         logging.basicConfig(level=logging.INFO)
         factory = make_session_factory(make_engine())
-        run_cycle(factory, default_handlers(SleeperClient()))
+        run_batch(factory, default_handlers(SleeperClient()))
     else:
         run_forever()
 
