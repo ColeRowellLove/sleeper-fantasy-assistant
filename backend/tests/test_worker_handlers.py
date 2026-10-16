@@ -20,8 +20,11 @@ from sleeper_assistant.db import (
     NflGameRow,
     PlayerProjectionRow,
     PlayerRow,
+    PlayerTrendRow,
+    PlayerWeekStatsRow,
     RosterRow,
     make_session_factory,
+    utcnow,
 )
 from sleeper_assistant.sleeper import BASE_URL, SleeperClient
 from sleeper_assistant.worker import Heartbeat, default_handlers, run_once
@@ -47,6 +50,12 @@ PROJECTION = [{"player_id": "4034", "team": "SF", "stats": {"pts_ppr": 10.0, "re
 for _week in (1, 2, 3, 4, 5, 6, 7, 8):
     ROUTES[f"/projections/nfl/2026/{_week}"] = PROJECTION
 
+ROUTES["/players/nfl/trending/add"] = [{"player_id": "4034", "count": 900}]
+ROUTES["/players/nfl/trending/drop"] = []
+STATS = [{"player_id": "4034", "team": "SF", "stats": {"rec": 5, "rec_yd": 80.0}}]
+for _week in range(1, 19):
+    ROUTES[f"/stats/nfl/2026/{_week}"] = STATS
+
 NFLVERSE_CSV = "season,game_type,week,gameday,gametime,home_team,away_team\n"
 
 
@@ -70,6 +79,12 @@ def _run(engine: Engine, kind: str, handlers: dict[str, Any], payload: dict[str,
     with factory() as session:
         jobs.enqueue(session, kind, payload=payload)
     assert run_once(factory, handlers)
+
+
+def _status_count(session: Session, kind: str) -> int:
+    return len(
+        list(session.scalars(select(JobRow.id).where(JobRow.kind == kind, JobRow.status == "done")))
+    )
 
 
 def _status(session: Session, kind: str) -> str:
@@ -146,6 +161,46 @@ def test_sync_projections_handler_does_nothing_outside_the_regular_season(
     session.expire_all()
     assert _status(session, "sync_projections") == "done"
     assert session.scalar(select(func.count()).select_from(PlayerProjectionRow)) == 0
+
+
+def test_sync_trending_handler_stores_add_counts(engine: Engine, session: Session) -> None:
+    handlers = default_handlers(_sleeper(), _http(NFLVERSE_CSV))
+    _run(engine, "sync_trending", handlers, {})
+    session.expire_all()
+    assert _status(session, "sync_trending") == "done"
+    row = session.get(PlayerTrendRow, "4034")
+    assert row is not None and row.adds == 900
+
+
+def test_sync_stats_handler_loads_missing_weeks_and_refreshes_the_latest(
+    engine: Engine, session: Session
+) -> None:
+    handlers = default_handlers(_sleeper(), _http(NFLVERSE_CSV))
+    _run(engine, "sync_stats", handlers, {})
+    session.expire_all()
+    current = ROUTES["/state/nfl"]["week"]
+    assert sorted(session.scalars(select(PlayerWeekStatsRow.week))) == list(range(1, current + 1))
+
+    session.add(
+        PlayerWeekStatsRow(season="2026", week=1, player_id="x", stats={}, fetched_at=utcnow())
+    )
+    session.commit()
+    _run(engine, "sync_stats", handlers, {})  # nothing is missing, only the latest week reloads
+    session.expire_all()
+    assert _status_count(session, "sync_stats") == 2
+
+
+def test_sync_stats_handler_does_nothing_before_the_season(
+    engine: Engine, session: Session
+) -> None:
+    original = ROUTES["/state/nfl"]
+    ROUTES["/state/nfl"] = dict(original, season_type="pre")
+    try:
+        _run(engine, "sync_stats", default_handlers(_sleeper(), _http(NFLVERSE_CSV)), {})
+    finally:
+        ROUTES["/state/nfl"] = original
+    session.expire_all()
+    assert session.scalar(select(func.count()).select_from(PlayerWeekStatsRow)) == 0
 
 
 def test_a_failed_kickoff_download_fails_the_job_and_keeps_the_worker_alive(

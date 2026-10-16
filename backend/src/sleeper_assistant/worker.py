@@ -27,6 +27,11 @@ from sleeper_assistant.db import (
 )
 from sleeper_assistant.ingest import MAX_WEEKS, sync_league, sync_players, sync_schedule
 from sleeper_assistant.kickoffs import sync_kickoffs
+from sleeper_assistant.player_data import (
+    stored_weeks,
+    sync_trending,
+    sync_week_stats,
+)
 from sleeper_assistant.projections import sync_projections
 from sleeper_assistant.sleeper import SleeperClient
 
@@ -45,6 +50,10 @@ SCHEDULE_SYNC_INTERVAL = timedelta(minutes=10)
 SCHEDULE_FAILURE_COOLDOWN = timedelta(minutes=30)
 PROJECTION_SYNC_INTERVAL = timedelta(hours=3)  # projections move with injuries and depth charts
 PROJECTION_FAILURE_COOLDOWN = timedelta(hours=3)
+TRENDING_SYNC_INTERVAL = timedelta(hours=1)  # Sleeper's add/drop counts move all day
+TRENDING_FAILURE_COOLDOWN = timedelta(hours=1)
+STATS_SYNC_INTERVAL = timedelta(hours=1)  # the current week's stats grow during games
+STATS_FAILURE_COOLDOWN = timedelta(hours=3)
 KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
 KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
 CYCLE_MAX_JOBS = 50
@@ -76,6 +85,20 @@ def default_handlers(
         for week in range(state.week, min(state.week + 1, MAX_WEEKS) + 1):
             sync_projections(session, client, season, week)
 
+    def _sync_trending(session: Session, _payload: dict[str, Any]) -> None:
+        sync_trending(session, client)
+
+    def _sync_stats(session: Session, payload: dict[str, Any]) -> None:
+        state = client.get_state()
+        if state.season_type not in ("regular", "post"):
+            return  # nothing has been played yet
+        season = str(payload.get("season") or state.season)
+        last = MAX_WEEKS if state.season_type == "post" else min(state.week, MAX_WEEKS)
+        have = stored_weeks(session, season)
+        # weeks never loaded, plus the latest week again because it is still changing
+        weeks = {w for w in range(1, last + 1) if w not in have} | {last}
+        sync_week_stats(session, client, season, weeks)
+
     def _sync_kickoffs(session: Session, payload: dict[str, Any]) -> None:
         season = str(payload.get("season") or client.get_state().season)
         with http_factory() as http:
@@ -84,6 +107,8 @@ def default_handlers(
     return {
         "sync_kickoffs": _sync_kickoffs,
         "sync_projections": _sync_projections,
+        "sync_stats": _sync_stats,
+        "sync_trending": _sync_trending,
         "sync_league": _sync_league,
         "sync_players": _sync_players,
         "sync_schedule": _sync_schedule,
@@ -217,6 +242,20 @@ def enqueue_projection_sync_if_due(session: Session, now: datetime | None = None
     )
 
 
+def enqueue_trending_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh Sleeper's add/drop counts about hourly."""
+    return _enqueue_periodic(
+        session, "sync_trending", TRENDING_SYNC_INTERVAL, TRENDING_FAILURE_COOLDOWN, now
+    )
+
+
+def enqueue_stats_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh the weekly stat lines about hourly."""
+    return _enqueue_periodic(
+        session, "sync_stats", STATS_SYNC_INTERVAL, STATS_FAILURE_COOLDOWN, now
+    )
+
+
 def enqueue_kickoff_sync_if_due(session: Session, now: datetime | None = None) -> bool:
     """Refresh kickoff times from nflverse about daily."""
     return _enqueue_periodic(
@@ -247,6 +286,8 @@ def run_cycle(
             + int(enqueue_schedule_sync_if_due(session))
             + int(enqueue_kickoff_sync_if_due(session))
             + int(enqueue_projection_sync_if_due(session))
+            + int(enqueue_trending_sync_if_due(session))
+            + int(enqueue_stats_sync_if_due(session))
         )
     ran = 0
     while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):

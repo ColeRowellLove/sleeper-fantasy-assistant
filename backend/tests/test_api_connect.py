@@ -307,3 +307,14 @@ def test_connect_reports_a_malformed_sleeper_payload_as_502(client: TestClient) 
     broken = dict(FIXTURE["league"], league_id="1", total_rosters="many")
     OVERRIDES["/league/1"] = broken
     assert client.post("/api/leagues/1/connect").status_code == 502
+
+
+def test_players_endpoint_lists_who_is_rostered_in_this_league(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/players").status_code == 404  # not connected yet
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/players").json()
+    assert body["league_id"] == "1"
+    assert {p["owner_team"] for p in body["players"]} <= {"Cole", "Dad Bods", None}
+    assert any(
+        p["owner_roster_id"] == 1 for p in body["players"]
+    )  # the roster's players are listed

@@ -79,11 +79,11 @@ class SleeperGame(BaseModel):
     status: str
 
 
-class SleeperProjection(BaseModel):
-    """One player's projected stat line for a week from Sleeper's (unofficial) projections endpoint.
+class SleeperStatLine(BaseModel):
+    """One player's stat line for a week, projected or actual (two unofficial Sleeper endpoints).
 
-    The stat names are the same keys as a league's ``scoring_settings`` (rec, rec_yd, rec_td, ...),
-    so a projection can be scored with any league's own rules.
+    Both are unofficial Sleeper endpoints. The stat names are the same keys as a league's
+    ``scoring_settings`` (rec, rec_yd, ...), so a line can be scored with any league's rules.
     """
 
     player_id: str
@@ -91,8 +91,13 @@ class SleeperProjection(BaseModel):
     stats: dict[str, float] = {}
 
 
-# team defenses are left out on purpose: their rows have no points-allowed projections
+SleeperProjection = SleeperStatLine
+
+
+# team defenses are left out of projections on purpose: no points-allowed projection (see #217)
 PROJECTION_POSITIONS = ("QB", "RB", "WR", "TE", "K")
+# actual results do include a defense's points allowed, so they are fetched for every position
+STATS_POSITIONS = (*PROJECTION_POSITIONS, "DEF")
 
 
 class SleeperPlayer(BaseModel):
@@ -200,6 +205,34 @@ class SleeperClient:
                 )
             )
         return out
+
+    def get_stats(self, season: str, week: int) -> list[SleeperStatLine]:
+        """Actual stat lines for one week; players with no stats are left out."""
+        positions = "&".join(f"position%5B%5D={p}" for p in STATS_POSITIONS)
+        data = self.get_json(
+            f"https://api.sleeper.com/stats/nfl/{season}/{week}?season_type=regular&{positions}"
+        )
+        out: list[SleeperStatLine] = []
+        for item in data:
+            stats = {
+                k: float(v)
+                for k, v in (item.get("stats") or {}).items()
+                if isinstance(v, int | float)
+            }
+            if item.get("player_id") and stats:
+                out.append(
+                    SleeperStatLine(
+                        player_id=str(item["player_id"]), team=item.get("team"), stats=stats
+                    )
+                )
+        return out
+
+    def get_trending(self, kind: str) -> list[tuple[str, int]]:
+        """(player_id, count) for the top 100 players added or dropped in the last 24 hours."""
+        if kind not in ("add", "drop"):
+            raise ValueError(f"kind must be 'add' or 'drop', not {kind!r}")
+        data = self.get_json(f"/players/nfl/trending/{kind}?lookback_hours=24&limit=100")
+        return [(str(item["player_id"]), int(item["count"])) for item in data]
 
     def get_schedule(self, season: str) -> list[SleeperGame]:
         """Every regular-season game with its status. Cheap (about 27 KB); safe to refresh often."""
