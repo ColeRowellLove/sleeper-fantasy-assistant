@@ -1,6 +1,6 @@
 import type { Dashboard, WaiverWireData, WireEntry } from "../lib/api";
 import { leaguePath } from "../lib/league";
-import PlayerLink from "./PlayerLink";
+import PlayerIdentity from "./PlayerIdentity";
 
 /** "Tue, Oct 20" from an ISO date, the same on the server and in the browser. */
 export function waiverDateLabel(iso: string): string {
@@ -22,14 +22,15 @@ export function backingLabel(entry: WireEntry): string {
 function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
   return (
     <li className="card wire-entry">
-      <h3>
-        <span className="wire-rank">{rank}.</span>{" "}
-        <PlayerLink playerId={entry.player_id}>{entry.name}</PlayerLink>
-        <span className="muted">
-          {" "}
-          ({entry.position ?? "?"}, {entry.team ?? "FA"})
-        </span>
-      </h3>
+      <div className="wire-title">
+        <span className="wire-rank">{rank}.</span>
+        <PlayerIdentity
+          player_id={entry.player_id}
+          name={entry.name}
+          position={entry.position}
+          team={entry.team}
+        />
+      </div>
       <p className="wire-numbers">
         Projected {entry.projected.toFixed(1)}, +{entry.gain.toFixed(1)} {entry.over}.{" "}
         <strong>{backingLabel(entry)}.</strong>

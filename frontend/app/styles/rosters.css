@@ -633,12 +633,6 @@
   margin-bottom: 0.75rem;
 }
 
-.game-player {
-  align-items: center;
-  display: flex;
-  gap: 0.6rem;
-}
-
 .game-players .avatar {
   --size: 2rem;
 }
@@ -731,4 +725,10 @@
   gap: 0.4rem;
   margin: 0.5rem 0;
   padding-left: 1.1rem;
+}
+
+.wire-title {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
 }
