@@ -20,8 +20,9 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.alerts import NewAlert, register, register_pre_run
-from sleeper_assistant.dashboard import current_week, starter_slots
+from sleeper_assistant import alert_advice
+from sleeper_assistant.alerts import NewAlert, needs_advice, register, register_pre_run
+from sleeper_assistant.dashboard import current_week, games_for_week, starter_slots
 from sleeper_assistant.db import LeagueRow, PlayerInjuryRow, PlayerRow, RosterRow, as_utc
 from sleeper_assistant.lineup_slots import eligible_positions
 from sleeper_assistant.projections import projected_points
@@ -190,6 +191,46 @@ def _suggested_switch(
     )
 
 
+def _advice(  # noqa: PLR0913, PLR0917
+    session: Session,
+    league: LeagueRow,
+    spot: Spot,
+    nu: NextUp | None,
+    projections: dict[str, float],
+    week: int,
+    slots: list[str],
+    byes: set[str],
+    taken: set[str],
+) -> dict[str, object] | None:
+    """The model's pick of a replacement among the legal options, or None (no model, no options,
+    or an answer that failed its checks)."""
+    if alert_advice.client() is None:
+        return None  # no model: skip building the facts
+    options = [
+        alert_advice.option(p, "bench", projections.get(p.player_id))
+        for p in _bench_options(session, spot)
+        if p.team not in byes
+    ]
+    positions = eligible_positions(spot.slot, spot.out.position or "")
+    options += alert_advice.free_agents(session, league, week, taken, set(positions), byes)
+    for o in options:
+        o["next_up"] = bool(nu and nu.player_id and o["player_id"] == nu.player_id)
+    roster = spot.roster
+    parked = {*roster.reserve, *roster.taxi, *roster.starters, spot.out.player_id}
+    droppable = {pid for pid in roster.players if pid not in parked}
+    facts: dict[str, object] = {
+        "week": week,
+        "player_out": alert_advice.option(spot.out, "out", projections.get(spot.out.player_id)),
+        "slot": spot.slot,
+        "league_slots": slots,
+        "roster": alert_advice.roster_facts(session, spot.roster, projections, slots),
+        "droppable": sorted(droppable),
+        "next_up_on_depth_chart": nu.name if nu else None,
+        "options": options,
+    }
+    return alert_advice.advise("ruled_out.v1", facts, options, droppable)
+
+
 def _all(roster: RosterRow) -> list[str]:
     """Every player a team has, in any spot."""
     return [*roster.players, *roster.reserve, *roster.taxi]
@@ -220,6 +261,12 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
         if week
         else {}
     )
+    byes = (
+        {t for t, g in games_for_week(session, league.season, week).items() if g.state == "bye"}
+        if week
+        else set()
+    )
+    taken = {pid for r in rosters for pid in _all(r)}
     raised: list[NewAlert] = []
     for injury, player, owners in rostered:
         name = player.full_name or player.player_id
@@ -253,11 +300,23 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                 sentences.append("He is on your bench.")
             if nu and player.team and not said_next_up:
                 sentences.append(_where_is_next_up(nu, player.team, roster))
+            key = f"injury_out:{player.player_id}:{ruled_at}"
+            advice = None
+            if (
+                starts
+                and slot
+                and week
+                and needs_advice(session, league.league_id, roster.roster_id, key, now)
+            ):
+                advice = _advice(
+                    session, league, Spot(roster, slot, player), nu, projections, week, slots,
+                    byes, taken,
+                )  # fmt: skip
             raised.append(
                 NewAlert(
                     roster_id=roster.roster_id,
                     kind="injury_out",
-                    dedupe_key=f"injury_out:{player.player_id}:{ruled_at}",
+                    dedupe_key=key,
                     title=f"{name} ({player.position}, {player.team}) was ruled out",
                     why=" ".join(sentences),
                     player_id=player.player_id,
@@ -267,6 +326,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                         "starter": starts,
                         "previous": injury.previous,
                         "next_up": nu.player_id if nu else None,
+                        **({"advice": advice} if advice else {}),
                     },
                 )
             )

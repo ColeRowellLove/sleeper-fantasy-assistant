@@ -435,3 +435,20 @@
 .alert-targets li {
   margin-bottom: 0.25rem;
 }
+
+.alert-advice {
+  border-left: 3px solid var(--accent, #2f6fed);
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.75rem;
+}
+
+.alert-advice-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.alert-advice ol {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}

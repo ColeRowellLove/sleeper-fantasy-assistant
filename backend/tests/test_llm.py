@@ -181,3 +181,15 @@ def test_prompts_load_from_the_prompts_folder(
     assert load_prompt("task.v1") == "You are a coach."
     with pytest.raises(FileNotFoundError):
         load_prompt("missing.v1")
+
+
+def test_an_empty_provider_from_unset_workflow_variables_means_off() -> None:
+    assert client_from_env({"LLM_PROVIDER": "", "LLM_MODEL": "", "LLM_API_KEY": ""}) is None
+
+
+def test_a_run_stops_asking_after_repeated_provider_failures() -> None:
+    client = Fake(httpx.ConnectError("down"))
+    budget = Budget(50)
+    for n in range(6):
+        ask(client, "p", {"n": n}, Advice, budget=budget)
+    assert len(client.calls) == llm.MAX_FAILURES

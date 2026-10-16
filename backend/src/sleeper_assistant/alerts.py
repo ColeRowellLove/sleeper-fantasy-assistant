@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 
 RECENT = timedelta(days=14)  # the app shows alerts this recent
 KEEP = timedelta(days=90)  # older alerts are deleted
+ADVICE_RETRY = timedelta(hours=3)  # an alert still without model advice is retried this long
 
 
 class NewAlert(BaseModel):
@@ -84,10 +85,10 @@ def store_new(session: Session, league: LeagueRow, raised: list[NewAlert], now: 
     if not raised:
         return 0
     keys = {a.dedupe_key for a in raised}
-    seen = {
-        (roster_id, key)
-        for roster_id, key in session.execute(
-            select(AlertRow.roster_id, AlertRow.dedupe_key).where(
+    seen: dict[tuple[int, str], AlertRow | None] = {
+        (row.roster_id, row.dedupe_key): row
+        for row in session.scalars(
+            select(AlertRow).where(
                 AlertRow.league_id == league.league_id, AlertRow.dedupe_key.in_(keys)
             )
         )
@@ -96,8 +97,15 @@ def store_new(session: Session, league: LeagueRow, raised: list[NewAlert], now: 
     for alert in raised:
         marker = (alert.roster_id, alert.dedupe_key)
         if marker in seen:
+            existing = seen[marker]
+            if (
+                existing is not None
+                and alert.data.get("advice")
+                and not (existing.data or {}).get("advice")
+            ):
+                existing.data = {**(existing.data or {}), "advice": alert.data["advice"]}
             continue  # already told, or raised twice in the same run
-        seen.add(marker)
+        seen[marker] = None
         try:
             with session.begin_nested():  # a run that overlaps this one may insert the same event
                 session.add(
@@ -118,6 +126,26 @@ def store_new(session: Session, league: LeagueRow, raised: list[NewAlert], now: 
             continue  # someone else just told that team; not a failure
         created += 1
     return created
+
+
+def needs_advice(
+    session: Session, league_id: str, roster_id: int, dedupe_key: str, now: datetime
+) -> bool:
+    """Whether the model should be asked about this event for this team.
+
+    Yes for a new event, and for one stored without advice (the model failed or was throttled) for
+    ``ADVICE_RETRY`` after it was raised; no once it has advice, or after that window.
+    """
+    row = session.scalars(
+        select(AlertRow).where(
+            AlertRow.league_id == league_id,
+            AlertRow.roster_id == roster_id,
+            AlertRow.dedupe_key == dedupe_key,
+        )
+    ).first()
+    if row is None:
+        return True
+    return not (row.data or {}).get("advice") and as_utc(row.created_at) >= now - ADVICE_RETRY
 
 
 def run_alerts(

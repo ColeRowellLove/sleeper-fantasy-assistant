@@ -2,12 +2,14 @@
 
 # ruff: noqa: E501  (fixtures with long rows read better on one line)
 
+import json
 from datetime import UTC, date, datetime, timedelta
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import alerts
+from sleeper_assistant import alert_advice, alerts, llm
 from sleeper_assistant.alert_waiver import (
     coming_week,
     day_name,
@@ -328,3 +330,87 @@ def test_nothing_is_raised_or_used_up_while_the_coming_week_has_no_projections(
     session.commit()
     assert run_alerts(session, league, {"w": detect_waiver_targets}, MONDAY_LATE) >= 1  # next run
     assert 1 in _by_team(session)
+
+
+class FakeLlm:
+    def __init__(self, reply: str) -> None:
+        self.reply, self.calls = reply, 0
+
+    def complete(self, system: str, user: str) -> str:
+        self.calls += 1
+        return self.reply
+
+
+def _ranking(*picks: tuple[str, str]) -> str:
+    return json.dumps(
+        {
+            "summary": "Go for the receiver first.",
+            "picks": [{"player_id": p, "drop_id": None, "reason": r} for p, r in picks],
+        }
+    )
+
+
+@pytest.fixture
+def model(monkeypatch: pytest.MonkeyPatch) -> list[FakeLlm]:
+    """Installs a fake model whose reply a test sets with ``model[0].reply``."""
+    fake = FakeLlm("")
+    monkeypatch.setattr(alert_advice, "client", lambda: fake)
+    monkeypatch.setattr(alert_advice, "_budget", llm.Budget(50))
+    return [fake]
+
+
+def test_a_model_reorders_the_computed_pickups_and_the_numbers_stay_computed(
+    session: Session, model: list[FakeLlm]
+) -> None:
+    league = _setup(session)
+    model[0].reply = _ranking(("fa_wr", "He is projected 11.4."), ("fa_rb", "A back at 9.0."))
+    run_alerts(session, league, {"w": detect_waiver_targets}, MONDAY_EVENING)
+    alert = _by_team(session)[1]
+    advice = alert.data["advice"]
+    assert [p["name"] for p in advice["picks"]] == ["Horton", "Free Back"]  # type: ignore[index]
+    assert advice["picks"][0]["action"] == "pickup"  # type: ignore[index]
+    assert [t["player_id"] for t in alert.data["targets"]] == ["fa_rb", "fa_wr"]  # type: ignore[index]
+    run_alerts(session, league, {"w": detect_waiver_targets}, MONDAY_EVENING)
+    assert model[0].calls == 1  # the second run does not ask again for the same alert
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        _ranking(("fa_low", "He is projected 7.0.")),  # not one of the computed pickups
+        _ranking(("fa_wr", "He is projected 25.0.")),  # a number that is not in the facts
+        json.dumps({"summary": "x", "picks": []}),
+        "no thanks",
+    ],
+)
+def test_a_waiver_answer_that_breaks_a_rule_is_dropped(
+    session: Session, model: list[FakeLlm], reply: str
+) -> None:
+    league = _setup(session)
+    model[0].reply = reply
+    run_alerts(session, league, {"w": detect_waiver_targets}, MONDAY_EVENING)
+    assert "advice" not in _by_team(session)[1].data
+
+
+def test_a_drop_must_be_one_of_the_teams_droppable_players(
+    session: Session, model: list[FakeLlm]
+) -> None:
+    league = _setup(session)
+    bad = json.dumps(
+        {
+            "summary": "x",
+            "picks": [{"player_id": "fa_wr", "drop_id": "s1", "reason": "Projected 11.4."}],
+        }
+    )
+    model[0].reply = bad  # s1 is another team's player
+    run_alerts(session, league, {"w": detect_waiver_targets}, MONDAY_EVENING)
+    assert "advice" not in _by_team(session)[1].data
+
+
+def test_without_a_model_the_alert_has_no_advice(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(alert_advice, "client", lambda: None)
+    league = _setup(session)
+    run_alerts(session, league, {"w": detect_waiver_targets}, MONDAY_EVENING)
+    assert "advice" not in _by_team(session)[1].data

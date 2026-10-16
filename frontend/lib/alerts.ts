@@ -29,6 +29,45 @@ export function waiverTargets(alert: AlertItem): WaiverTarget[] {
   );
 }
 
+export interface AdvicePick {
+  player_id: string;
+  name: string;
+  position?: string | null;
+  team?: string | null;
+  /** "bench" (already on the team) or "pickup" (available). */
+  action: string;
+  drop_id?: string | null;
+  drop_name?: string | null;
+  reason: string;
+}
+
+export interface Advice {
+  summary: string;
+  picks: AdvicePick[];
+}
+
+/** The model-written advice stored on an alert, or null when absent or not shaped like advice. */
+export function alertAdvice(alert: AlertItem): Advice | null {
+  const raw = alert.data?.advice as Partial<Advice> | undefined;
+  if (
+    !raw ||
+    typeof raw !== "object" ||
+    typeof raw.summary !== "string" ||
+    !Array.isArray(raw.picks)
+  ) {
+    return null;
+  }
+  const picks = raw.picks.filter(
+    (p): p is AdvicePick =>
+      typeof p === "object" &&
+      p !== null &&
+      typeof (p as AdvicePick).player_id === "string" &&
+      typeof (p as AdvicePick).name === "string" &&
+      typeof (p as AdvicePick).reason === "string",
+  );
+  return picks.length > 0 ? { summary: raw.summary, picks } : null;
+}
+
 /** The viewer's "cleared at" time from their cookie: a valid ISO time, or null (never throws). */
 export function parseSeen(raw: string | null | undefined): string | null {
   if (!raw) return null;
