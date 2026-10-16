@@ -33,6 +33,13 @@ Inspiration only: no logos, names, fonts or assets from those apps.
 - **Filter chips:** position, availability, week; same look and keyboard behaviour everywhere.
 - **Cards and disclosure:** one spacing scale; detail in a native `<details>` where it helps.
 
+## Enforced, not just encouraged
+
+`frontend/tests/consistency.test.ts` fails when a component builds its own stats table, filter chip
+group or player face and name instead of using `StatTable`, `FilterChips` and `PlayerIdentity`. If
+a screen needs something these do not do, change the shared component for every tab. The test lists
+the few screens not yet migrated; that list may only shrink.
+
 ## Checking a change
 
 Look at it before it ships: screenshots at phone and desktop width in both themes, the

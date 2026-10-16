@@ -1,26 +1,25 @@
 import type { BestLineup, Dashboard, StartSitCandidate, StartSitComparison } from "../lib/api";
 import { leaguePath } from "../lib/league";
 import GameBadge from "./GameBadge";
-import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
+import InjuryBadge from "./InjuryBadge";
+import PlayerIdentity from "./PlayerIdentity";
 import PlayerLink from "./PlayerLink";
 import PositionChip from "./PositionChip";
+import StatTable from "./StatTable";
 
 const number = (n: number | null | undefined) =>
   n === null || n === undefined ? "–" : n.toFixed(1);
 
 function PlayerCell({ c }: { c: StartSitCandidate }) {
   return (
-    <>
-      <span className="player-name">
-        <PlayerLink playerId={c.player_id}>{c.name}</PlayerLink>
-      </span>
-      <span className="player-meta">
-        <PositionChip position={c.position} />
-        <span className="muted">{c.team ?? "FA"}</span>
-        <InjuryBadge injury={c.injury} />
-      </span>
-    </>
+    <PlayerIdentity
+      player_id={c.player_id}
+      name={c.name}
+      position={c.position}
+      team={c.team}
+      injury={c.injury}
+    />
   );
 }
 
@@ -102,47 +101,44 @@ export default function StartSitTool({
             {best.why} Projected {best.projected.toFixed(1)} against{" "}
             {best.current_projected.toFixed(1)} for the current lineup.
           </p>
-          <div className="players-scroll">
-            <table className="players pd-table">
-              <caption className="visually-hidden">Best projected lineup by slot</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Slot</th>
-                  <th scope="col">Player</th>
-                  <th scope="col">Opponent</th>
-                  <th scope="col" className="num">
-                    Proj
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {best.lineup.map((spot, i) => (
-                  <tr key={`${spot.slot}-${i}`}>
-                    <th scope="row">{spot.slot}</th>
-                    {spot.player ? (
-                      <>
-                        <td>
-                          <PlayerCell c={spot.player} />
-                        </td>
-                        <td>
-                          <GameBadge
-                            game={spot.player.game}
-                            matchup={spot.player.matchup}
-                            position={spot.player.position}
-                          />
-                        </td>
-                        <td className="num">{number(spot.player.projected)}</td>
-                      </>
-                    ) : (
-                      <td colSpan={3} className="muted">
-                        No one on this roster can fill this slot.
+          <StatTable bare caption="Best projected lineup by slot" className="pd-table">
+            <thead>
+              <tr>
+                <th scope="col">Slot</th>
+                <th scope="col">Player</th>
+                <th scope="col">Opponent</th>
+                <th scope="col" className="num">
+                  Proj
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {best.lineup.map((spot, i) => (
+                <tr key={`${spot.slot}-${i}`}>
+                  <th scope="row">{spot.slot}</th>
+                  {spot.player ? (
+                    <>
+                      <td>
+                        <PlayerCell c={spot.player} />
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td>
+                        <GameBadge
+                          game={spot.player.game}
+                          matchup={spot.player.matchup}
+                          position={spot.player.position}
+                        />
+                      </td>
+                      <td className="num">{number(spot.player.projected)}</td>
+                    </>
+                  ) : (
+                    <td colSpan={3} className="muted">
+                      No one on this roster can fill this slot.
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </StatTable>
           {best.changes.length > 0 && (
             <>
               <h4 className="depth-section-title">Swaps to make</h4>
@@ -232,62 +228,59 @@ export default function StartSitTool({
           <p className="startsit-why" role="status">
             {comparison.why}
           </p>
-          <div className="players-scroll">
-            <table className="players pd-table">
-              <caption className="visually-hidden">Players compared, best first</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Player</th>
-                  <th scope="col">Opponent</th>
-                  <th scope="col" className="num">
-                    Proj
+          <StatTable bare caption="Players compared, best first" className="pd-table">
+            <thead>
+              <tr>
+                <th scope="col">Player</th>
+                <th scope="col">Opponent</th>
+                <th scope="col" className="num">
+                  Proj
+                </th>
+                <th scope="col" className="num">
+                  Last 3 avg
+                </th>
+                <th scope="col" className="num">
+                  Consensus rank
+                </th>
+                <th scope="col">Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparison.candidates.map((c) => (
+                <tr key={c.player_id}>
+                  <th scope="row" className="player-cell">
+                    <PlayerCell c={c} />
                   </th>
-                  <th scope="col" className="num">
-                    Last 3 avg
-                  </th>
-                  <th scope="col" className="num">
-                    Consensus rank
-                  </th>
-                  <th scope="col">Verdict</th>
+                  <td>
+                    {c.game ? (
+                      <GameBadge
+                        game={c.game}
+                        matchup={c.matchup}
+                        position={c.position}
+                        conditions="compact"
+                      />
+                    ) : (
+                      <span className="muted">No game found</span>
+                    )}
+                  </td>
+                  <td className="num">{number(c.projected)}</td>
+                  <td className="num">{number(c.form)}</td>
+                  <td className="num">{c.rank ?? "–"}</td>
+                  <td>
+                    {c.player_id === comparison.start ? (
+                      <span className="verdict verdict-start">
+                        {comparison.close_call ? "Start (close call)" : "Start"}
+                      </span>
+                    ) : c.out ? (
+                      <span className="verdict verdict-out">Can&apos;t start: {c.out}</span>
+                    ) : (
+                      <span className="verdict">Sit</span>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {comparison.candidates.map((c) => (
-                  <tr key={c.player_id}>
-                    <th scope="row" className="player-cell">
-                      <PlayerCell c={c} />
-                    </th>
-                    <td>
-                      {c.game ? (
-                        <GameBadge
-                          game={c.game}
-                          matchup={c.matchup}
-                          position={c.position}
-                          conditions="compact"
-                        />
-                      ) : (
-                        <span className="muted">No game found</span>
-                      )}
-                    </td>
-                    <td className="num">{number(c.projected)}</td>
-                    <td className="num">{number(c.form)}</td>
-                    <td className="num">{c.rank ?? "–"}</td>
-                    <td>
-                      {c.player_id === comparison.start ? (
-                        <span className="verdict verdict-start">
-                          {comparison.close_call ? "Start (close call)" : "Start"}
-                        </span>
-                      ) : c.out ? (
-                        <span className="verdict verdict-out">Can&apos;t start: {c.out}</span>
-                      ) : (
-                        <span className="verdict">Sit</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </StatTable>
         </section>
       )}
     </section>

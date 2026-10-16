@@ -20,11 +20,9 @@ import {
 } from "../lib/playersFilter";
 import { rosterPath } from "../lib/league";
 import GameBadge from "./GameBadge";
-import InjuryBadge from "./InjuryBadge";
-import PlayerAvatar from "./PlayerAvatar";
-import PlayerLink from "./PlayerLink";
-import TeamLink from "./TeamLink";
-import PositionChip from "./PositionChip";
+import FilterChips from "./FilterChips";
+import PlayerIdentity from "./PlayerIdentity";
+import StatTable from "./StatTable";
 
 const PAGE = 50;
 
@@ -89,139 +87,109 @@ export default function PlayersTable({
           />
         </label>
 
-        <div className="players-filter" role="group" aria-label="Position">
-          {(["ALL", ...POSITION_FILTERS, "FLEX"] as PositionFilter[]).map((position) => (
-            <button
-              key={position}
-              type="button"
-              className="filter-chip"
-              aria-pressed={filters.position === position}
-              onClick={() => update({ position })}
-            >
-              {position === "ALL" ? "All" : position}
-            </button>
-          ))}
-        </div>
-
-        <div className="players-filter" role="group" aria-label="Availability">
-          {AVAILABILITY.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              className="filter-chip"
-              aria-pressed={filters.availability === value}
-              onClick={() => update({ availability: value })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <FilterChips
+          label="Position"
+          options={(["ALL", ...POSITION_FILTERS, "FLEX"] as PositionFilter[]).map((position) => ({
+            value: position,
+            label: position === "ALL" ? "All" : position,
+          }))}
+          value={filters.position}
+          onChange={(position) => update({ position })}
+        />
+        <FilterChips
+          label="Availability"
+          options={AVAILABILITY}
+          value={filters.availability}
+          onChange={(availability) => update({ availability })}
+        />
       </div>
 
-      <div className="card flush">
-        <div className="players-scroll">
-          <table className="players players-list">
-            <caption className="visually-hidden">
-              Players in this league. Use the column buttons to sort.
-            </caption>
-            <thead>
-              <tr>
-                {COLUMNS.map(({ key, label, numeric }) => {
-                  const active = sort.key === key;
-                  return (
-                    <th
-                      key={key}
-                      scope="col"
-                      className={numeric ? "num-col" : undefined}
-                      aria-sort={
-                        active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"
-                      }
-                    >
-                      <button
-                        type="button"
-                        className="sort-button"
-                        onClick={() => setSort((current) => nextSort(current, key))}
-                      >
-                        {label}
-                        <span className="sort-arrow" aria-hidden="true">
-                          {active ? (sort.direction === "asc" ? "▲" : "▼") : "↕"}
-                        </span>
-                      </button>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((p) => {
-                const mine = myRosterId !== null && p.owner_roster_id === myRosterId;
-                return (
-                  <tr key={p.player_id} className={mine ? "mine" : undefined}>
-                    <th scope="row" className="player-cell">
-                      <span className="player-line">
-                        <PlayerAvatar
-                          player_id={p.player_id}
-                          name={p.name}
-                          position={p.position}
-                          team={p.team}
-                        />
-                        <span className="player-text">
-                          <span className="player-name">
-                            <PlayerLink playerId={p.player_id}>{p.name}</PlayerLink>
-                          </span>
-                          <span className="player-meta">
-                            <PositionChip position={p.position} />
-                            <span className="muted">
-                              {p.team ? <TeamLink team={p.team}>{p.team}</TeamLink> : "FA"}
-                            </span>
-                            <InjuryBadge injury={p.injury} />
-                          </span>
-                          <span className="player-meta player-game">
-                            <GameBadge game={p.game} />
-                          </span>
-                        </span>
+      <StatTable
+        caption="Players in this league. Use the column buttons to sort."
+        className="players-list"
+        empty={rows.length === 0 ? "No players match these filters." : undefined}
+      >
+        <thead>
+          <tr>
+            {COLUMNS.map(({ key, label, numeric }) => {
+              const active = sort.key === key;
+              return (
+                <th
+                  key={key}
+                  scope="col"
+                  className={numeric ? "num-col" : undefined}
+                  aria-sort={
+                    active ? (sort.direction === "asc" ? "ascending" : "descending") : "none"
+                  }
+                >
+                  <button
+                    type="button"
+                    className="sort-button"
+                    onClick={() => setSort((current) => nextSort(current, key))}
+                  >
+                    {label}
+                    <span className="sort-arrow" aria-hidden="true">
+                      {active ? (sort.direction === "asc" ? "▲" : "▼") : "↕"}
+                    </span>
+                  </button>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((p) => {
+            const mine = myRosterId !== null && p.owner_roster_id === myRosterId;
+            return (
+              <tr key={p.player_id} className={mine ? "mine" : undefined}>
+                <th scope="row" className="player-cell">
+                  <PlayerIdentity
+                    player_id={p.player_id}
+                    name={p.name}
+                    position={p.position}
+                    team={p.team}
+                    injury={p.injury}
+                  >
+                    <span className="player-meta player-game">
+                      <GameBadge game={p.game} />
+                    </span>
+                  </PlayerIdentity>
+                </th>
+                <td className="status-cell">
+                  {p.owner_team === null ? (
+                    <span className="status-available">Available</span>
+                  ) : (
+                    <span className="status-owned" title={p.owner_team}>
+                      <span className="status-team">
+                        {leagueId && p.owner_roster_id !== null ? (
+                          <Link
+                            href={rosterPath(leagueId, p.owner_roster_id)}
+                            className="member-link"
+                          >
+                            {p.owner_team}
+                          </Link>
+                        ) : (
+                          p.owner_team
+                        )}
                       </span>
-                    </th>
-                    <td className="status-cell">
-                      {p.owner_team === null ? (
-                        <span className="status-available">Available</span>
-                      ) : (
-                        <span className="status-owned" title={p.owner_team}>
-                          <span className="status-team">
-                            {leagueId && p.owner_roster_id !== null ? (
-                              <Link
-                                href={rosterPath(leagueId, p.owner_roster_id)}
-                                className="member-link"
-                              >
-                                {p.owner_team}
-                              </Link>
-                            ) : (
-                              p.owner_team
-                            )}
-                          </span>
-                          {mine && <span className="you">You</span>}
-                        </span>
-                      )}
-                    </td>
-                    <td className="num num-col">{count(p.adds)}</td>
-                    <td className="num num-col">{count(p.drops)}</td>
-                    <td className="num num-col">{percent(p.owned_pct)}</td>
-                    <td className="num num-col">{percent(p.started_pct)}</td>
-                    <td className="num num-col">
-                      {p.rank === null ? "–" : `${p.position}${p.rank}`}
-                    </td>
-                    <td className="num num-col">{p.total_points.toFixed(1)}</td>
-                    <td className="num num-col">
-                      {p.projected === null ? "–" : p.projected.toFixed(1)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {rows.length === 0 && <p className="note players-empty">No players match these filters.</p>}
-      </div>
+                      {mine && <span className="you">You</span>}
+                    </span>
+                  )}
+                </td>
+                <td className="num num-col">{count(p.adds)}</td>
+                <td className="num num-col">{count(p.drops)}</td>
+                <td className="num num-col">{percent(p.owned_pct)}</td>
+                <td className="num num-col">{percent(p.started_pct)}</td>
+                <td className="num num-col">{p.rank === null ? "–" : `${p.position}${p.rank}`}</td>
+                <td className="num num-col">{p.total_points.toFixed(1)}</td>
+                <td className="num num-col">
+                  {p.projected === null ? "–" : p.projected.toFixed(1)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </StatTable>
 
       <p className="visually-hidden" role="status">
         {describeSort(sort)}. Showing {visible.length} of {rows.length} players.
