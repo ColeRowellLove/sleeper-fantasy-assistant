@@ -135,11 +135,20 @@ export interface DepthGroup {
   slots: DepthSlot[];
 }
 
+/** A team's season record from its finished games. */
+export interface TeamRecord {
+  wins: number;
+  losses: number;
+  ties: number;
+}
+
 export interface TeamDepth {
   team: string;
   source?: string | null;
   updated_at?: string | null;
   game?: GameInfo | null;
+  /** Wins, losses and ties; absent unless every finished game has a score. */
+  record?: TeamRecord | null;
   /** The team's per-game numbers with league ranks. */
   stats?: TeamStat[];
   groups: DepthGroup[];

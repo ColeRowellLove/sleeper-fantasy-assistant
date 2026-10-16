@@ -23,7 +23,7 @@ from sleeper_assistant.dashboard import (
     current_week,
     games_for_week,
 )
-from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow, TeamDepthChartRow
+from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow, TeamDepthChartRow
 from sleeper_assistant.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
 from sleeper_assistant.team_stats import TeamStat, all_team_stats, build_team_stats
 
@@ -57,11 +57,51 @@ class DepthGroup(BaseModel):
     slots: list[DepthSlot]
 
 
+class TeamRecord(BaseModel):
+    wins: int
+    losses: int
+    ties: int
+
+
+def team_record(session: Session, season: str, team: str) -> TeamRecord | None:
+    """The team's record from its finished games, or None when it cannot be stated exactly.
+
+    Every finished game must have a stored score, otherwise the record could be wrong and is left
+    out; a team with no finished game yet has no record either.
+    """
+    games = list(
+        session.scalars(
+            select(NflGameRow).where(
+                NflGameRow.season == season,
+                NflGameRow.status == "complete",
+                (NflGameRow.home == team) | (NflGameRow.away == team),
+            )
+        )
+    )
+    if not games or any(g.home_score is None or g.away_score is None for g in games):
+        return None
+    wins = losses = ties = 0
+    for g in games:
+        mine, theirs = (
+            (g.home_score, g.away_score) if g.home == team else (g.away_score, g.home_score)
+        )
+        if mine is None or theirs is None:  # unreachable: checked above, kept for the type checker
+            return None
+        if mine == theirs:
+            ties += 1
+        elif mine > theirs:
+            wins += 1
+        else:
+            losses += 1
+    return TeamRecord(wins=wins, losses=losses, ties=ties)
+
+
 class TeamDepth(BaseModel):
     team: str
     source: str | None = None  # ESPN, or Sleeper when ESPN had no chart
     updated_at: datetime | None = None
     game: GameInfo | None = None
+    record: TeamRecord | None = None  # wins, losses and ties; None unless exactly known
     stats: list[TeamStat] = []  # the team's per-game numbers with league ranks
     groups: list[DepthGroup]
 
@@ -153,6 +193,7 @@ def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDept
         source=row.source if row else None,
         updated_at=row.fetched_at if row else None,
         game=game,
+        record=team_record(session, league.season, team),
         stats=all_team_stats(build_team_stats(session, league.season), team),
         groups=groups,
     )

@@ -27,7 +27,7 @@ from sleeper_assistant.depth import (
     slot_order,
 )
 from sleeper_assistant.depth_sync import sync_depth_charts
-from sleeper_assistant.team_depth import build_team_depth
+from sleeper_assistant.team_depth import TeamRecord, build_team_depth, team_record
 
 
 def _athletes(*names: str, injury: str | None = None) -> dict[str, Any]:
@@ -280,3 +280,47 @@ def test_a_doubtful_starter_is_flagged_without_naming_a_replacement(session: Ses
 def test_a_team_with_no_stored_chart_is_an_empty_page_not_an_error(session: Session) -> None:
     page = build_team_depth(session, _league(session), "KC")
     assert page.groups == [] and page.source is None and page.updated_at is None
+
+
+def _result(  # noqa: PLR0913, PLR0917
+    game_id: str,
+    week: int,
+    home: str,
+    away: str,
+    score: tuple[int | None, int | None],
+    status: str = "complete",
+) -> NflGameRow:
+    return NflGameRow(
+        game_id=game_id, season="2026", week=week, home=home, away=away, game_date="2026-09-13",
+        status=status, home_score=score[0], away_score=score[1],
+    )  # fmt: skip
+
+
+def test_the_record_counts_wins_losses_and_ties_from_finished_games(session: Session) -> None:
+    session.add_all(
+        [
+            _result("1", 1, "SEA", "DEN", (24, 17)),  # win at home
+            _result("2", 2, "LAR", "SEA", (30, 20)),  # loss on the road
+            _result("3", 3, "SEA", "SF", (10, 10)),  # tie
+            _result("4", 4, "KC", "SEA", (3, 6)),  # win on the road
+            _result("5", 5, "SEA", "ARI", (None, None), status="pre_game"),  # not played: ignored
+            _result("6", 1, "KC", "DEN", (1, 2)),  # someone else's game
+        ]
+    )
+    session.commit()
+    assert team_record(session, "2026", "SEA") == TeamRecord(wins=2, losses=1, ties=1)
+    assert team_record(session, "2026", "KC") == TeamRecord(wins=0, losses=2, ties=0)
+
+
+def test_no_record_when_a_finished_game_has_no_score_or_none_is_finished(session: Session) -> None:
+    session.add_all(
+        [
+            _result("1", 1, "SEA", "DEN", (24, 17)),
+            _result("2", 2, "LAR", "SEA", (None, None)),  # finished, but the score is not stored
+            _result("3", 1, "KC", "DEN", (None, None), status="pre_game"),
+        ]
+    )
+    session.commit()
+    assert team_record(session, "2026", "SEA") is None  # one unscored game could make it wrong
+    assert team_record(session, "2026", "KC") is None  # nothing finished yet
+    assert team_record(session, "2026", "ZZZ") is None

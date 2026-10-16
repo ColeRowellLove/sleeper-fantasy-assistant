@@ -1,6 +1,6 @@
 /** Layout helpers for the team depth chart page. Pure, so they are easy to test. */
 
-import type { DepthGroup, DepthPlayer, DepthSlot } from "./api";
+import type { DepthGroup, DepthPlayer, DepthSlot, TeamRecord } from "./api";
 
 export const TEAM_NAMES: Record<string, string> = {
   ARI: "Arizona Cardinals",
@@ -92,4 +92,17 @@ export function groupSlots(groups: DepthGroup[]): DepthSections {
     }
   }
   return { skill, more };
+}
+
+/** "3-2" or "3-2-1" (ties shown only when there are some), plus the sentence for screen readers. */
+export function recordText(record: TeamRecord): { short: string; spoken: string } {
+  const { wins, losses, ties } = record;
+  const short = ties > 0 ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
+  const parts = [
+    `${wins} ${wins === 1 ? "win" : "wins"}`,
+    `${losses} ${losses === 1 ? "loss" : "losses"}`,
+  ];
+  if (ties > 0) parts.push(`${ties} ${ties === 1 ? "tie" : "ties"}`);
+  const last = parts.pop();
+  return { short, spoken: `record ${parts.join(", ")} and ${last}` };
 }

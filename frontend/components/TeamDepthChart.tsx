@@ -1,7 +1,8 @@
 import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
-import { depthRows, groupSlots, SLIDE_FROM, TEAM_NAMES } from "../lib/depth";
+import { depthRows, groupSlots, recordText, SLIDE_FROM, TEAM_NAMES } from "../lib/depth";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
+import TeamLogo from "./TeamLogo";
 import TeamStatsTable from "./TeamStatsTable";
 import PlayerLink from "./PlayerLink";
 
@@ -109,7 +110,16 @@ export default function TeamDepthChart({
 
   return (
     <Wrapper {...(landmark ? { "aria-labelledby": headingId } : {})} className="depth-chart">
-      <h2 id={headingId}>{name} depth chart</h2>
+      <div className="depth-title">
+        <TeamLogo team={data.team} />
+        <h2 id={headingId}>{name} depth chart</h2>
+        {data.record && (
+          <span className="depth-record">
+            <span aria-hidden="true">{recordText(data.record).short}</span>
+            <span className="visually-hidden">, {recordText(data.record).spoken}</span>
+          </span>
+        )}
+      </div>
       <p className="depth-meta">
         <GameBadge game={data.game} conditions="full" />
         {data.source && (
