@@ -1,15 +1,21 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import PlayersTable from "../components/PlayersTable";
 import TeamDepthChart from "../components/TeamDepthChart";
+import TeamDialog from "../components/TeamDialog";
+import TeamLink from "../components/TeamLink";
 import TeamPicker from "../components/TeamPicker";
 import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
 import { depthRows, groupSlots, isTeamCode, TEAM_CODES } from "../lib/depth";
 import { parseTab } from "../lib/league";
 import { expectNoA11yViolations } from "./a11y";
 
+const replace = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace }),
   usePathname: () => "/league/1",
   useSearchParams: () => new URLSearchParams("tab=teams&team=SEA"),
 }));
@@ -207,5 +213,94 @@ describe("TeamPicker", () => {
 describe("teams tab", () => {
   it("is a known tab", () => {
     expect(parseTab("teams")).toBe("teams");
+  });
+});
+
+describe("team pop-up", () => {
+  const beforeEachDialog = () => {
+    HTMLDialogElement.prototype.showModal = function showModal() {
+      this.setAttribute("open", "");
+    };
+    HTMLDialogElement.prototype.close = function close() {
+      this.removeAttribute("open");
+      this.dispatchEvent(new Event("close"));
+    };
+  };
+
+  it("a team code is a link that opens that team's depth chart, keeping the page you are on", () => {
+    render(<TeamLink team="LAR">LAR</TeamLink>);
+    expect(screen.getByRole("link", { name: "LAR" })).toHaveAttribute(
+      "href",
+      "/league/1?tab=teams&team=SEA&depth=LAR",
+    );
+  });
+
+  it("opening a team replaces an open player pop-up, and opening a player replaces a team", () => {
+    // the mocked page already has a player open; a team link drops it
+    const { unmount } = render(
+      <TeamLink team="DEN">DEN</TeamLink>,
+    );
+    expect(screen.getByRole("link")).toHaveAttribute("href", expect.not.stringContaining("player="));
+    unmount();
+  });
+
+  it("is an open, labelled modal with the team's chart and a Close button that comes first", () => {
+    beforeEachDialog();
+    render(<TeamDialog data={data} closeHref="/league/1?tab=players" myRosterId={1} />);
+    const dialog = screen.getByRole("dialog", { name: "Seattle Seahawks depth chart" });
+    expect(dialog).toHaveAttribute("open");
+    expect(within(dialog).getByText("Quarterback")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+  });
+
+  it("closes back to the page without the team, from the button or Escape", async () => {
+    beforeEachDialog();
+    const user = userEvent.setup();
+    render(<TeamDialog data={data} closeHref="/league/1?tab=players" myRosterId={null} />);
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(replace).toHaveBeenCalledWith("/league/1?tab=players", { scroll: false });
+    replace.mockClear();
+    screen.getByRole("dialog", { hidden: true }).dispatchEvent(new Event("close")); // Escape
+    expect(replace).toHaveBeenCalledWith("/league/1?tab=players", { scroll: false });
+  });
+
+  it("has no accessibility violations, even over a page that already has a depth chart", async () => {
+    beforeEachDialog();
+    await expectNoA11yViolations(
+      <div>
+        <TeamDepthChart data={data} myRosterId={null} />
+        <TeamDialog data={data} closeHref="/league/1?tab=teams" myRosterId={null} />
+      </div>,
+    );
+  });
+});
+
+describe("team codes in rows open the pop-up", () => {
+  it("shows the team as a link in the Players tab and on rosters", () => {
+    render(
+      <PlayersTable
+        data={{
+          league_id: "1",
+          week: 6,
+          players: [
+            {
+              player_id: "1",
+              name: "Puka Nacua",
+              position: "WR",
+              team: "LAR",
+              owner_roster_id: null,
+              owner_team: null,
+              adds: null,
+              drops: null,
+              total_points: 10,
+              rank: 1,
+              projected: null,
+            },
+          ],
+        }}
+        myRosterId={null}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "LAR" })).toHaveAttribute("href", expect.stringContaining("depth=LAR"));
   });
 });

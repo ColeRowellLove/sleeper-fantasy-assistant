@@ -8,6 +8,7 @@ import RostersPanel from "../../../components/RostersPanel";
 import SettingsPanel from "../../../components/SettingsPanel";
 import PlayerDialog from "../../../components/PlayerDialog";
 import TeamDepthChart from "../../../components/TeamDepthChart";
+import TeamDialog from "../../../components/TeamDialog";
 import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
@@ -36,10 +37,16 @@ export default async function LeaguePage({
   searchParams,
 }: {
   params: Promise<{ leagueId: string }>;
-  searchParams: Promise<{ tab?: string; week?: string; player?: string; team?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    week?: string;
+    player?: string;
+    team?: string;
+    depth?: string;
+  }>;
 }) {
   const { leagueId } = await params;
-  const { tab: tabParam, week, player, team } = await searchParams;
+  const { tab: tabParam, week, player, team, depth: depthParam } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
   const weekNumber = Number(week);
@@ -48,7 +55,8 @@ export default async function LeaguePage({
     Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18 ? `?week=${weekNumber}` : "";
 
   // the header needs the dashboard on every tab; lineups are only fetched for their own tab
-  const [dashboard, lineups, leagueSettings, players, playerDetail, depth] = await Promise.all([
+  const [dashboard, lineups, leagueSettings, players, playerDetail, depth, depthDialog] =
+    await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
     tab === "lineups"
       ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
@@ -66,12 +74,17 @@ export default async function LeaguePage({
     tab === "teams" && isTeamCode(team)
       ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${team}`)
       : Promise.resolve(null),
+    // a team opened as a pop-up from any team code; an unknown code opens nothing
+    isTeamCode(depthParam)
+      ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${depthParam}`).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   // closing the pop-up returns to this same page without ?player
   const closeParams = new URLSearchParams();
   if (tabParam) closeParams.set("tab", tabParam);
   if (weekQuery) closeParams.set("week", String(weekNumber));
+  if (tabParam === "teams" && isTeamCode(team)) closeParams.set("team", team);
   const closeQuery = closeParams.toString();
   const closeHref = `${leaguePath(leagueId)}${closeQuery ? `?${closeQuery}` : ""}`;
 
@@ -115,7 +128,15 @@ export default async function LeaguePage({
         </>
       )}
       {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
-      {playerDetail && <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />}
+      {depthDialog && (
+        <TeamDialog
+          key={depthDialog.team}
+          data={depthDialog}
+          closeHref={closeHref}
+          myRosterId={myRosterId}
+        />
+      )}
+      {!depthDialog && playerDetail && <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />}
       <p className="back">
         <Link href="/">Connect another league</Link>
       </p>

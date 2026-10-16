@@ -7,6 +7,7 @@ import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
+import TeamLink from "./TeamLink";
 import PositionChip from "./PositionChip";
 
 type Roster = Dashboard["rosters"][number];
@@ -108,7 +109,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
           <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
         </span>
         <span className="player-sub">
-          {player.team ?? "No team"}
+          {player.team ? <TeamLink team={player.team}>{player.team}</TeamLink> : "No team"}
           <InjuryBadge injury={player.injury} />
         </span>
         <span className="player-tags">
