@@ -2,13 +2,14 @@
 
 It ranks through ``alert_waiver.WaiverBoard``, the same code the waiver alert uses, so the page and
 the alert agree. The cycle comes from the league's own waiver day (Sleeper's ``waiver_day_of_week``,
-Tuesday when unset): the list is for the next waiver date on or after today (US Eastern) and its
-projections and byes are for the first week that starts after it, so on the waiver day itself it is
-rebuilt from the fresh data and last cycle's list is gone from this view.
+Tuesday when unset): the list is for the next waiver date *after* today (US Eastern) and its
+projections and byes are for the first week that starts after it. Waivers run on the waiver day, so
+that morning the list starts over for the next cycle, rebuilt from fresh data.
 
-Each suggestion shows its signals, not one blended score: the projection gain over the team's own
-worst starter, Sleeper's trending adds, and an NFL depth chart opening. ``backing`` counts how many
-of them point the same way, and ESPN's ownership is shown beside them as a plain number.
+Each suggestion is ranked by its projection gain over the team's own worst starter (shown in the
+reason). Two independent signals can back it up: Sleeper's trending adds and an NFL depth chart
+opening. ``backing`` counts how many of those point the same way, and ESPN's ownership is shown
+beside them as a plain number. Nothing is blended into one score.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.alert_waiver import EASTERN, WaiverBoard, coming_week, day_name, waiver_day
-from sleeper_assistant.db import LeagueRow, PlayerOwnershipRow, utcnow
+from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerOwnershipRow, utcnow
 
 LIMIT = 25
 
@@ -42,7 +43,7 @@ class WireEntry(BaseModel):
     over: str
     reason: str  # one line with the numbers behind it
     owned: float | None  # ESPN-wide percent of leagues that roster him
-    backing: int  # how many of the signals back him
+    backing: int  # how many of the other signals (trending adds, depth chart) back him
     signals: list[Signal]
 
 
@@ -57,10 +58,11 @@ class WaiverWire(BaseModel):
 
 
 def next_waiver_date(league: LeagueRow, now: datetime) -> date:
-    """The waiver date on or after today in US Eastern: this cycle."""
+    """The next waiver date after today in US Eastern: this cycle. On the waiver day itself the
+    waivers run, so the cycle is already the one a week later."""
     today = now.astimezone(EASTERN).date()
     sleeper_weekday = (today.weekday() + 1) % 7  # Python has Monday as 0; Sleeper has Sunday
-    return today + timedelta(days=(waiver_day(league) - sleeper_weekday) % 7)
+    return today + timedelta(days=(waiver_day(league) - sleeper_weekday) % 7 or 7)
 
 
 def build_waiver_wire(
@@ -80,6 +82,14 @@ def build_waiver_wire(
     if week is None:
         wire.note = "The NFL schedule is not loaded yet."
         return wire
+    if not session.scalar(
+        select(NflGameRow.game_id)
+        .where(NflGameRow.season == league.season, NflGameRow.game_date >= waiver.isoformat())
+        .limit(1)
+    ):
+        wire.week = None
+        wire.note = "There are no games left this season, so there is nothing to add for."
+        return wire
     board = WaiverBoard(session, league, week)
     roster = next((r for r in board.rosters if r.roster_id == roster_id), None)
     if roster is None:
@@ -88,7 +98,7 @@ def build_waiver_wire(
     if not board.has_projections:
         wire.note = f"Week {week} projections are not out yet; check back later."
         return wire
-    picks = board.pickups(roster, board.lineup(roster))[:LIMIT]
+    picks = board.pickups(roster, board.lineup(roster), LIMIT)
     owned = {
         row.player_id: row.owned
         for row in session.scalars(
@@ -100,11 +110,6 @@ def build_waiver_wire(
     for pick in picks:
         p = pick.player
         signals = [
-            Signal(
-                source="Sleeper projection",
-                backs=True,
-                detail=f"projected {pick.projected:.1f}, +{pick.gain:.1f} {pick.over}",
-            ),
             Signal(
                 source="Sleeper trending adds",
                 backs=bool(pick.adds),
@@ -125,6 +130,7 @@ def build_waiver_wire(
             ),
         ]
         backing = [s for s in signals if s.backs]
+        basis = f"projected {pick.projected:.1f}, +{pick.gain:.1f} {pick.over}"
         wire.entries.append(
             WireEntry(
                 player_id=p.player_id,
@@ -135,7 +141,7 @@ def build_waiver_wire(
                 gain=round(pick.gain, 1),
                 slot=pick.slot,
                 over=pick.over,
-                reason="; ".join(s.detail for s in backing),
+                reason="; ".join([basis, *(s.detail for s in backing)]),
                 owned=owned.get(p.player_id),
                 backing=len(backing),
                 signals=signals,

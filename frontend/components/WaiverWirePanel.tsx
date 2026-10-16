@@ -14,9 +14,9 @@ export function waiverDateLabel(iso: string): string {
   });
 }
 
-/** "Backed by 2 of 3 signals": the count in words, never only a color. */
+/** "Also backed by 1 of 2 other signals": the count in words, never only a color. */
 export function backingLabel(entry: WireEntry): string {
-  return `Backed by ${entry.backing} of ${entry.signals.length} signals`;
+  return `Also backed by ${entry.backing} of ${entry.signals.length} other signals`;
 }
 
 function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
@@ -38,8 +38,8 @@ function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
       <ul className="wire-signals">
         {entry.signals.map((s) => (
           <li key={s.source}>
-            <span className="wire-signal-state">{s.backs ? "Backs" : "No"}</span> {s.source}:{" "}
-            {s.detail}
+            <span className="wire-signal-state">{s.backs ? "Backs it" : "Does not back it"}</span>{" "}
+            {s.source}: {s.detail}
           </li>
         ))}
       </ul>
@@ -72,8 +72,8 @@ export default function WaiverWirePanel({
         <p className="note">
           Best adds for the {data.waiver_day} ({waiverDateLabel(data.waiver_date)}) waivers
           {data.week !== null && `, scored for week ${data.week}`}. Only players available in this
-          league, scored with its rules, and compared with your own lineup. The list starts over
-          each waiver cycle.
+          league, scored with its rules, and compared with the selected team&apos;s lineup. The list
+          starts over each waiver cycle.
         </p>
       ) : (
         <p className="note">The waiver wire could not be loaded. Try again in a moment.</p>

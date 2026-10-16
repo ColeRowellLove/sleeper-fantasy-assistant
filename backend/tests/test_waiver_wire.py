@@ -13,13 +13,13 @@ from test_alert_waiver import MONDAY_EVENING, _league, _setup
 SUNDAY = datetime(2026, 10, 18, 16, 0, tzinfo=UTC)
 
 
-def test_the_cycle_is_the_next_waiver_date_on_or_after_today_in_eastern_time() -> None:
+def test_the_cycle_resets_on_the_waiver_day_in_eastern_time() -> None:
     league = _league()  # Tuesday by default
     assert next_waiver_date(league, SUNDAY) == date(2026, 10, 20)
-    assert next_waiver_date(league, datetime(2026, 10, 20, 12, 0, tzinfo=UTC)) == date(2026, 10, 20)
-    # Tuesday 11pm Eastern is Wednesday UTC: still the Tuesday cycle; Wednesday starts the next
-    assert next_waiver_date(league, datetime(2026, 10, 21, 3, 0, tzinfo=UTC)) == date(2026, 10, 20)
-    assert next_waiver_date(league, datetime(2026, 10, 21, 5, 0, tzinfo=UTC)) == date(2026, 10, 27)
+    assert next_waiver_date(league, MONDAY_EVENING) == date(2026, 10, 20)  # Monday 7pm ET
+    # Tuesday 12:30am ET (04:30 UTC) is the waiver day: the list is already the next cycle's
+    assert next_waiver_date(league, datetime(2026, 10, 20, 4, 30, tzinfo=UTC)) == date(2026, 10, 27)
+    assert next_waiver_date(league, datetime(2026, 10, 21, 3, 0, tzinfo=UTC)) == date(2026, 10, 27)
     assert next_waiver_date(_league(waiver_day_of_week=4), SUNDAY) == date(2026, 10, 22)
 
 
@@ -44,9 +44,8 @@ def test_each_entry_shows_its_signals_and_how_many_back_it(session: Session) -> 
     wire = build_waiver_wire(session, league, 1, MONDAY_EVENING)
     horton = next(e for e in wire.entries if e.player_id == "fa_wr")
     assert (horton.projected, horton.gain, horton.owned) == (11.4, 3.4, 41.5)
-    assert horton.backing == 2  # projection and trending adds; no depth chart opening
+    assert horton.backing == 1  # trending adds; no depth chart opening
     assert [(s.source, s.backs) for s in horton.signals] == [
-        ("Sleeper projection", True),
         ("Sleeper trending adds", True),
         ("NFL depth chart", False),
     ]
@@ -54,7 +53,7 @@ def test_each_entry_shows_its_signals_and_how_many_back_it(session: Session) -> 
         "added in 8,200 leagues" in horton.reason and "+3.4 over Second Receiver" in horton.reason
     )
     back = next(e for e in wire.entries if e.player_id == "fa_rb")
-    assert back.backing == 1 and back.owned is None
+    assert back.backing == 0 and back.owned is None
 
 
 def test_only_available_playable_players_appear(session: Session) -> None:
@@ -89,3 +88,11 @@ def test_no_schedule_means_a_note_not_a_crash(session: Session) -> None:
         build_waiver_wire(session, league, 1, MONDAY_EVENING).note
         == "The NFL schedule is not loaded yet."
     )
+
+
+def test_when_no_games_are_left_the_page_says_so(session: Session) -> None:
+    league = _setup(session)
+    late = datetime(2027, 3, 1, 15, 0, tzinfo=UTC)
+    wire = build_waiver_wire(session, league, 1, late)
+    assert wire.entries == [] and wire.week is None
+    assert "no games left" in (wire.note or "")

@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import WaiverWirePanel, { backingLabel, waiverDateLabel } from "../components/WaiverWirePanel";
@@ -28,9 +29,8 @@ const entry = (over: Partial<WireEntry> = {}): WireEntry => ({
   over: "over Second Receiver at WR",
   reason: "projected 11.4",
   owned: 41.5,
-  backing: 2,
+  backing: 1,
   signals: [
-    { source: "Sleeper projection", backs: true, detail: "projected 11.4, +4.2" },
     { source: "Sleeper trending adds", backs: true, detail: "added in 8,200 leagues" },
     { source: "NFL depth chart", backs: false, detail: "no starter out ahead of him" },
   ],
@@ -59,7 +59,7 @@ describe("waiver wire", () => {
   it("labels the date and the count in words", () => {
     expect(waiverDateLabel("2026-10-20")).toBe("Tue, Oct 20");
     expect(waiverDateLabel("nope")).toBe("nope");
-    expect(backingLabel(entry())).toBe("Backed by 2 of 3 signals");
+    expect(backingLabel(entry())).toBe("Also backed by 1 of 2 other signals");
   });
 
   it("lists the adds best first with their numbers and every signal as text", () => {
@@ -75,12 +75,12 @@ describe("waiver wire", () => {
     expect(
       within(items[0]).getByText(/Projected 11.4, \+4.2 over Second Receiver at WR/),
     ).toBeInTheDocument();
-    expect(within(items[0]).getByText("Backed by 2 of 3 signals.")).toBeInTheDocument();
+    expect(within(items[0]).getByText("Also backed by 1 of 2 other signals.")).toBeInTheDocument();
     expect(within(items[0]).getByText(/Owned in 42% of ESPN leagues/)).toBeInTheDocument();
     expect(within(items[0]).getByText(/Sleeper trending adds:/)).toBeInTheDocument();
     expect(within(items[1]).queryByText(/Owned in/)).not.toBeInTheDocument();
-    expect(within(items[0]).getAllByText("Backs")).toHaveLength(2);
-    expect(within(items[0]).getByText("No")).toBeInTheDocument();
+    expect(within(items[0]).getAllByText("Backs it")).toHaveLength(1);
+    expect(within(items[0]).getByText("Does not back it")).toBeInTheDocument();
   });
 
   it("picks the team with a labelled GET form", () => {
@@ -89,6 +89,17 @@ describe("waiver wire", () => {
     expect(select).toHaveValue("1");
     expect(screen.getByRole("option", { name: "Cole (you)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show waiver wire" })).toBeInTheDocument();
+  });
+
+  it("reaches the team picker and its button with the keyboard", async () => {
+    const user = userEvent.setup();
+    render(panel(data));
+    await user.tab();
+    expect(screen.getByRole("combobox", { name: /Team/ })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Show waiver wire" })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("link", { name: "Tyler Horton" })).toHaveFocus();
   });
 
   it("explains an empty list and a failed load", () => {

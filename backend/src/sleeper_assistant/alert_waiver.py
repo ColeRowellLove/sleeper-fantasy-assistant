@@ -19,7 +19,7 @@ are skipped, and the first run before 9 am Eastern waits so the overnight syncs 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -138,7 +138,7 @@ def _advice(  # noqa: PLR0913, PLR0917
     session: Session,
     league: LeagueRow,
     roster: RosterRow,
-    top: list[tuple[float, PlayerRow, str]],
+    top: list[Pickup],
     projections: dict[str, float],
     slots: list[str],
     week: int,
@@ -154,8 +154,8 @@ def _advice(  # noqa: PLR0913, PLR0917
     ):
         return None
     options = [
-        alert_advice.option(p, "pickup", projections[p.player_id], gain=round(gain, 1), over=over)
-        for gain, p, over in top
+        alert_advice.option(x.player, "pickup", x.projected, gain=round(x.gain, 1), over=x.over)
+        for x in top
     ]
     starters = {pid for _, pid in lineup}
     droppable = {
@@ -261,8 +261,11 @@ class WaiverBoard:
         ]
         return assign_lineup(self.slots, healthy)
 
-    def pickups(self, roster: RosterRow, lineup: list[tuple[str, str]]) -> list[Pickup]:
-        """Every available player who would help this team by ``MIN_GAIN`` or more, best first."""
+    def pickups(
+        self, roster: RosterRow, lineup: list[tuple[str, str]], limit: int | None = None
+    ) -> list[Pickup]:
+        """The available players who would help this team by ``MIN_GAIN`` or more, best first
+        (the best ``limit`` when given; the depth chart is only read for those)."""
         found: list[Pickup] = []
         for p in self.free:
             slot, base, holder = replaced_by(self.slots, lineup, self.projections, p.position or "")
@@ -282,11 +285,19 @@ class WaiverBoard:
                     slot,
                     over,
                     trend.adds if trend else None,
-                    _opening(self.session, self.league, p.team or "", self._depth).get(p.player_id),
+                    None,
                 )
             )
         found.sort(key=lambda x: (-x.gain, -x.projected, x.player.player_id))
-        return found
+        return [
+            replace(
+                pick,
+                out_starter=_opening(
+                    self.session, self.league, pick.player.team or "", self._depth
+                ).get(pick.player.player_id),
+            )
+            for pick in found[:limit]
+        ]
 
 
 @register("waiver_targets")
@@ -303,7 +314,7 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
     raised: list[NewAlert] = []
     for roster in board.rosters:
         lineup = board.lineup(roster)
-        top = board.pickups(roster, lineup)[:TARGETS]
+        top = board.pickups(roster, lineup, TARGETS)
         if not top:
             continue  # nothing useful for this team: no alert, nothing padded
         lines: list[str] = []
@@ -337,7 +348,7 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
             session,
             league,
             roster,
-            [(x.gain, x.player, x.over) for x in top],
+            top,
             board.projections,
             board.slots,
             week,
