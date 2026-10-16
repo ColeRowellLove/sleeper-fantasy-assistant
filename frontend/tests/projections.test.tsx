@@ -158,6 +158,18 @@ describe("win chance in the matchup", () => {
     expect(winPercent(Number.NaN)).toBeNull();
   });
 
+  it("says so when the chance is a rough estimate", async () => {
+    const rough = withChance(0.7, 0.3);
+    rough.teams = rough.teams.map((t) => ({ ...t, win_probability_rough: true }));
+    const card = <MatchupCard matchup={rough} state="upcoming" week={7} myRosterId={1} />;
+    render(card);
+    expect(
+      screen.getByText(/Rough estimate: some starters have no projection/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/rough estimate because some starters/)).toBeInTheDocument();
+    await expectNoA11yViolations(card);
+  });
+
   it("shows each team's chance with a full sentence for screen readers", () => {
     render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,

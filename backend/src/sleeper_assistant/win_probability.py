@@ -22,6 +22,7 @@ BASE_SPREAD = 28.0  # standard deviation of the difference between two nine-star
 BASE_STARTERS = 9
 FLOOR = 0.01  # never claim certainty: the model is simple
 MIN_REMAINING = 0.05  # keep a little uncertainty even when almost everything has been played
+ROUGH_SPREAD = 1.25  # extra uncertainty when starters with no projection are filled in
 
 
 class StarterState(NamedTuple):
@@ -57,17 +58,23 @@ def _expected(player: StarterState) -> float | None:
     return max(actual, player.projected)
 
 
-def expectation(starters: Iterable[StarterState]) -> Expectation:
+def expectation(starters: Iterable[StarterState], *, fill_missing: bool = False) -> Expectation:
+    """The team's expected final score. With ``fill_missing`` a starter with no projection is
+    assumed to score what the team's other starters average (a rough estimate, not a fact)."""
     players = list(starters)
     total = 0.0
     missing = 0
     still_to_play = 0.0
     projected_total = 0.0
+    known = [e for p in players if (e := _expected(p)) is not None]
+    stand_in = sum(known) / len(known) if fill_missing and known else None
     for p in players:
         expected = _expected(p)
         if expected is None:
             missing += 1
-            continue
+            if stand_in is None:
+                continue
+            expected = stand_in  # a starter still to play: his whole game is left
         total += expected
         planned = (
             p.pregame
@@ -104,6 +111,7 @@ def matchup_chances(
     team_b: Iterable[StarterState],
     *,
     max_missing: int = 1,
+    fill_missing: bool = False,
 ) -> tuple[float, float] | None:
     """(chance A wins, chance B wins), or None when there is nothing fair to say.
 
@@ -111,13 +119,20 @@ def matchup_chances(
     would be guesses), when no one has anything to compare, or when every starter on both teams
     is done (the result is known, so the page shows it instead of a percentage).
     """
-    a, b = expectation(team_a), expectation(team_b)
+    a, b = (
+        expectation(team_a, fill_missing=fill_missing),
+        expectation(team_b, fill_missing=fill_missing),
+    )
     if a.starters == 0 or b.starters == 0:
         return None
+    if fill_missing and (a.missing == a.starters or b.missing == b.starters):
+        return None  # nothing to base a stand-in on
     if a.missing > max_missing or b.missing > max_missing:
         return None
     if a.remaining == 0.0 and b.remaining == 0.0:
         return None  # decided: show the result
     sigma = spread(max(a.starters, b.starters), max(a.remaining, b.remaining))
+    if fill_missing and (a.missing or b.missing):
+        sigma *= ROUGH_SPREAD  # the totals include guesses, so be less sure
     chance = win_probability(a.total, b.total, sigma)
     return round(chance, 4), round(1.0 - chance, 4)

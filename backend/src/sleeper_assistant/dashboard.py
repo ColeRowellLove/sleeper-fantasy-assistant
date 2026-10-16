@@ -160,6 +160,7 @@ class TeamLineup(BaseModel):
     win_probability: float | None = (
         None  # chance to win from projections; None = nothing fair to say
     )
+    win_probability_rough: bool = False  # True when starters with no projection were filled in
     starters: list[LineupPlayer]
     bench: list[LineupPlayer]
 
@@ -563,8 +564,17 @@ def _starter_states(team: TeamLineup) -> list[StarterState]:
 
 def _set_win_probability(a: TeamLineup, b: TeamLineup) -> None:
     chances = matchup_chances(_starter_states(a), _starter_states(b))
+    rough = False
+    if chances is None:
+        # too many starters without a projection for a firm number: still give a rough one so every
+        # matchup has a bar, marked as rough (None stays for a decided or empty matchup)
+        chances = matchup_chances(
+            _starter_states(a), _starter_states(b), max_missing=99, fill_missing=True
+        )
+        rough = chances is not None
     if chances is not None:
         a.win_probability, b.win_probability = chances
+        a.win_probability_rough = b.win_probability_rough = rough
 
 
 def _live(pregame: float, scored: float | None, game: GameInfo | None) -> float:

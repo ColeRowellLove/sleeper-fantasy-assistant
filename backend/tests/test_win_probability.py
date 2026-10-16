@@ -208,3 +208,23 @@ def test_zero_filled_projections_still_count_as_missing_for_the_win_chance(
     assert [p.projected for p in b.starters] == [0.0, 0.0]
     assert all(p.projection_missing for p in b.starters)
     assert a.win_probability is None and b.win_probability is None
+
+
+def test_a_rough_estimate_fills_in_missing_starters_and_is_less_sure() -> None:
+    two_missing = [
+        StarterState("upcoming", 0.0, 20.0),
+        StarterState("upcoming", 0.0, None),
+        StarterState("upcoming", 0.0, None),
+    ]
+    assert expectation(two_missing).total == 20.0
+    assert expectation(two_missing, fill_missing=True).total == 60.0  # stand-in: the 20 average
+    rough = matchup_chances(two_missing, _team(10, 10, 10), max_missing=99, fill_missing=True)
+    firm = matchup_chances(_team(20, 20, 20), _team(10, 10, 10))
+    assert rough is not None and firm is not None
+    assert 0.5 < rough[0] < firm[0]  # same lead, wider spread
+    assert rough[0] + rough[1] == pytest.approx(1.0, abs=1e-3)
+
+
+def test_a_rough_estimate_needs_at_least_one_projected_starter_per_side() -> None:
+    nothing = [StarterState("upcoming", 0.0, None), StarterState("upcoming", 0.0, None)]
+    assert matchup_chances(nothing, _team(20, 20), max_missing=99, fill_missing=True) is None
