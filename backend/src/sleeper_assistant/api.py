@@ -33,6 +33,7 @@ from sleeper_assistant.depth import TEAM_IDS
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
 from sleeper_assistant.players_view import PlayersResponse, build_players
+from sleeper_assistant.rankings import Rankings, build_rankings
 from sleeper_assistant.rules import LeagueRules, derive_rules
 from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFoundError
 from sleeper_assistant.team_depth import TeamDepth, build_team_depth
@@ -341,6 +342,21 @@ def get_league_lineups(
         raise HTTPException(status_code=404, detail="League not connected yet")
     response.headers["Cache-Control"] = READ_CACHE
     return build_lineups(session, row, week)
+
+
+@app.get("/api/leagues/{league_id}/rankings")
+def get_rankings(
+    league_id: LeagueId,
+    session: SessionDep,
+    response: Response,
+    week: Annotated[int | None, Query(ge=1, le=18)] = None,
+) -> Rankings:
+    """Weekly player rankings by position: a consensus of several signals, with the spread."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = READ_CACHE
+    return build_rankings(session, row, week)
 
 
 def _connected(row: LeagueRow) -> ConnectedLeague:

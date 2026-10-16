@@ -338,6 +338,15 @@ def test_player_detail_endpoint(client: TestClient) -> None:
     )  # rejected, not looked up
 
 
+def test_rankings_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/rankings").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/rankings?week=2").json()
+    assert body["league_id"] == "1" and isinstance(body["players"], list)
+    assert "projection" in body["signals"]
+    assert client.get("/api/leagues/1/rankings?week=99").status_code == 422
+
+
 def test_team_depth_endpoint(client: TestClient) -> None:
     assert client.get("/api/leagues/1/teams/SF").status_code == 404  # league not connected yet
     assert client.post("/api/leagues/1/connect").status_code == 200
