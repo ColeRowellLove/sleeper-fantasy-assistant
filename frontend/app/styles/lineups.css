@@ -334,7 +334,8 @@ table.h2h {
     gap: 0.4rem;
   }
 
-  .h2h .game-detail {
+  .h2h .game-detail,
+  .h2h .game-conditions {
     display: none;
   }
 

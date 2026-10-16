@@ -213,6 +213,11 @@
   color: var(--muted);
 }
 
+/* roof, weather, surface and the betting line */
+.game-conditions {
+  color: var(--muted);
+}
+
 /* the opponent's defense rank against the player's position: "(3rd)" */
 .game-rank {
   color: var(--muted);

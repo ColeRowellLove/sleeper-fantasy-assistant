@@ -169,6 +169,14 @@ class NflGameRow(Base):
     kickoff: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # from nflverse
     home_score: Mapped[int | None]  # final score, from nflverse once the game is over
     away_score: Mapped[int | None]
+    # game conditions from the nflverse schedule; all optional (unknown until published)
+    roof: Mapped[str | None] = mapped_column(String)  # outdoors, dome, closed, open
+    surface: Mapped[str | None] = mapped_column(String)  # grass, fieldturf, ...
+    stadium: Mapped[str | None] = mapped_column(String)
+    temp: Mapped[int | None]  # degrees Fahrenheit, outdoor games
+    wind: Mapped[int | None]  # miles per hour, outdoor games
+    spread_line: Mapped[float | None]  # points the home team is favoured by (negative: underdog)
+    total_line: Mapped[float | None]  # the over/under
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

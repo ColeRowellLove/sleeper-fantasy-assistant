@@ -5,12 +5,14 @@ import GameBadge from "../components/GameBadge";
 import RostersPanel from "../components/RostersPanel";
 import type { Dashboard, GameInfo } from "../lib/api";
 import {
+  conditionsLabel,
   formatGameDate,
   formatKickoff,
   gameLabel,
   matchupText,
   ordinal,
   scoreText,
+  spreadText,
 } from "../lib/game";
 import { expectNoA11yViolations } from "./a11y";
 
@@ -298,5 +300,71 @@ describe("live and final game status", () => {
     expect(screen.getByText("Live")).toBeInTheDocument();
     expect(screen.getByText("Q2 2:24, SEA 3 - DEN 14")).toBeInTheDocument();
     await expectNoA11yViolations(<GameBadge game={live} />);
+  });
+});
+
+describe("game conditions", () => {
+  const outdoors: GameInfo = {
+    ...upcoming,
+    team: "SF",
+    conditions: {
+      roof: "outdoors",
+      surface: "grass",
+      temp: 28,
+      wind: 18,
+      spread: -3.5,
+      total: 44.5,
+    },
+  };
+
+  it("writes the spread from the team's side", () => {
+    expect(spreadText("SF", -3.5)).toBe("SF -3.5");
+    expect(spreadText("DAL", 3.5)).toBe("DAL +3.5");
+    expect(spreadText("SF", 0)).toBe("SF pick'em");
+    expect(spreadText(null, -1)).toBe("-1");
+  });
+
+  it("describes outdoor weather in words, flagging wind and cold", () => {
+    expect(conditionsLabel(outdoors)).toEqual({
+      setting: "28°F (freezing), wind 18 mph (windy)",
+      surface: "Grass",
+      line: "SF -3.5, O/U 44.5",
+    });
+    expect(conditionsLabel(outdoors, true)).toEqual({
+      setting: "28°F (freezing), wind 18 mph (windy)",
+      surface: null,
+      line: null,
+    });
+  });
+
+  it("says dome or closed roof instead of weather", () => {
+    const dome = { ...outdoors, conditions: { roof: "dome", temp: null, wind: null } };
+    expect(conditionsLabel(dome, true)?.setting).toBe("Dome");
+    expect(conditionsLabel({ ...dome, conditions: { roof: "closed" } }, true)?.setting).toBe(
+      "Closed roof",
+    );
+  });
+
+  it("shows nothing when nothing is known, on a bye, or without a game", () => {
+    expect(conditionsLabel({ ...outdoors, conditions: null })).toBeNull();
+    expect(conditionsLabel({ ...outdoors, conditions: {} })).toBeNull();
+    expect(conditionsLabel({ ...outdoors, state: "bye" })).toBeNull();
+    expect(conditionsLabel(null)).toBeNull();
+    expect(conditionsLabel({ ...outdoors, conditions: { roof: "outdoors" } }, true)?.setting).toBe(
+      "Outdoors",
+    );
+  });
+
+  it("is plain text on the badge and has no accessibility violations", async () => {
+    render(<GameBadge game={outdoors} conditions="full" />);
+    expect(
+      screen.getByText("28°F (freezing), wind 18 mph (windy) · Grass · SF -3.5, O/U 44.5"),
+    ).toBeInTheDocument();
+    await expectNoA11yViolations(<GameBadge game={outdoors} conditions="full" />);
+  });
+
+  it("shows nothing unless asked", () => {
+    render(<GameBadge game={outdoors} />);
+    expect(screen.queryByText(/freezing/)).not.toBeInTheDocument();
   });
 });

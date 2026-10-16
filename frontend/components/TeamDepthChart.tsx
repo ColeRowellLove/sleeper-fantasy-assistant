@@ -111,7 +111,7 @@ export default function TeamDepthChart({
     <Wrapper {...(landmark ? { "aria-labelledby": headingId } : {})} className="depth-chart">
       <h2 id={headingId}>{name} depth chart</h2>
       <p className="depth-meta">
-        <GameBadge game={data.game} />
+        <GameBadge game={data.game} conditions="full" />
         {data.source && (
           <span className="muted">
             Source: {data.source}
