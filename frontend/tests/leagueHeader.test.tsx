@@ -76,7 +76,6 @@ describe("LeagueTabs", () => {
       "Alerts",
       "Waiver wire",
       "Start/Sit",
-      "Accuracy",
       "Players",
       "Teams",
       "Settings",

@@ -100,7 +100,7 @@ export default function RankingsPanel({
             Update rankings
           </button>
           {data.unavailable && Object.keys(data.unavailable).length > 0 && (
-            <p className="note">Not connected yet: {Object.values(data.unavailable).join("; ")}.</p>
+            <p className="note">Not included yet: {Object.values(data.unavailable).join(", ")}.</p>
           )}
         </form>
       )}
@@ -218,7 +218,15 @@ export default function RankingsPanel({
             </tbody>
           </table>
         </div>
-        {rows.length === 0 && <p className="note players-empty">No players match these filters.</p>}
+        {rows.length === 0 && (
+          <p className="note players-empty">
+            {data.players.length > 0
+              ? "No players match these filters."
+              : data.week === null
+                ? "There is no week to rank yet."
+                : `Player projections for week ${data.week} are not in yet. Check back after the next sync.`}
+          </p>
+        )}
       </div>
       <p className="note">
         Projections are Sleeper&apos;s, scored with this league&apos;s rules. Start % is ESPN-wide

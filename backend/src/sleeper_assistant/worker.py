@@ -445,10 +445,18 @@ def run_one_shot(factory: sessionmaker[Session], handlers: dict[str, Handler]) -
 def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process entry point
     parser = argparse.ArgumentParser(description="Sleeper assistant worker")
     parser.add_argument("--once", action="store_true", help="run one batch and exit (cron mode)")
+    parser.add_argument(
+        "--forget-failures",
+        action="store_true",
+        help="first delete failed jobs so their failure cooldowns end (use after fixing a cause)",
+    )
     args = parser.parse_args(argv)
     if args.once:
         logging.basicConfig(level=logging.INFO)
         factory = make_session_factory(make_engine())
+        if args.forget_failures:
+            with factory() as session:
+                log.info("forgot %d failed jobs", jobs.forget_failed(session))
         sys.exit(run_one_shot(factory, default_handlers(SleeperClient())))
     else:
         run_forever()

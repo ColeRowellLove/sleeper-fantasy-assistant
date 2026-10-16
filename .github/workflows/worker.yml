@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
+    inputs:
+      forget_failures:
+        description: "Delete failed jobs first so their failure cooldowns end (after fixing a cause)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -33,7 +38,7 @@ jobs:
           cache-dependency-glob: backend/uv.lock
       - run: uv python install 3.12
       - run: uv sync --frozen --no-dev
-      - run: uv run python -m sleeper_assistant.worker --once
+      - run: uv run python -m sleeper_assistant.worker --once ${{ inputs.forget_failures && '--forget-failures' || '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # optional: model-written alert advice (all empty = off); see docs/DEPLOY.md
