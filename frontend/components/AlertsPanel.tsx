@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 
 import type { AlertsData, Dashboard } from "../lib/api";
-import { alertTime, newestAlertTime, unreadAlerts } from "../lib/alerts";
+import { alertTime, newestAlertTime, unreadAlerts, waiverTargets } from "../lib/alerts";
 import { leaguePath } from "../lib/league";
 import { alertsSeenCookie, setCookie } from "../lib/myTeam";
 import PlayerLink from "./PlayerLink";
@@ -87,7 +87,18 @@ export default function AlertsPanel({
                 {unreadIds.has(alert.id) && <span className="alert-new">New</span>}
                 {alert.title}
               </h3>
-              <p className="alert-why">{alert.why}</p>
+              {waiverTargets(alert).length > 0 ? (
+                <ol className="alert-targets">
+                  {waiverTargets(alert).map((t) => (
+                    <li key={t.player_id}>
+                      <PlayerLink playerId={t.player_id}>{t.name}</PlayerLink>
+                      {t.line.startsWith(t.name) ? t.line.slice(t.name.length) : ` ${t.line}`}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="alert-why">{alert.why}</p>
+              )}
               <p className="muted alert-meta">
                 {alertTime(alert.created_at)}
                 {alert.player_id && (
