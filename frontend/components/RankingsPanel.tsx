@@ -13,11 +13,9 @@ import {
 } from "../lib/rankings";
 import { ordinal } from "../lib/game";
 import GameBadge from "./GameBadge";
-import InjuryBadge from "./InjuryBadge";
-import PlayerAvatar from "./PlayerAvatar";
-import PlayerLink from "./PlayerLink";
-import PositionChip from "./PositionChip";
-import TeamLink from "./TeamLink";
+import FilterChips from "./FilterChips";
+import PlayerIdentity from "./PlayerIdentity";
+import StatTable from "./StatTable";
 import { leaguePath } from "../lib/league";
 import WeekChips from "./WeekChips";
 
@@ -100,126 +98,106 @@ export default function RankingsPanel({
             Update rankings
           </button>
           {data.unavailable && Object.keys(data.unavailable).length > 0 && (
-            <p className="note">Not connected yet: {Object.values(data.unavailable).join("; ")}.</p>
+            <p className="note">Not included yet: {Object.values(data.unavailable).join(", ")}.</p>
           )}
         </form>
       )}
 
       <div className="players-controls">
-        <div className="players-filter" role="group" aria-label="Position">
-          {RANK_POSITIONS.map((pos) => (
-            <button
-              key={pos}
-              type="button"
-              className="filter-chip"
-              aria-pressed={pos === position}
-              onClick={() => setPosition(pos)}
-            >
-              {pos}
-            </button>
-          ))}
-        </div>
-        <div className="players-filter" role="group" aria-label="Show">
-          {AVAILABILITY.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              className="filter-chip"
-              aria-pressed={value === availability}
-              onClick={() => setAvailability(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <FilterChips
+          label="Position"
+          options={RANK_POSITIONS.map((pos) => ({ value: pos, label: pos }))}
+          value={position}
+          onChange={setPosition}
+        />
+        <FilterChips
+          label="Show"
+          options={AVAILABILITY}
+          value={availability}
+          onChange={setAvailability}
+        />
       </div>
 
-      <div className="card flush">
-        <div className="players-scroll">
-          <table className="players rankings-table">
-            <caption className="visually-hidden">
-              {position} rankings for week {data.week}, best first
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" className="num">
-                  Rank
+      <StatTable
+        caption={`${position} rankings for week ${data.week}, best first`}
+        className="rankings-table"
+        empty={
+          rows.length === 0
+            ? data.players.length > 0
+              ? "No players match these filters."
+              : data.week === null
+                ? "There is no week to rank yet."
+                : `Player projections for week ${data.week} are not in yet. Check back after the next sync.`
+            : undefined
+        }
+      >
+        <thead>
+          <tr>
+            <th scope="col" className="num">
+              Rank
+            </th>
+            <th scope="col">Player</th>
+            <th scope="col">Opponent</th>
+            <th scope="col" className="num">
+              Proj
+            </th>
+            <th scope="col" className="num">
+              Last 3 avg
+            </th>
+            <th scope="col" className="num">
+              ESPN start %
+            </th>
+            <th scope="col">Sources</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((p, i) => {
+            const mine = myRosterId !== null && p.owner_roster_id === myRosterId;
+            return (
+              <tr key={p.player_id} className={mine ? "mine" : undefined}>
+                <td className="num">{flex ? (p.flex_rank ?? i + 1) : p.rank}</td>
+                <th scope="row" className="player-cell">
+                  <PlayerIdentity
+                    player_id={p.player_id}
+                    name={p.name}
+                    position={p.position}
+                    team={p.team}
+                    injury={p.injury}
+                    meta={
+                      p.owner_team ? (
+                        <span className="muted">{mine ? "On your team" : p.owner_team}</span>
+                      ) : (
+                        <span className="status-available">Available</span>
+                      )
+                    }
+                  >
+                    <span className="player-meta rank-why">{p.why}</span>
+                  </PlayerIdentity>
                 </th>
-                <th scope="col">Player</th>
-                <th scope="col">Opponent</th>
-                <th scope="col" className="num">
-                  Proj
-                </th>
-                <th scope="col" className="num">
-                  Last 3 avg
-                </th>
-                <th scope="col" className="num">
-                  ESPN start %
-                </th>
-                <th scope="col">Sources</th>
+                <td>
+                  <GameBadge game={p.game} matchup={p.matchup} position={p.position} />
+                </td>
+                <td className="num">{number(p.projected)}</td>
+                <td className="num">{number(p.form)}</td>
+                <td className="num">
+                  {p.started_pct === null || p.started_pct === undefined
+                    ? "–"
+                    : `${p.started_pct.toFixed(0)}%`}
+                </td>
+                <td>
+                  <span
+                    title={Object.entries(p.signal_ranks)
+                      .map(([k, v]) => `${data.signals[k] ?? k}: ${ordinal(v)}`)
+                      .join(", ")}
+                  >
+                    {agreementText(p)}
+                  </span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((p, i) => {
-                const mine = myRosterId !== null && p.owner_roster_id === myRosterId;
-                return (
-                  <tr key={p.player_id} className={mine ? "mine" : undefined}>
-                    <td className="num">{flex ? (p.flex_rank ?? i + 1) : p.rank}</td>
-                    <th scope="row" className="player-cell">
-                      <span className="player-line">
-                        <PlayerAvatar
-                          player_id={p.player_id}
-                          name={p.name}
-                          position={p.position}
-                          team={p.team}
-                        />
-                        <span className="player-text">
-                          <span className="player-name">
-                            <PlayerLink playerId={p.player_id}>{p.name}</PlayerLink>
-                          </span>
-                          <span className="player-meta">
-                            <PositionChip position={p.position} />
-                            <span className="muted">
-                              {p.team ? <TeamLink team={p.team}>{p.team}</TeamLink> : "FA"}
-                            </span>
-                            <InjuryBadge injury={p.injury} />
-                            {p.owner_team ? (
-                              <span className="muted">{mine ? "On your team" : p.owner_team}</span>
-                            ) : (
-                              <span className="status-available">Available</span>
-                            )}
-                          </span>
-                          <span className="player-meta rank-why">{p.why}</span>
-                        </span>
-                      </span>
-                    </th>
-                    <td>
-                      <GameBadge game={p.game} matchup={p.matchup} position={p.position} />
-                    </td>
-                    <td className="num">{number(p.projected)}</td>
-                    <td className="num">{number(p.form)}</td>
-                    <td className="num">
-                      {p.started_pct === null || p.started_pct === undefined
-                        ? "–"
-                        : `${p.started_pct.toFixed(0)}%`}
-                    </td>
-                    <td>
-                      <span
-                        title={Object.entries(p.signal_ranks)
-                          .map(([k, v]) => `${data.signals[k] ?? k}: ${ordinal(v)}`)
-                          .join(", ")}
-                      >
-                        {agreementText(p)}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {rows.length === 0 && <p className="note players-empty">No players match these filters.</p>}
-      </div>
+            );
+          })}
+        </tbody>
+      </StatTable>
       <p className="note">
         Projections are Sleeper&apos;s, scored with this league&apos;s rules. Start % is ESPN-wide
         and only shown for the current week. A smaller gap between sources means they agree more.

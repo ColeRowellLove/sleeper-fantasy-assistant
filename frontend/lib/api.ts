@@ -205,6 +205,10 @@ export interface StandingsRow {
   points_against: number;
   /** Current run as Sleeper reports it: "3W", "2L" or "1T". */
   streak?: string | null;
+  /** Sit vs start accuracy (points over Sleeper's potential points, 0 to 1); added from /accuracy. */
+  accuracy?: number | null;
+  /** Points left on the bench, from Sleeper's potential points. */
+  left_on_bench?: number | null;
 }
 
 /** Who has the ball and where, for a game in progress (ESPN's live scoreboard). */
@@ -465,6 +469,8 @@ export interface BestLineup {
   current_projected: number;
   changes: { start: StartSitCandidate; sit: StartSitCandidate; gain: number }[];
   why: string;
+  /** Everyone on the roster who can be compared, with projection, matchup and game. */
+  roster?: StartSitCandidate[];
 }
 
 /** A player in a game on the Games tab. */
@@ -481,6 +487,10 @@ export interface GamePlayer {
   /** Fantasy points in this game under the league's scoring, once he has stats. */
   points?: number | null;
   stat_line?: string | null;
+  /** His stat line by Sleeper's stat names (pass_yd, rush_att, rec, ...); projected before he plays. */
+  stats?: Record<string, number>;
+  /** True when `stats` and `points` are projections rather than what he did. */
+  projected?: boolean;
 }
 
 export interface GameCard {
@@ -513,10 +523,10 @@ export interface AlertItem {
   data?: Record<string, unknown>;
 }
 
-export interface WireSignal {
-  source: string;
-  /** Whether this source points to adding him. */
-  backs: boolean;
+/** One reason for or against adding a player; "info" is a plain fact. */
+export interface WireReason {
+  stance: "for" | "against" | "info";
+  label: string;
   detail: string;
 }
 
@@ -531,11 +541,11 @@ export interface WireEntry {
   over: string;
   /** One line with the numbers behind it. */
   reason: string;
-  /** ESPN-wide percent of leagues that roster him. */
+  /** ESPN-wide percent of leagues that roster them. */
   owned: number | null;
-  /** How many of the signals back him. */
-  backing: number;
-  signals: WireSignal[];
+  for_count: number;
+  against_count: number;
+  reasons: WireReason[];
 }
 
 export interface WaiverWireData {
@@ -544,7 +554,10 @@ export interface WaiverWireData {
   waiver_date: string;
   waiver_day: string;
   week: number | null;
+  /** Best first; every position, capped per position. */
   entries: WireEntry[];
+  /** Ids of the mixed best-of view. */
+  top?: string[];
   /** Why the list is empty, when it is. */
   note: string | null;
 }

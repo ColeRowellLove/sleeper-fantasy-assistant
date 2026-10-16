@@ -79,6 +79,76 @@ def test_the_better_projected_and_hotter_player_is_recommended_with_the_numbers(
     assert result.close_call is False
 
 
+def test_a_player_the_rankings_leave_out_still_uses_his_stored_projection(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    # a zero projection keeps him out of the rankings (they list players projected above zero)
+    session.add(_proj("nobody", {"rush_yd": 0.0}))
+    session.commit()
+    result = compare_players(session, league, ["nobody", "r1"])
+    nobody = next(c for c in result.candidates if c.player_id == "nobody")
+    assert nobody.projected == 0.0  # his real, stored projection
+    assert nobody.out is None  # not "no projection this week"
+    assert nobody.game is not None and nobody.game.opponent == "BBB"
+    assert result.start == "r1"  # the better player still wins
+
+
+def test_the_higher_projected_player_wins_with_no_negative_gap(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("big", "RB"))
+    session.add(_proj("big", {"rush_yd": 0.0, "rec_yd": 400.0}))  # 40 projected points
+    session.commit()
+    big = compare_players(session, league, ["big", "r3"])
+    assert big.start == "big" and big.candidates[0].player_id == "big"
+    assert "by -" not in big.why  # never "Over X by -14.0 projected points"
+
+
+def test_two_unranked_players_are_not_a_close_call_when_far_apart(session: Session) -> None:
+    league = _setup(session)
+    session.add_all([_proj("nobody", {"rush_yd": 0.0})])
+    session.add(_player("zero2", "RB"))
+    session.add(_proj("zero2", {"rush_yd": 0.0}))
+    session.commit()
+    result = compare_players(session, league, ["nobody", "zero2"])
+    assert result.start in {"nobody", "zero2"}
+    # both are 0.0 projected: that really is close, so it is called one; the point is no crash
+    # and no claim of a shared consensus score
+    assert all(c.score is None for c in result.candidates)
+
+
+def test_a_fallback_player_out_or_on_a_bye_cannot_be_started(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("hurt0", "RB", injury="Out"))
+    session.add(_proj("hurt0", {"rush_yd": 0.0}))
+    session.commit()
+    hurt = next(
+        c for c in compare_players(session, league, ["hurt0", "r1"]).candidates
+        if c.player_id == "hurt0"
+    )  # fmt: skip
+    assert hurt.out == "listed Out"
+
+
+def test_the_best_lineup_uses_stored_projections_for_unranked_players(session: Session) -> None:
+    league = _setup(session)
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    session.add(_player("late", "WR"))
+    session.add(_proj("late", {"rec_yd": 0.0}))
+    roster.players = [*roster.players, "late"]
+    session.commit()
+    result = best_lineup(session, league, 1)
+    assert result is not None
+    late = next(c for c in result.roster if c.player_id == "late")
+    assert late.projected == 0.0 and late.out is None
+
+
+def test_a_player_with_no_projection_row_is_still_called_unprojected(session: Session) -> None:
+    result = compare_players(session, _setup(session), ["nobody", "r1"])
+    nobody = next(c for c in result.candidates if c.player_id == "nobody")
+    assert nobody.out == "no projection this week" and nobody.projected is None
+
+
 def test_near_equal_players_are_called_a_close_call(session: Session) -> None:
     result = compare_players(session, _setup(session), ["r2", "r4"])  # 10.0 and 9.0
     assert result.close_call is True
@@ -122,6 +192,19 @@ def test_the_best_lineup_fills_the_leagues_slots_and_lists_the_swaps(session: Se
     assert swaps == {("r1", "r3"), ("w1", "w2")}
     assert all(c.gain > 0 for c in result.changes)
     assert "start R1" in result.why or "start W1" in result.why
+
+
+def test_the_roster_list_carries_every_pickable_player_with_his_numbers(session: Session) -> None:
+    result = best_lineup(session, _setup(session), 1)
+    assert result is not None
+    ids = [c.player_id for c in result.roster]
+    assert "r3" in ids and "w2" in ids  # bench players are there to compare
+    assert all(c.player_id not in {"parked"} for c in result.roster)  # nobody on IR or taxi
+    positions = [c.position for c in result.roster]
+    order = ["QB", "RB", "WR", "TE", "K", "DEF"]
+    assert positions == sorted(positions, key=lambda p: order.index(p) if p in order else 99)
+    rbs = [c.projected or 0.0 for c in result.roster if c.position == "RB"]
+    assert rbs == sorted(rbs, reverse=True)  # best projection first within a position
 
 
 def test_a_lineup_already_at_its_best_says_so(session: Session) -> None:

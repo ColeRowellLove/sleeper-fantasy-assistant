@@ -106,14 +106,14 @@
 
 table.players {
   border-collapse: collapse;
-  min-width: 54rem;
+  min-width: 36rem;
   width: 100%;
 }
 
 .players th,
 .players td {
   border-bottom: 1px solid var(--line);
-  padding: 0.6rem 0.75rem;
+  padding: 0.45rem 0.65rem;
   text-align: left;
   vertical-align: middle;
 }
@@ -174,7 +174,7 @@ table.players {
 }
 
 .players .player-cell {
-  min-width: 27rem;
+  min-width: 16rem;
 }
 
 .status-available {
@@ -197,7 +197,7 @@ table.players {
 }
 
 .players-list tbody tr {
-  height: 5.5rem; /* the pop-up's tables share .players but are not fixed-height lists */
+  height: 4rem; /* the pop-up's tables share .players but are not fixed-height lists */
 }
 
 .players-empty {

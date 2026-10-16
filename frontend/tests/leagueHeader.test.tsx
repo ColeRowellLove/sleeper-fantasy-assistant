@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import LeagueHeader from "../components/LeagueHeader";
@@ -72,11 +73,10 @@ describe("LeagueTabs", () => {
       "Rosters",
       "Lineups",
       "Games",
-      "Rankings",
       "Alerts",
       "Waiver wire",
+      "Rankings",
       "Start/Sit",
-      "Accuracy",
       "Players",
       "Teams",
       "Settings",
@@ -84,6 +84,56 @@ describe("LeagueTabs", () => {
     expect(links[1]).toHaveAttribute("aria-current", "page");
     expect(links[0]).not.toHaveAttribute("aria-current");
     expect(links[2]).toHaveAttribute("href", "/league/9?tab=lineups");
+  });
+});
+
+describe("LeagueTabs More menu", () => {
+  it("keeps the everyday sections in the bar and the rest under a labelled More disclosure", () => {
+    render(<LeagueTabs leagueId="9" active="rosters" />);
+    const bar = screen.getByRole("navigation", { name: "League sections" });
+    const more = within(bar).getByText("More");
+    expect(more.tagName).toBe("SUMMARY");
+    expect(more.closest("details")).not.toHaveAttribute("open");
+    const inMore = within(more.closest("details") as HTMLElement).getAllByRole("link", {
+      hidden: true,
+    });
+    expect(inMore.map((l) => l.textContent)).toEqual([
+      "Rankings",
+      "Start/Sit",
+      "Players",
+      "Teams",
+      "Settings",
+    ]);
+  });
+
+  it("names the open page in More and marks it current", () => {
+    render(<LeagueTabs leagueId="9" active="players" />);
+    expect(screen.getByText("More: Players")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Players", hidden: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("closes again when another section is opened", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<LeagueTabs leagueId="9" active="rosters" />);
+    await user.click(screen.getByText("More"));
+    expect(screen.getByText("More").closest("details")).toHaveAttribute("open");
+    rerender(<LeagueTabs leagueId="9" active="rankings" />); // a client-side tab change
+    expect(screen.getByText("More: Rankings").closest("details")).not.toHaveAttribute("open");
+  });
+
+  it("opens with the keyboard and has no accessibility violations", async () => {
+    const user = userEvent.setup();
+    render(<LeagueTabs leagueId="9" active="rosters" unreadAlerts={2} />);
+    expect(screen.getByRole("link", { name: "Alerts (2 new)" })).toBeInTheDocument();
+    for (let i = 0; i < 7; i += 1) await user.tab(); // six links, then More
+    const summary = screen.getByText("More");
+    expect(summary).toHaveFocus();
+    await user.click(summary); // jsdom does not turn Enter on a summary into a click; browsers do
+    expect(summary.closest("details")).toHaveAttribute("open");
+    await expectNoA11yViolations(<LeagueTabs leagueId="9" active="rosters" />);
   });
 });
 

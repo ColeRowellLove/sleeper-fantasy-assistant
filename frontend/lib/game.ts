@@ -81,7 +81,30 @@ export function ordinal(n: number): string {
   return `${n}${suffix}`;
 }
 
+// The easiest quarter of teams are "easy" matchups and the hardest quarter "tough".
+const QUARTILE = 0.25;
+
+export type Difficulty = "easy" | "average" | "tough";
+
+/** How hard a matchup is: rank 1 is the best matchup for the player (see matchupText). */
+export function matchupDifficulty(matchup: MatchupRank): Difficulty {
+  if (!(matchup.teams > 0)) return "average"; // no sensible team count: say nothing strong
+  if (matchup.rank <= matchup.teams * QUARTILE) return "easy";
+  if (matchup.rank > matchup.teams * (1 - QUARTILE)) return "tough";
+  return "average";
+}
+
+const DIFFICULTY_WORD: Record<Difficulty, string> = {
+  easy: "Easy",
+  average: "Average",
+  tough: "Tough",
+};
+
 export interface MatchupText {
+  /** How hard it is, for the colour: green easy, amber average, red tough. */
+  difficulty: Difficulty;
+  /** The same in a word, so colour is never the only cue: "Easy". */
+  word: string;
   /** Short visible text: "3rd". */
   text: string;
   /** The full sentence for a tooltip. */
@@ -100,20 +123,26 @@ export function matchupText(
   position: string | null | undefined,
 ): MatchupText | null {
   if (!matchup) return null;
+  const difficulty = matchupDifficulty(matchup);
+  const word = DIFFICULTY_WORD[difficulty];
   const rank = ordinal(matchup.rank);
   const games = matchup.games === 1 ? "1 game" : `${matchup.games} games`;
   const numbers = `of ${matchup.teams} teams (${matchup.points} per game over ${games})`;
   if (matchup.side === "offense") {
     return {
+      difficulty,
+      word,
       text: rank,
-      spoken: `${matchup.opponent} offense ranks ${rank} easiest for a defense`,
+      spoken: `${matchup.opponent} offense ranks ${rank} easiest for a defense (${word.toLowerCase()} matchup)`,
       description: `${matchup.opponent} scores the ${rank} fewest fantasy points ${numbers}`,
     };
   }
   const spot = position ? ` to ${position}s` : "";
   return {
+    difficulty,
+    word,
     text: rank,
-    spoken: `${matchup.opponent} ranks ${rank} against ${position ? `${position}s` : "the position"}`,
+    spoken: `${matchup.opponent} ranks ${rank} against ${position ? `${position}s` : "the position"} (${word.toLowerCase()} matchup)`,
     description: `${matchup.opponent} allows the ${rank} most fantasy points${spot} ${numbers}`,
   };
 }

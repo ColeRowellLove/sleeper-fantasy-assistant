@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
+    PlayerProjectionRow,
     PlayerRow,
     PlayerWeekStatsRow,
     RosterRow,
@@ -107,3 +108,134 @@ def test_no_schedule_gives_an_empty_page(session: Session) -> None:
     session.commit()
     result = build_games(session, league)
     assert result.week is None and result.games == []
+
+
+def test_the_raw_stat_line_is_carried_for_the_page_to_lay_out(session: Session) -> None:
+    result = build_games(session, _setup(session), 2)
+    early = next(g for g in result.games if g.game_id == "early")
+    back = next(p for p in early.players if p.player_id == "hrb")
+    assert back.stats == {"rush_att": 20.0, "rush_yd": 100.0, "rush_td": 1.0}
+    assert back.projected is False
+    assert "gp" not in back.stats  # only the stats the page shows
+
+
+def test_before_a_line_exists_the_most_projected_players_show_with_their_projection(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    session.add_all(
+        [
+            PlayerProjectionRow(season="2026", week=2, player_id="owned", team="CCC",
+                                stats={"rec": 5.0, "rec_yd": 60.0}, fetched_at=utcnow()),
+            _player("proj_wr", "WR", "DDD", "Projected Receiver"),
+            PlayerProjectionRow(season="2026", week=2, player_id="proj_wr", team="DDD",
+                                stats={"rec_tgt": 8.0, "rec": 6.0, "rec_yd": 80.0},
+                                fetched_at=utcnow()),
+        ]
+    )  # fmt: skip
+    session.commit()
+    result = build_games(session, league, 2)
+    late = next(g for g in result.games if g.game_id == "late")
+    by_id = {p.player_id: p for p in late.players}
+    assert set(by_id) == {"owned", "proj_wr"}  # projected, not rostered, still shown
+    wr = by_id["proj_wr"]
+    assert wr.projected is True
+    assert wr.stats == {"rec_tgt": 8.0, "rec": 6.0, "rec_yd": 80.0}
+    assert wr.points == 14.0  # 6 receptions + 8.0 for 80 yards under the league scoring
+    assert by_id["owned"].owner_roster_id == 1
+
+
+def test_a_few_best_projected_per_position_are_added_besides_the_rostered(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    for i in range(6):  # six receivers, only the best three show
+        pid = f"wr{i}"
+        session.add(_player(pid, "WR", "DDD"))
+        session.add(
+            PlayerProjectionRow(season="2026", week=2, player_id=pid, team="DDD",
+                                stats={"rec_yd": 10.0 + i}, fetched_at=utcnow())
+        )  # fmt: skip
+    session.add(_player("kick", "K", "DDD", "Kicker"))
+    session.add(
+        PlayerProjectionRow(season="2026", week=2, player_id="kick", team="DDD",
+                            stats={"fgm": 1.0}, fetched_at=utcnow())
+    )  # fmt: skip
+    session.commit()
+    late = next(g for g in build_games(session, league, 2).games if g.game_id == "late")
+    ids = {p.player_id for p in late.players if p.team == "DDD"}
+    assert ids == {"wr5", "wr4", "wr3", "kick"}  # the kicker is not crowded out by receivers
+
+
+def test_after_kickoff_a_player_without_a_line_is_not_given_a_projection(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    for pid in ("bench", "dnp"):
+        session.add(
+            PlayerProjectionRow(season="2026", week=2, player_id=pid, team="AAA",
+                                stats={"rec": 4.0}, fetched_at=utcnow())
+        )  # fmt: skip
+    session.commit()
+    early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
+    assert "bench" not in {p.player_id for p in early.players}  # a played game shows lines only
+    assert all(p.projected is False for p in early.players)
+
+
+def test_a_zero_in_a_stat_line_is_kept(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("shutout", "DEF", "AAA", "AAA Defense"))
+    session.add(_stats("shutout", "AAA", {"gp": 1, "sack": 3.0, "pts_allow": 0.0}))
+    session.commit()
+    early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
+    defense = next(p for p in early.players if p.player_id == "shutout")
+    assert defense.stats == {"sack": 3.0, "pts_allow": 0.0}
+
+
+def test_a_null_or_text_value_in_a_stat_line_is_dropped_not_fatal(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("odd", "DEF", "AAA", "Odd Defense"))
+    session.add(_stats("odd", "AAA", {"gp": 1, "sack": 2.0, "pts_allow": None, "int": "x"}))  # type: ignore[dict-item]
+    session.commit()
+    early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
+    odd = next(p for p in early.players if p.player_id == "odd")
+    assert odd.stats == {"sack": 2.0}
+
+
+def test_a_finished_week_ignores_projections_altogether(session: Session) -> None:
+    league = _setup(session)
+    session.query(NflGameRow).filter(NflGameRow.game_id == "late").update({"status": "complete"})
+    session.add(
+        PlayerProjectionRow(season="2026", week=2, player_id="owned", team="CCC",
+                            stats={"rec": 5.0}, fetched_at=utcnow())
+    )  # fmt: skip
+    session.commit()
+    late = next(g for g in build_games(session, league, 2).games if g.game_id == "late")
+    owned = next(p for p in late.players if p.player_id == "owned")
+    assert owned.projected is False and owned.points is None and owned.stats == {}
+
+
+def test_a_mixed_week_projects_only_the_game_still_to_come(session: Session) -> None:
+    league = _setup(session)  # "early" is complete, "late" is upcoming
+    for pid, team in (("bench", "AAA"), ("proj_wr", "DDD")):
+        if pid == "proj_wr":
+            session.add(_player("proj_wr", "WR", "DDD", "Projected Receiver"))
+        session.add(
+            PlayerProjectionRow(season="2026", week=2, player_id=pid, team=team,
+                                stats={"rec": 4.0}, fetched_at=utcnow())
+        )  # fmt: skip
+    session.commit()
+    result = build_games(session, league, 2)
+    early = next(g for g in result.games if g.game_id == "early")
+    late = next(g for g in result.games if g.game_id == "late")
+    assert "bench" not in {p.player_id for p in early.players}
+    assert {p.player_id for p in late.players if p.projected} == {"proj_wr"}
+
+
+def test_a_games_played_count_stored_as_text_still_decides_who_played(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("inactive", "RB", "AAA", "Inactive Back"))
+    session.add(_stats("inactive", "AAA", {"gp": "0", "rush_yd": 0.0}))  # type: ignore[dict-item]
+    session.commit()
+    early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
+    assert "inactive" not in {p.player_id for p in early.players}

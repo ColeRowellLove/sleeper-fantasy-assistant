@@ -76,6 +76,12 @@ npm run dev
   `security-review` for anything touching auth, user input, secrets or external requests.
 - Commits use Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`).
 
+## Design
+
+Take inspiration from Sleeper and theScore (inspiration only, no assets): see [docs/DESIGN.md](docs/DESIGN.md).
+Reuse the shared patterns there instead of building a new layout per tab, keep the number of tabs
+small, and look at a UI change (screenshots at phone and desktop width, both themes) before it ships.
+
 ## Conventions
 
 - League rules (scoring, roster slots, deadlines, waiver type) are **read from Sleeper, never hard-coded**.

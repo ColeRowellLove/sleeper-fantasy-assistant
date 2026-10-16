@@ -1,25 +1,25 @@
 import type { BestLineup, Dashboard, StartSitCandidate, StartSitComparison } from "../lib/api";
 import { leaguePath } from "../lib/league";
 import GameBadge from "./GameBadge";
+import PlayerAvatar from "./PlayerAvatar";
 import InjuryBadge from "./InjuryBadge";
+import PlayerIdentity from "./PlayerIdentity";
 import PlayerLink from "./PlayerLink";
 import PositionChip from "./PositionChip";
+import StatTable from "./StatTable";
 
 const number = (n: number | null | undefined) =>
   n === null || n === undefined ? "–" : n.toFixed(1);
 
 function PlayerCell({ c }: { c: StartSitCandidate }) {
   return (
-    <>
-      <span className="player-name">
-        <PlayerLink playerId={c.player_id}>{c.name}</PlayerLink>
-      </span>
-      <span className="player-meta">
-        <PositionChip position={c.position} />
-        <span className="muted">{c.team ?? "FA"}</span>
-        <InjuryBadge injury={c.injury} />
-      </span>
-    </>
+    <PlayerIdentity
+      player_id={c.player_id}
+      name={c.name}
+      position={c.position}
+      team={c.team}
+      injury={c.injury}
+    />
   );
 }
 
@@ -48,6 +48,23 @@ export default function StartSitTool({
   const action = leaguePath(leagueId);
   const weekField = week ? <input type="hidden" name="week" value={week} /> : null;
   const choices = (roster?.players ?? []).filter((p) => p.status !== "ir" && p.status !== "taxi");
+  // the server's candidates carry projection, matchup and game; the plain roster is the fallback
+  const base: StartSitCandidate[] =
+    best?.roster && best.roster.length > 0
+      ? best.roster
+      : choices.map((p) => ({
+          player_id: p.player_id,
+          name: p.name,
+          position: p.position ?? null,
+          team: p.team ?? null,
+          sources: 0,
+        }));
+  // a player picked in the link (or compared above) always keeps his checkbox
+  const known = new Set(base.map((p) => p.player_id));
+  const pickable = [
+    ...base,
+    ...(comparison?.candidates ?? []).filter((c) => !known.has(c.player_id)),
+  ];
 
   return (
     <section aria-labelledby="startsit-heading">
@@ -84,47 +101,44 @@ export default function StartSitTool({
             {best.why} Projected {best.projected.toFixed(1)} against{" "}
             {best.current_projected.toFixed(1)} for the current lineup.
           </p>
-          <div className="players-scroll">
-            <table className="players pd-table">
-              <caption className="visually-hidden">Best projected lineup by slot</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Slot</th>
-                  <th scope="col">Player</th>
-                  <th scope="col">Opponent</th>
-                  <th scope="col" className="num">
-                    Proj
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {best.lineup.map((spot, i) => (
-                  <tr key={`${spot.slot}-${i}`}>
-                    <th scope="row">{spot.slot}</th>
-                    {spot.player ? (
-                      <>
-                        <td>
-                          <PlayerCell c={spot.player} />
-                        </td>
-                        <td>
-                          <GameBadge
-                            game={spot.player.game}
-                            matchup={spot.player.matchup}
-                            position={spot.player.position}
-                          />
-                        </td>
-                        <td className="num">{number(spot.player.projected)}</td>
-                      </>
-                    ) : (
-                      <td colSpan={3} className="muted">
-                        No one on this roster can fill this slot.
+          <StatTable bare caption="Best projected lineup by slot" className="pd-table">
+            <thead>
+              <tr>
+                <th scope="col">Slot</th>
+                <th scope="col">Player</th>
+                <th scope="col">Opponent</th>
+                <th scope="col" className="num">
+                  Proj
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {best.lineup.map((spot, i) => (
+                <tr key={`${spot.slot}-${i}`}>
+                  <th scope="row">{spot.slot}</th>
+                  {spot.player ? (
+                    <>
+                      <td>
+                        <PlayerCell c={spot.player} />
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td>
+                        <GameBadge
+                          game={spot.player.game}
+                          matchup={spot.player.matchup}
+                          position={spot.player.position}
+                        />
+                      </td>
+                      <td className="num">{number(spot.player.projected)}</td>
+                    </>
+                  ) : (
+                    <td colSpan={3} className="muted">
+                      No one on this roster can fill this slot.
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </StatTable>
           {best.changes.length > 0 && (
             <>
               <h4 className="depth-section-title">Swaps to make</h4>
@@ -149,18 +163,48 @@ export default function StartSitTool({
         {weekField}
         <fieldset>
           <legend>Players to compare (pick two to six)</legend>
-          <ul className="startsit-picks">
-            {choices.map((p) => (
+          <ul className="pick-rows">
+            {pickable.map((p) => (
               <li key={p.player_id}>
-                <label>
+                <div className="pick-row">
                   <input
+                    id={`pick-${p.player_id}`}
                     type="checkbox"
                     name="pick"
                     value={p.player_id}
                     defaultChecked={picks.includes(p.player_id)}
-                  />{" "}
-                  {p.name} <span className="muted">{p.position ?? ""}</span>
-                </label>
+                    aria-describedby={`pick-info-${p.player_id}`}
+                  />
+                  <PlayerAvatar
+                    player_id={p.player_id}
+                    name={p.name}
+                    position={p.position}
+                    team={p.team}
+                  />
+                  <span className="pick-main">
+                    <label htmlFor={`pick-${p.player_id}`} className="player-name pick-label">
+                      {p.name}
+                    </label>
+                    <span className="player-meta" id={`pick-info-${p.player_id}`}>
+                      <PositionChip position={p.position} />
+                      <span className="muted">{p.team ?? "FA"}</span>
+                      <InjuryBadge injury={p.injury} />
+                      {p.game !== undefined && (
+                        <GameBadge game={p.game} matchup={p.matchup} position={p.position} />
+                      )}
+                    </span>
+                  </span>
+                  <span className="pick-proj num">
+                    {p.projected === undefined
+                      ? ""
+                      : p.projected === null
+                        ? "No projection yet"
+                        : `Proj ${p.projected.toFixed(1)}`}
+                    {p.out && p.out !== "no projection this week" && (
+                      <span className="pick-out"> Can&apos;t start: {p.out}</span>
+                    )}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
@@ -184,56 +228,59 @@ export default function StartSitTool({
           <p className="startsit-why" role="status">
             {comparison.why}
           </p>
-          <div className="players-scroll">
-            <table className="players pd-table">
-              <caption className="visually-hidden">Players compared, best first</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Player</th>
-                  <th scope="col">Opponent</th>
-                  <th scope="col" className="num">
-                    Proj
+          <StatTable bare caption="Players compared, best first" className="pd-table">
+            <thead>
+              <tr>
+                <th scope="col">Player</th>
+                <th scope="col">Opponent</th>
+                <th scope="col" className="num">
+                  Proj
+                </th>
+                <th scope="col" className="num">
+                  Last 3 avg
+                </th>
+                <th scope="col" className="num">
+                  Consensus rank
+                </th>
+                <th scope="col">Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparison.candidates.map((c) => (
+                <tr key={c.player_id}>
+                  <th scope="row" className="player-cell">
+                    <PlayerCell c={c} />
                   </th>
-                  <th scope="col" className="num">
-                    Last 3 avg
-                  </th>
-                  <th scope="col" className="num">
-                    Consensus rank
-                  </th>
-                  <th scope="col">Verdict</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparison.candidates.map((c) => (
-                  <tr key={c.player_id}>
-                    <th scope="row" className="player-cell">
-                      <PlayerCell c={c} />
-                    </th>
-                    <td>
+                  <td>
+                    {c.game ? (
                       <GameBadge
                         game={c.game}
                         matchup={c.matchup}
                         position={c.position}
                         conditions="compact"
                       />
-                    </td>
-                    <td className="num">{number(c.projected)}</td>
-                    <td className="num">{number(c.form)}</td>
-                    <td className="num">{c.rank ?? "–"}</td>
-                    <td>
-                      {c.player_id === comparison.start
-                        ? comparison.close_call
-                          ? "Start (close call)"
-                          : "Start"
-                        : c.out
-                          ? `Can't start: ${c.out}`
-                          : "Sit"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ) : (
+                      <span className="muted">No game found</span>
+                    )}
+                  </td>
+                  <td className="num">{number(c.projected)}</td>
+                  <td className="num">{number(c.form)}</td>
+                  <td className="num">{c.rank ?? "–"}</td>
+                  <td>
+                    {c.player_id === comparison.start ? (
+                      <span className="verdict verdict-start">
+                        {comparison.close_call ? "Start (close call)" : "Start"}
+                      </span>
+                    ) : c.out ? (
+                      <span className="verdict verdict-out">Can&apos;t start: {c.out}</span>
+                    ) : (
+                      <span className="verdict">Sit</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </StatTable>
         </section>
       )}
     </section>
