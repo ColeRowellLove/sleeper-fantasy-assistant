@@ -25,6 +25,7 @@ from sleeper_assistant.dashboard import (
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
+    PlayerOwnershipRow,
     PlayerProjectionRow,
     PlayerRow,
     PlayerSeasonStatsRow,
@@ -90,6 +91,8 @@ class PlayerDetail(BaseModel):
     league_id: str | None = None  # so the page can link to the owning team's roster
     adds: int | None = None
     drops: int | None = None
+    owned_pct: float | None = None  # ESPN-wide share of leagues that roster the player
+    started_pct: float | None = None  # ESPN-wide share of leagues that start the player
     season: SeasonSummary
     projected: ProjectedLine | None = None
     weeks: list[WeekLine]
@@ -226,6 +229,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
             )
 
     trend = session.get(PlayerTrendRow, player_id)
+    espn = session.get(PlayerOwnershipRow, player_id)
     game = games_for_week(session, season, week_now).get(player.team or "") if week_now else None
     return PlayerDetail(
         player_id=player_id,
@@ -246,6 +250,8 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         league_id=league.league_id,
         adds=trend.adds if trend else None,
         drops=trend.drops if trend else None,
+        owned_pct=espn.owned if espn else None,
+        started_pct=espn.started if espn else None,
         season=SeasonSummary(
             points=total,
             games=games,

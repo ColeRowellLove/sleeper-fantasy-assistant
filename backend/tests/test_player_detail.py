@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
+    PlayerOwnershipRow,
     PlayerProjectionRow,
     PlayerRow,
     PlayerSeasonStatsRow,
@@ -76,6 +77,7 @@ def _setup(session: Session) -> LeagueRow:
             _stats(1, "2", {"gp": 1, "rec": 10, "rec_yd": 100.0}),  # 20 points: ahead of Nacua's week 1
             _stats(1, "3", {"gp": 1, "rec": 1}),  # 1 point
             PlayerTrendRow(player_id="1", adds=None, drops=120, fetched_at=utcnow()),
+            PlayerOwnershipRow(player_id="1", owned=99.93, started=25.94, fetched_at=utcnow()),
             PlayerProjectionRow(
                 season="2026", week=2, player_id="1", team="LAR",
                 stats={"rec": 6.0, "rec_yd": 80.0, "rec_td": 0.5, "rec_tgt": 9.0, "gp": 1.0},
@@ -160,8 +162,10 @@ def test_bio_ownership_and_trend_come_through(session: Session) -> None:
     assert detail.league_id == "L1"
     assert detail.owner_manager == "Team 1"  # no Sleeper user stored: falls back to the team label
     assert (detail.adds, detail.drops) == (None, 120)
+    assert (detail.owned_pct, detail.started_pct) == (99.93, 25.94)
     free = build_player_detail(session, _setup_again(session), "2")
     assert free is not None and free.owner_roster_id is None  # available in this league
+    assert (free.owned_pct, free.started_pct) == (None, None)  # ESPN has no number: not 0
 
 
 def _setup_again(session: Session) -> LeagueRow:

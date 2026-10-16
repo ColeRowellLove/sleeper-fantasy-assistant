@@ -60,6 +60,8 @@ const detail: PlayerDetail = {
   owner_team: "Cole",
   owner_manager: "colerowell",
   league_id: "L1",
+  owned_pct: 99.9,
+  started_pct: 25.9,
   adds: null,
   drops: 120,
   season: { points: 146.6, games: 5, average: 29.3, rank: 1 },
@@ -251,6 +253,20 @@ describe("PlayerDialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
     expect(dialog).toHaveAttribute("open");
     expect(within(dialog).getByText(/^On/)).toHaveTextContent("On Cole (colerowell)");
+  });
+
+  it("shows ESPN's ownership and start percentages, labelled as ESPN's", () => {
+    renderDialog();
+    const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
+    expect(within(dialog).getByText("Owned % (ESPN)").nextSibling).toHaveTextContent("99.9%");
+    expect(within(dialog).getByText("Started % (ESPN)").nextSibling).toHaveTextContent("25.9%");
+  });
+
+  it("shows a dash, never 0, when ESPN has no number for the player", () => {
+    renderDialog({ ...detail, owned_pct: null, started_pct: undefined });
+    const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
+    expect(within(dialog).getByText("Owned % (ESPN)").nextSibling).toHaveTextContent("–");
+    expect(within(dialog).getByText("Started % (ESPN)").nextSibling).toHaveTextContent("–");
   });
 
   it("links the owning team to its roster and says how long the player has been in the league", () => {
