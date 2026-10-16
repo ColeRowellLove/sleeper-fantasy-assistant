@@ -112,6 +112,61 @@ export function describeStats(stats: Record<string, number>, position?: string |
   return parts.length ? parts.join(", ") : "No scoring stats";
 }
 
+export interface StatColumn {
+  key: string;
+  label: string;
+}
+
+/** The stat's column heading: a short word where there is one, otherwise the scoring label. */
+export function statLabel(key: string): string {
+  return SHORT[key] ?? scoringLabel(key);
+}
+
+function orderFor(position: string | null | undefined): string[] {
+  return ORDER[position ?? ""] ?? [...REC, ...RUSH, ...PASS];
+}
+
+/**
+ * One column for every stat that shows up in any of the games, main stats of the position first.
+ * A stat that is zero (or too small to show) in every game gets no column.
+ */
+export function statColumns(
+  lines: Record<string, number>[],
+  position: string | null | undefined,
+): StatColumn[] {
+  const order = orderFor(position);
+  const rank = (key: string) => {
+    const at = order.indexOf(key);
+    return at === -1 ? order.length : at;
+  };
+  const keys = new Set<string>();
+  for (const line of lines) {
+    for (const [key, value] of Object.entries(line)) {
+      if (Math.abs(value) >= TINY) keys.add(key);
+    }
+  }
+  return [...keys]
+    .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+    .map((key) => ({ key, label: statLabel(key) }));
+}
+
+/** A table cell for a stat: whole numbers as they are, fractions to one decimal, a dash for none. */
+export function formatStat(value: number | undefined): string {
+  if (value === undefined || Math.abs(value) < TINY) return "–";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+/** Column totals across games; a stat nobody recorded is left out of the result. */
+export function statTotals(lines: Record<string, number>[]): Record<string, number> {
+  const totals: Record<string, number> = {};
+  for (const line of lines) {
+    for (const [key, value] of Object.entries(line)) {
+      totals[key] = Math.round(((totals[key] ?? 0) + value) * 100) / 100;
+    }
+  }
+  return totals;
+}
+
 /** "WR1" style rank text, or a dash when the player has no rank yet. */
 export function rankText(position: string | null, rank: number | null | undefined): string {
   return rank === null || rank === undefined || !position ? "–" : `${position}${rank}`;

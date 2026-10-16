@@ -4,7 +4,14 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import type { PlayerDetail } from "../lib/api";
-import { bioRows, describeStats, rankText } from "../lib/playerDetail";
+import {
+  bioRows,
+  describeStats,
+  formatStat,
+  rankText,
+  statColumns,
+  statTotals,
+} from "../lib/playerDetail";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
@@ -38,6 +45,12 @@ export default function PlayerDialog({
   const close = () => router.replace(closeHref, { scroll: false });
   const bio = bioRows(detail.bio);
   const rank = rankText(detail.position, detail.season.rank);
+  const weekStats = detail.weeks.map((w) => w.stats);
+  const columns = statColumns(
+    [...weekStats, ...(detail.projected ? [detail.projected.stats] : [])],
+    detail.position,
+  );
+  const totals = statTotals(weekStats);
 
   return (
     <dialog
@@ -146,8 +159,10 @@ export default function PlayerDialog({
             <p className="note">No games played yet this season.</p>
           ) : (
             <div className="players-scroll">
-              <table className="players pd-table">
-                <caption className="visually-hidden">Points and stats by week this season</caption>
+              <table className="players pd-table pd-stats-table">
+                <caption className="visually-hidden">
+                  Points and stats by week this season, with season totals
+                </caption>
                 <thead>
                   <tr>
                     <th scope="col">Week</th>
@@ -155,7 +170,11 @@ export default function PlayerDialog({
                     <th scope="col" className="num-col">
                       Points
                     </th>
-                    <th scope="col">What counted</th>
+                    {columns.map((c) => (
+                      <th key={c.key} scope="col" className="num-col">
+                        {c.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -166,10 +185,40 @@ export default function PlayerDialog({
                         {w.opponent ? `${w.home === false ? "at" : "vs"} ${w.opponent}` : "–"}
                       </td>
                       <td className="num num-col">{w.points.toFixed(1)}</td>
-                      <td className="pd-stats">{describeStats(w.stats, detail.position)}</td>
+                      {columns.map((c) => (
+                        <td key={c.key} className="num num-col">
+                          {formatStat(w.stats[c.key])}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row" colSpan={2}>
+                      Season total
+                    </th>
+                    <td className="num num-col">{detail.season.points.toFixed(1)}</td>
+                    {columns.map((c) => (
+                      <td key={c.key} className="num num-col">
+                        {formatStat(totals[c.key])}
+                      </td>
+                    ))}
+                  </tr>
+                  {detail.projected && (
+                    <tr className="pd-projected-row">
+                      <th scope="row" colSpan={2}>
+                        Projected, week {detail.projected.week}
+                      </th>
+                      <td className="num num-col">{detail.projected.points.toFixed(1)}</td>
+                      {columns.map((c) => (
+                        <td key={c.key} className="num num-col">
+                          {formatStat(detail.projected?.stats[c.key])}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
+                </tfoot>
               </table>
             </div>
           )}

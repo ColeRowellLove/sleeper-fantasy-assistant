@@ -274,3 +274,31 @@ table.players.pd-table {
     padding: 1rem 1rem 1.5rem;
   }
 }
+
+/* The week-by-week stat table scrolls sideways on a phone; the week column stays in view */
+.pd-stats-table th,
+.pd-stats-table td {
+  padding: 0.5rem 0.6rem;
+  white-space: nowrap;
+}
+
+.pd-stats-table tfoot th,
+.pd-stats-table tfoot td {
+  border-top: 2px solid var(--line);
+  font-weight: 700;
+}
+
+.pd-stats-table tr.pd-projected-row th,
+.pd-stats-table tr.pd-projected-row td {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.pd-stats-table thead th:first-child,
+.pd-stats-table tbody th:first-child {
+  background: var(--surface);
+  left: 0;
+  position: sticky;
+  z-index: 1;
+}
