@@ -205,6 +205,10 @@ export interface StandingsRow {
   points_against: number;
   /** Current run as Sleeper reports it: "3W", "2L" or "1T". */
   streak?: string | null;
+  /** Sit vs start accuracy (points over Sleeper's potential points, 0 to 1); added from /accuracy. */
+  accuracy?: number | null;
+  /** Points left on the bench, from Sleeper's potential points. */
+  left_on_bench?: number | null;
 }
 
 /** Who has the ball and where, for a game in progress (ESPN's live scoreboard). */
@@ -465,6 +469,8 @@ export interface BestLineup {
   current_projected: number;
   changes: { start: StartSitCandidate; sit: StartSitCandidate; gain: number }[];
   why: string;
+  /** Everyone on the roster who can be compared, with projection, matchup and game. */
+  roster?: StartSitCandidate[];
 }
 
 /** A player in a game on the Games tab. */
@@ -481,6 +487,10 @@ export interface GamePlayer {
   /** Fantasy points in this game under the league's scoring, once he has stats. */
   points?: number | null;
   stat_line?: string | null;
+  /** His stat line by Sleeper's stat names (pass_yd, rush_att, rec, ...); projected before he plays. */
+  stats?: Record<string, number>;
+  /** True when `stats` and `points` are projections rather than what he did. */
+  projected?: boolean;
 }
 
 export interface GameCard {

@@ -23,6 +23,18 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "points_against", label: "PA", numeric: true },
 ];
 
+// Sleeper's own season totals, shown only when it reports potential points for the league
+const ACCURACY_COLUMNS: typeof COLUMNS = [
+  { key: "accuracy", label: "Accuracy", numeric: true },
+  { key: "left_on_bench", label: "Bench pts", numeric: true },
+];
+const ALL_COLUMNS = [...COLUMNS, ...ACCURACY_COLUMNS];
+
+const percent = (n: number | null | undefined) =>
+  n === null || n === undefined ? "–" : `${(n * 100).toFixed(1)}%`;
+const points = (n: number | null | undefined) =>
+  n === null || n === undefined ? "–" : n.toFixed(1);
+
 function StreakBadge({ streak }: { streak: string | null | undefined }) {
   const parsed = parseStreak(streak);
   if (!parsed) return <span className="streak streak-none">&ndash;</span>;
@@ -45,7 +57,7 @@ function StreakBadge({ streak }: { streak: string | null | undefined }) {
 }
 
 function describe(sort: SortState): string {
-  const column = COLUMNS.find((c) => c.key === sort.key)?.label ?? "";
+  const column = ALL_COLUMNS.find((c) => c.key === sort.key)?.label ?? "";
   const how =
     sort.key === "team"
       ? sort.direction === "asc"
@@ -69,7 +81,11 @@ export default function StandingsTable({
   /** When given, each team name links to that team's roster. */
   leagueId?: string;
 }) {
-  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  const [chosen, setSort] = useState<SortState>(DEFAULT_SORT);
+  const showAccuracy = standings.some((r) => r.accuracy !== null && r.accuracy !== undefined);
+  const columns = showAccuracy ? ALL_COLUMNS : COLUMNS;
+  // a sort on a column that is no longer shown (the accuracy data went away) falls back to rank
+  const sort = columns.some((c) => c.key === chosen.key) ? chosen : DEFAULT_SORT;
   const rows = sortStandings(standings, sort);
   // the playoff bar only means something while the table runs from first place down
   const showPlayoffs = playoffTeams !== null && sort.key === "rank" && sort.direction === "asc";
@@ -86,7 +102,7 @@ export default function StandingsTable({
           </caption>
           <thead>
             <tr>
-              {COLUMNS.map(({ key, label, numeric }) => {
+              {columns.map(({ key, label, numeric }) => {
                 const active = sort.key === key;
                 return (
                   <th
@@ -155,6 +171,12 @@ export default function StandingsTable({
                   </td>
                   <td className="num num-col">{row.points_for.toFixed(2)}</td>
                   <td className="num num-col">{row.points_against.toFixed(2)}</td>
+                  {showAccuracy && (
+                    <>
+                      <td className="num num-col">{percent(row.accuracy)}</td>
+                      <td className="num num-col">{points(row.left_on_bench)}</td>
+                    </>
+                  )}
                 </tr>
               );
             })}
@@ -164,6 +186,13 @@ export default function StandingsTable({
       <p className="visually-hidden" role="status">
         {describe(sort)}
       </p>
+      {showAccuracy && (
+        <p className="note">
+          Accuracy is the points a team scored divided by Sleeper&apos;s potential points (what its
+          best lineups would have scored); 100% means the best lineup every week. Bench pts is what
+          was left on the bench.
+        </p>
+      )}
       {showPlayoffs && (
         <p className="note">
           The top {playoffTeams} teams make the playoffs (marked with a bar and a line below

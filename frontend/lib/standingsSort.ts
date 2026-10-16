@@ -1,6 +1,14 @@
 import type { StandingsRow } from "./api";
 
-export type SortKey = "rank" | "team" | "record" | "streak" | "points_for" | "points_against";
+export type SortKey =
+  | "rank"
+  | "team"
+  | "record"
+  | "streak"
+  | "points_for"
+  | "points_against"
+  | "accuracy"
+  | "left_on_bench";
 type SortDirection = "asc" | "desc";
 
 export interface SortState {
@@ -35,13 +43,15 @@ function streakValue(row: StandingsRow): number {
   return streak.kind === "W" ? streak.length : -streak.length;
 }
 
-const VALUE: Record<SortKey, (row: StandingsRow) => number | string> = {
+const VALUE: Record<SortKey, (row: StandingsRow) => number | string | null> = {
   rank: (row) => row.rank,
   team: (row) => row.team.toLowerCase(),
   record: winPct,
   streak: streakValue,
   points_for: (row) => row.points_for,
   points_against: (row) => row.points_against,
+  accuracy: (row) => row.accuracy ?? null, // a team Sleeper reports nothing for always sorts last
+  left_on_bench: (row) => row.left_on_bench ?? null,
 };
 
 /** What a first click on a column does: names run A to Z, rank best first, numbers high first. */
@@ -64,6 +74,10 @@ export function sortStandings(rows: StandingsRow[], sort: SortState): StandingsR
   return [...rows].sort((a, b) => {
     const x = value(a);
     const y = value(b);
+    if (x === null || y === null) {
+      if (x === y) return a.rank - b.rank;
+      return x === null ? 1 : -1; // no figure: last, whichever way the column runs
+    }
     const order =
       typeof x === "string" ? x.localeCompare(y as string) : (x as number) - (y as number);
     return order * sign || a.rank - b.rank;

@@ -13,7 +13,6 @@ export const TABS = [
   { key: "startsit", label: "Start/Sit", group: "more" },
   { key: "players", label: "Players", group: "more" },
   { key: "teams", label: "Teams", group: "more" },
-  { key: "accuracy", label: "Accuracy", group: "more" },
   { key: "settings", label: "Settings", group: "more" },
 ] as const;
 

@@ -79,7 +79,6 @@ describe("LeagueTabs", () => {
       "Start/Sit",
       "Players",
       "Teams",
-      "Accuracy",
       "Settings",
     ]);
     expect(links[1]).toHaveAttribute("aria-current", "page");
@@ -103,15 +102,14 @@ describe("LeagueTabs More menu", () => {
       "Start/Sit",
       "Players",
       "Teams",
-      "Accuracy",
       "Settings",
     ]);
   });
 
   it("names the open page in More and marks it current", () => {
-    render(<LeagueTabs leagueId="9" active="accuracy" />);
-    expect(screen.getByText("More: Accuracy")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Accuracy", hidden: true })).toHaveAttribute(
+    render(<LeagueTabs leagueId="9" active="players" />);
+    expect(screen.getByText("More: Players")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Players", hidden: true })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -124,7 +122,7 @@ describe("LeagueTabs More menu", () => {
     for (let i = 0; i < 7; i += 1) await user.tab(); // six links, then More
     const summary = screen.getByText("More");
     expect(summary).toHaveFocus();
-    await user.keyboard("{Enter}");
+    await user.click(summary); // jsdom does not turn Enter on a summary into a click; browsers do
     expect(summary.closest("details")).toHaveAttribute("open");
     await expectNoA11yViolations(<LeagueTabs leagueId="9" active="rosters" />);
   });
