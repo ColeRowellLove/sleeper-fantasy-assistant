@@ -17,6 +17,7 @@ import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PositionChip from "./PositionChip";
+import TeamLink from "./TeamLink";
 
 const count = (n: number | null | undefined) =>
   n === null || n === undefined ? "–" : n.toLocaleString("en-US");
@@ -90,7 +91,11 @@ export default function PlayerDialog({
             <h2 id="player-dialog-title">{detail.name}</h2>
             <p className="player-dialog-meta">
               <PositionChip position={detail.position} />
-              <span className="muted">{detail.team ?? "Free agent"}</span>
+              {detail.team ? (
+                <TeamLink team={detail.team}>{detail.team} depth chart</TeamLink>
+              ) : (
+                <span className="muted">Free agent</span>
+              )}
               <InjuryBadge injury={detail.injury} />
               <GameBadge game={detail.game} />
             </p>

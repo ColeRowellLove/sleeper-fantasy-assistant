@@ -41,6 +41,7 @@ Connect a league by Sleeper username and the app shows, for each league:
 - **Players:** every relevant NFL player through your league: filter by position and availability, search, and sort by Sleeper adds and drops, ESPN owned and start percentages, positional rank, season points under your scoring, and projected points.
 - **Player pop-up:** click any player (rosters, lineups, Players tab) for their bio, position rank, week-by-week points with every stat that counted, this week's projected stats, and past seasons, all scored with your league's rules.
 - **Projections:** projected points (scored with your league's own rules) next to actual points on rosters and lineups, with a team total in each matchup.
+- **Teams:** any NFL team's full depth chart (offense including the line, defense and special teams) with injuries, who is next up when a starter is out, and which of the players are on your league's rosters.
 - **Settings:** the league's rules and scoring as Sleeper reports them.
 
 Dark and light themes, phone and desktop layouts, and keyboard and screen-reader support throughout.

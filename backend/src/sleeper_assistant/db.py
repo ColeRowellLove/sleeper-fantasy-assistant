@@ -184,6 +184,17 @@ class PlayerProjectionRow(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class TeamDepthChartRow(Base):
+    """One NFL team's depth chart, stored as pulled: group -> slot -> players in depth order."""
+
+    __tablename__ = "team_depth_charts"
+
+    team: Mapped[str] = mapped_column(String, primary_key=True)
+    source: Mapped[str] = mapped_column(String)  # ESPN, or Sleeper when ESPN had nothing
+    chart: Mapped[dict[str, Any]] = mapped_column(JSON)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class PlayerOwnershipRow(Base):
     """ESPN-wide percent of leagues that roster and start a player (not Sleeper's numbers)."""
 

@@ -29,11 +29,13 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
+from sleeper_assistant.depth import TEAM_IDS
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
 from sleeper_assistant.players_view import PlayersResponse, build_players
 from sleeper_assistant.rules import LeagueRules, derive_rules
 from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFoundError
+from sleeper_assistant.team_depth import TeamDepth, build_team_depth
 
 log = logging.getLogger(__name__)
 
@@ -307,6 +309,23 @@ def get_player_detail(
         raise HTTPException(status_code=404, detail="Player not found")
     response.headers["Cache-Control"] = READ_CACHE
     return detail
+
+
+TeamCode = Annotated[str, Path(pattern=r"^[A-Z]{2,3}$")]
+
+
+@app.get("/api/leagues/{league_id}/teams/{team}")
+def get_team_depth(
+    league_id: LeagueId, team: TeamCode, session: SessionDep, response: Response
+) -> TeamDepth:
+    """One NFL team's depth chart (offense, defense, special teams) as seen through this league."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    if team not in TEAM_IDS:
+        raise HTTPException(status_code=404, detail="Team not found")
+    response.headers["Cache-Control"] = READ_CACHE
+    return build_team_depth(session, row, team)
 
 
 @app.get("/api/leagues/{league_id}/lineups")
