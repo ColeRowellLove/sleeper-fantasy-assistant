@@ -49,6 +49,7 @@ from sleeper_assistant.start_sit import (
     compare_players,
 )
 from sleeper_assistant.team_depth import TeamDepth, build_team_depth
+from sleeper_assistant.waiver_wire import WaiverWire, build_waiver_wire
 
 log = logging.getLogger(__name__)
 
@@ -431,6 +432,23 @@ def get_alerts(
         raise HTTPException(status_code=404, detail="Team not found")
     response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_alerts(session, league_id, roster, limit)
+
+
+@app.get("/api/leagues/{league_id}/waiver-wire")
+def get_waiver_wire(
+    league_id: LeagueId,
+    session: SessionDep,
+    response: Response,
+    roster: Annotated[int, Query(ge=1, le=64)],
+) -> WaiverWire:
+    """This waiver cycle's most recommended adds for one team, with the reasons."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    if session.get(RosterRow, (league_id, roster)) is None:
+        raise HTTPException(status_code=404, detail="Team not found")
+    response.headers["Cache-Control"] = read_cache(session, row.season)
+    return build_waiver_wire(session, row, roster)
 
 
 @app.get("/api/leagues/{league_id}/rankings")

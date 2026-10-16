@@ -17,6 +17,7 @@ import LiveRefresh from "../../../components/LiveRefresh";
 import GamesPanel from "../../../components/GamesPanel";
 import RankingsPanel from "../../../components/RankingsPanel";
 import AlertsPanel from "../../../components/AlertsPanel";
+import WaiverWirePanel from "../../../components/WaiverWirePanel";
 import AccuracyTable from "../../../components/AccuracyTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
@@ -25,6 +26,7 @@ import type {
   LeagueSettings,
   BestLineup,
   AlertsData,
+  WaiverWireData,
   LineupAccuracy,
   StartSitComparison,
   Rankings,
@@ -199,6 +201,15 @@ export default async function LeaguePage({
         : await loadAlerts(alertsTeam, 50);
   const newAlerts = unreadAlerts(myAlerts?.alerts ?? [], alertsSeen).length;
 
+  // Waiver wire: one team's list (the linked team, else yours, else the first)
+  const wireTeam = alertsTeam;
+  const wire =
+    tab === "waiver" && wireTeam !== null
+      ? await getJson<WaiverWireData>(
+          `/api/leagues/${leagueId}/waiver-wire?roster=${wireTeam}`,
+        ).catch(() => null)
+      : null;
+
   // Start/Sit works on one team's roster: the linked team, else yours, else the first. It needs
   // the dashboard (to know the teams), so it is fetched after it.
   let startSit: {
@@ -284,6 +295,15 @@ export default async function LeaguePage({
           leagueId={leagueId}
           myRosterId={myRosterId}
           seen={alertsSeen}
+        />
+      )}
+      {tab === "waiver" && (
+        <WaiverWirePanel
+          data={wire}
+          rosters={dashboard.rosters}
+          leagueId={leagueId}
+          rosterId={wireTeam}
+          myRosterId={myRosterId}
         />
       )}
       {tab === "accuracy" && accuracy && (

@@ -414,3 +414,21 @@ def test_team_depth_endpoint(client: TestClient) -> None:
     assert body["team"] == "SF" and body["groups"] == []  # nothing stored yet: empty, not an error
     assert client.get("/api/leagues/1/teams/ZZZ").status_code == 404  # not an NFL team
     assert client.get("/api/leagues/1/teams/sf").status_code == 422  # rejected, not looked up
+
+
+def test_waiver_wire_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/waiver-wire?roster=1").status_code == 404  # not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/waiver-wire?roster=1").json()
+    assert body["league_id"] == "1" and body["roster_id"] == 1 and body["entries"] == []
+    assert body["waiver_day"] in {
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    }
+    assert client.get("/api/leagues/1/waiver-wire").status_code == 422  # a team is required
+    assert client.get("/api/leagues/1/waiver-wire?roster=40").status_code == 404
