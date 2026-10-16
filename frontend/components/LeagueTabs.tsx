@@ -7,7 +7,7 @@ import { TABS, leaguePath, type TabKey } from "../lib/league";
  * Section navigation. Plain links (not ARIA tabs) so each tab is a real page that loads only its
  * data. The everyday sections sit in the bar; the rest are under "More", which is a native
  * disclosure (keyboard and screen-reader friendly, no script) and closes itself on navigation
- * because each section is its own page.
+ * (it is keyed on the open tab, so a client-side tab change remounts it closed).
  */
 export default function LeagueTabs({
   leagueId,
@@ -39,7 +39,7 @@ export default function LeagueTabs({
           <li key={tab.key}>{link(tab)}</li>
         ))}
         <li className="tabs-more">
-          <details>
+          <details key={active}>
             <summary className={activeMore ? "current" : undefined}>
               {activeMore ? `More: ${activeMore.label}` : "More"}
             </summary>

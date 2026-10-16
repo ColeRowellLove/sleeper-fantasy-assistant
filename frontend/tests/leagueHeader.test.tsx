@@ -115,6 +115,15 @@ describe("LeagueTabs More menu", () => {
     );
   });
 
+  it("closes again when another section is opened", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<LeagueTabs leagueId="9" active="rosters" />);
+    await user.click(screen.getByText("More"));
+    expect(screen.getByText("More").closest("details")).toHaveAttribute("open");
+    rerender(<LeagueTabs leagueId="9" active="rankings" />); // a client-side tab change
+    expect(screen.getByText("More: Rankings").closest("details")).not.toHaveAttribute("open");
+  });
+
   it("opens with the keyboard and has no accessibility violations", async () => {
     const user = userEvent.setup();
     render(<LeagueTabs leagueId="9" active="rosters" unreadAlerts={2} />);
