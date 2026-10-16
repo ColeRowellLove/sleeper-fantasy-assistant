@@ -73,3 +73,16 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
 - **Data:** connect a league on the develop web preview once to load it into the develop database.
 - Pull requests no longer get their own Vercel preview (see the deployment limit above); try a
   change locally or merge it into `develop` and use the develop preview.
+
+## LLM (optional)
+
+Alert advice can be written by a model (`llm.py`). It is off unless configured, and the app falls
+back to its computed text whenever the model is off, fails, or states a number that is not in the
+facts. Set these as environment variables (never commit keys):
+
+- `LLM_PROVIDER`: `none` (default), `anthropic`, or `openai_compatible` (Qwen via Ollama, vLLM,
+  OpenRouter or any OpenAI-style server).
+- `LLM_MODEL`, `LLM_API_KEY` (or `ANTHROPIC_API_KEY`), `LLM_BASE_URL` (OpenAI-compatible only).
+- `LLM_MAX_CALLS_PER_RUN`: call cap per worker run (default 50).
+
+A Claude.ai chat subscription cannot be used by a server; Claude needs an Anthropic API key.
