@@ -7,6 +7,7 @@ import logging
 import sys
 import threading
 import time
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -200,8 +201,9 @@ def run_once(
 ) -> bool:
     """Claim and run a single job. Returns False if nothing was due.
 
-    A job that raises is retried later, but its kind is also added to ``failures`` (when given) so
-    a one-shot run can end with a failing exit code instead of looking healthy."""
+    A job that raises is retried with backoff. Once it has used up its attempts (it is marked
+    failed for good) its kind is added to ``failures`` (when given), so a one-shot run can end with
+    a failing exit code instead of looking healthy, while a blip that a retry fixes stays quiet."""
     with factory() as session:
         job = jobs.claim_next(session, now)
         if job is None:
@@ -215,9 +217,9 @@ def run_once(
         except Exception as exc:  # job failures must never kill the worker
             session.rollback()
             log.exception("job %s (%s) failed", job.id, job.kind)
-            if failures is not None:
-                failures.append(job.kind)
             jobs.fail(session, job, f"{type(exc).__name__}: {exc}")
+            if failures is not None and job.status == "failed":
+                failures.append(job.kind)
         else:
             jobs.complete(session, job)
         return True
@@ -420,14 +422,24 @@ def run_batch(
         except Exception:  # a dropped connection or a source down must not end the live loop
             log.exception("live worker cycle failed; trying again next minute")
             if failures is not None:
-                failures.append("cycle")
+                failures.append("(a whole worker cycle)")
         cycles += 1
     return cycles
 
 
 def exit_code(failures: list[str]) -> int:
-    """1 when any job failed during a one-shot batch (so the workflow run shows red), else 0."""
+    """1 when any job failed for good during a one-shot batch (so the workflow run shows red)."""
     return 1 if failures else 0
+
+
+def run_one_shot(factory: sessionmaker[Session], handlers: dict[str, Handler]) -> int:
+    """The cron entry point: one batch, then the process exit code (1 when jobs failed for good)."""
+    failures: list[str] = []
+    run_batch(factory, handlers, failures=failures)
+    if failures:
+        counts = ", ".join(f"{kind} x{n}" for kind, n in sorted(Counter(failures).items()))
+        log.error("worker batch finished with jobs failed for good: %s", counts)
+    return exit_code(failures)
 
 
 def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process entry point
@@ -437,14 +449,7 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process e
     if args.once:
         logging.basicConfig(level=logging.INFO)
         factory = make_session_factory(make_engine())
-        failures: list[str] = []
-        run_batch(factory, default_handlers(SleeperClient()), failures=failures)
-        code = exit_code(failures)
-        if code:
-            log.error(
-                "worker batch finished with failed jobs: %s", ", ".join(sorted(set(failures)))
-            )
-        sys.exit(code)
+        sys.exit(run_one_shot(factory, default_handlers(SleeperClient())))
     else:
         run_forever()
 
