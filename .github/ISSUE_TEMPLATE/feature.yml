@@ -1,0 +1,19 @@
+name: Feature
+description: A feature from the build plan or a new idea
+labels: [enhancement]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: How it works
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: What you will check to know it is finished.

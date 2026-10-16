@@ -11,6 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from sleeper_assistant import api
 from sleeper_assistant.api import app, get_session, get_sleeper
 from sleeper_assistant.db import Base, LeagueRow, make_session_factory
 from sleeper_assistant.sleeper import BASE_URL, SleeperClient
@@ -20,7 +21,7 @@ FIXTURE: dict[str, Any] = json.loads(
 )
 
 
-def _routes() -> dict[str, Any]:
+def _routes_original() -> dict[str, Any]:
     routes: dict[str, Any] = {
         "/state/nfl": FIXTURE["state"],
         "/user/cole": FIXTURE["users"][0],
@@ -43,10 +44,25 @@ def _routes() -> dict[str, Any]:
     return routes
 
 
+FAILING: set[str] = set()  # paths a test wants Sleeper to answer with a 503
+OVERRIDES: dict[str, Any] = {}  # paths a test wants Sleeper to answer differently
+
+
+@pytest.fixture(autouse=True)
+def _reset_sleeper_faults() -> Iterator[None]:
+    yield
+    FAILING.clear()
+    OVERRIDES.clear()
+
+
+def _routes() -> dict[str, Any]:
+    return {**_routes_original(), **OVERRIDES}
+
+
 def _handler(request: httpx.Request) -> httpx.Response:
     path = request.url.path.removeprefix("/v1")
     routes = _routes()
-    if path == "/user/down":
+    if path == "/user/down" or path in FAILING:
         return httpx.Response(503)
     if path in routes:
         # content= (not json=) so a None route is sent as the literal JSON null Sleeper returns
@@ -166,16 +182,25 @@ def test_dashboard_after_connect(client: TestClient) -> None:
     body = resp.json()
     assert body["name"] == "Family League"
     assert body["rules"]["uses_faab"] is True
-    assert [s["team"] for s in body["standings"]] == ["Cole", "Dad"]
+    assert [s["team"] for s in body["standings"]] == ["Cole", "Dad Bods"]  # chosen name, trimmed
+    assert [s["manager"] for s in body["standings"]] == ["Cole", "Dad"]  # username fallback
     assert body["standings"][0]["points_for"] == 120.42
+    assert [s["streak"] for s in body["standings"]] == ["2W", None]  # a missing streak is None
     first = body["rosters"][0]["players"][0]
     assert body["week"] == 2  # current NFL week, from the schedule loaded on connect
     assert first["game"] == {
         "state": "upcoming",
         "date": "2026-09-20",
         "kickoff": None,
+        "team": "SF",
+        "team_score": None,  # not started: no score
+        "opponent_score": None,
+        "period_text": None,
+        "elapsed": 0.0,  # not started: none of the game is played
         "opponent": "CHI",
         "home": True,
+        "conditions": None,  # nflverse has not been synced in this test
+        "situation": None,  # not live: no ball to place
     }
     bye = next(p for p in body["rosters"][0]["players"] if p["name"] == "Justin Jefferson")
     assert bye["game"]["state"] == "bye"  # MIN has no game in week 2
@@ -242,3 +267,168 @@ def test_read_endpoints_are_briefly_cacheable_but_errors_are_not(client: TestCli
         cache = client.get(path).headers["cache-control"]
         assert "s-maxage=30" in cache
         assert "public" in cache
+
+
+def test_league_settings_endpoint_returns_what_sleeper_provides(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/settings").status_code == 404  # not connected yet
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/settings").json()
+    assert body["name"] == "Family League"
+    assert body["season"] == "2026"
+    assert body["roster_positions"] == FIXTURE["league"]["roster_positions"]
+    assert body["settings"] == FIXTURE["league"]["settings"]
+    assert body["scoring_settings"] == {
+        k: float(v) for k, v in FIXTURE["league"]["scoring_settings"].items()
+    }
+
+
+def test_connect_still_works_when_the_player_database_is_down(
+    client: TestClient,
+) -> None:
+    FAILING.update({"/players/nfl"})
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1").json()
+    assert body["name"] == "Family League"  # the league loads; names fall back to ids
+
+
+def test_connect_still_works_when_the_schedule_is_down(
+    client: TestClient,
+) -> None:
+    FAILING.update({"/schedule/nfl/regular/2026"})
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1").json()
+    assert body["week"] is None  # without a schedule there is no current week, and no crash
+
+
+def test_connect_reports_a_sleeper_outage_as_502(
+    client: TestClient,
+) -> None:
+    FAILING.update({"/league/1"})
+    assert client.post("/api/leagues/1/connect").status_code == 502
+
+
+def test_connect_reports_an_unknown_league_as_404(client: TestClient) -> None:
+    assert client.post("/api/leagues/999/connect").status_code == 404
+
+
+def test_connect_reports_a_malformed_sleeper_payload_as_502(client: TestClient) -> None:
+    broken = dict(FIXTURE["league"], league_id="1", total_rosters="many")
+    OVERRIDES["/league/1"] = broken
+    assert client.post("/api/leagues/1/connect").status_code == 502
+
+
+def test_players_endpoint_lists_who_is_rostered_in_this_league(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/players").status_code == 404  # not connected yet
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/players").json()
+    assert body["league_id"] == "1"
+    assert {p["owner_team"] for p in body["players"]} <= {"Cole", "Dad Bods", None}
+    assert any(
+        p["owner_roster_id"] == 1 for p in body["players"]
+    )  # the roster's players are listed
+
+
+def test_player_detail_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/players/4034").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/players/4034").json()
+    assert body["player_id"] == "4034"
+    assert body["owner_roster_id"] == 1  # on the first roster
+    assert client.get("/api/leagues/1/players/doesnotexist").status_code == 404
+    assert (
+        client.get("/api/leagues/1/players/bad id!").status_code == 422
+    )  # rejected, not looked up
+
+
+def test_start_sit_endpoints(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/start-sit?player=1&player=2").status_code == 404
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/start-sit?player=4034&player=4035").json()
+    assert body["league_id"] == "1" and len(body["candidates"]) == 2
+    assert client.get("/api/leagues/1/start-sit?player=4034").status_code == 422  # needs two
+    assert client.get("/api/leagues/1/start-sit?player=bad id&player=2").status_code == 422
+    lineup = client.get("/api/leagues/1/start-sit/lineup?roster=1").json()
+    assert lineup["roster_id"] == 1 and isinstance(lineup["lineup"], list)
+    assert client.get("/api/leagues/1/start-sit/lineup?roster=40").status_code == 404
+
+
+def test_reads_are_cached_briefly_while_a_game_is_on_and_longer_otherwise(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    monkeypatch.setattr(api, "live_window_cached", lambda *_a, **_k: False)  # not the wall clock
+    quiet = client.get("/api/leagues/1/games")
+    assert quiet.headers["cache-control"] == api.READ_CACHE
+    monkeypatch.setattr(api, "live_window_cached", lambda *_a, **_k: True)
+    for path in ("", "/lineups", "/games", "/rankings", "/players", "/teams/SF"):
+        assert client.get(f"/api/leagues/1{path}").headers["cache-control"] == api.READ_CACHE_LIVE
+
+
+def test_games_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/games").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/games?week=2").json()
+    assert body["league_id"] == "1" and isinstance(body["games"], list)
+    assert client.get("/api/leagues/1/games?week=99").status_code == 422
+
+
+def test_alerts_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/alerts?roster=1").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/alerts?roster=1").json()
+    assert body == {"league_id": "1", "roster_id": 1, "alerts": []}
+    assert client.get("/api/leagues/1/alerts").status_code == 422  # a team is required
+    assert client.get("/api/leagues/1/alerts?roster=0").status_code == 422
+    assert client.get("/api/leagues/1/alerts?roster=40").status_code == 404  # not a team here
+    assert client.get("/api/leagues/1/alerts?roster=1&limit=5").status_code == 200
+    assert client.get("/api/leagues/1/alerts?roster=1&limit=0").status_code == 422
+
+
+def test_rankings_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/rankings").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/rankings?week=2").json()
+    assert body["league_id"] == "1" and isinstance(body["players"], list)
+    assert body["selected"] == [] and body["signals"] == {}  # no projections or lines stored
+    assert "fantasypros" in body["unavailable"]
+    assert client.get("/api/leagues/1/rankings?sources=projection,vegas").status_code == 200
+    assert client.get("/api/leagues/1/rankings?sources=BAD;drop").status_code == 422
+    assert client.get("/api/leagues/1/rankings?week=99").status_code == 422
+
+
+def test_lineup_accuracy_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/accuracy").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/accuracy").json()
+    assert body["league_id"] == "1"
+    assert [t["roster_id"] for t in body["teams"]] == [1, 2]
+    assert body["teams"][0]["points"] == 120.42
+    assert body["teams"][0]["potential"] is None  # the recorded league has no potential points
+    assert body["teams"][0]["accuracy"] is None
+
+
+def test_team_depth_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/teams/SF").status_code == 404  # league not connected yet
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/teams/SF").json()
+    assert body["team"] == "SF" and body["groups"] == []  # nothing stored yet: empty, not an error
+    assert client.get("/api/leagues/1/teams/ZZZ").status_code == 404  # not an NFL team
+    assert client.get("/api/leagues/1/teams/sf").status_code == 422  # rejected, not looked up
+
+
+def test_waiver_wire_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/waiver-wire?roster=1").status_code == 404  # not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/waiver-wire?roster=1").json()
+    assert body["league_id"] == "1" and body["roster_id"] == 1 and body["entries"] == []
+    assert body["waiver_day"] in {
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    }
+    assert client.get("/api/leagues/1/waiver-wire").status_code == 422  # a team is required
+    assert client.get("/api/leagues/1/waiver-wire?roster=40").status_code == 404

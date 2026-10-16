@@ -1,0 +1,113 @@
+import type { AlertItem } from "./api";
+
+export interface WaiverTarget {
+  player_id: string;
+  name: string;
+  position?: string | null;
+  team?: string | null;
+  projected: number;
+  gain: number;
+  /** The sentence after the name: "(WR, SEA): projected 11.4, +4.2 over ...". */
+  detail?: string;
+  /** The whole sentence, name included (used if there is no detail). */
+  line: string;
+}
+
+/** The pickups in a waiver alert's data, ignoring anything that is not shaped like one. */
+export function waiverTargets(alert: AlertItem): WaiverTarget[] {
+  const raw = alert.data?.targets;
+  if (alert.kind !== "waiver_targets" || !Array.isArray(raw)) return [];
+  return raw.filter(
+    (t): t is WaiverTarget =>
+      typeof t === "object" &&
+      t !== null &&
+      typeof (t as WaiverTarget).player_id === "string" &&
+      typeof (t as WaiverTarget).name === "string" &&
+      typeof (t as WaiverTarget).line === "string" &&
+      typeof (t as WaiverTarget).projected === "number" &&
+      typeof (t as WaiverTarget).gain === "number",
+  );
+}
+
+export interface AdvicePick {
+  player_id: string;
+  name: string;
+  position?: string | null;
+  team?: string | null;
+  /** "bench" (already on the team) or "pickup" (available). */
+  action: string;
+  drop_id?: string | null;
+  drop_name?: string | null;
+  reason: string;
+}
+
+export interface Advice {
+  summary: string;
+  picks: AdvicePick[];
+}
+
+/** The model-written advice stored on an alert, or null when absent or not shaped like advice. */
+export function alertAdvice(alert: AlertItem): Advice | null {
+  const raw = alert.data?.advice as Partial<Advice> | undefined;
+  if (
+    !raw ||
+    typeof raw !== "object" ||
+    typeof raw.summary !== "string" ||
+    !Array.isArray(raw.picks)
+  ) {
+    return null;
+  }
+  const picks = raw.picks.filter(
+    (p): p is AdvicePick =>
+      typeof p === "object" &&
+      p !== null &&
+      typeof (p as AdvicePick).player_id === "string" &&
+      typeof (p as AdvicePick).name === "string" &&
+      typeof (p as AdvicePick).reason === "string",
+  );
+  return picks.length > 0 ? { summary: raw.summary, picks } : null;
+}
+
+/** The viewer's "cleared at" time from their cookie: a valid ISO time, or null (never throws). */
+export function parseSeen(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let text = raw;
+  try {
+    text = decodeURIComponent(raw);
+  } catch {
+    return null; // a malformed cookie is ignored, not a crash
+  }
+  return Number.isFinite(Date.parse(text)) ? text : null;
+}
+
+/** The alerts created after `seen` (an ISO time from the viewer's cookie); all of them without one. */
+export function unreadAlerts(alerts: AlertItem[], seen: string | null | undefined): AlertItem[] {
+  const seenAt = seen ? Date.parse(seen) : NaN;
+  if (!Number.isFinite(seenAt)) return alerts;
+  return alerts.filter((a) => Date.parse(a.created_at) > seenAt);
+}
+
+/** The time to remember when the viewer clears their alerts: the newest alert's own time. */
+export function newestAlertTime(alerts: AlertItem[]): string | null {
+  const times = alerts.map((a) => Date.parse(a.created_at)).filter(Number.isFinite);
+  return times.length > 0 ? new Date(Math.max(...times)).toISOString() : null;
+}
+
+/** "Alerts" or "Alerts (3 new)": the count is in words, never only a color or a dot. */
+export function alertsTabLabel(unread: number): string {
+  return unread > 0 ? `Alerts (${unread} new)` : "Alerts";
+}
+
+/** "Mon, Oct 12, 4:05 PM" in UTC, so the server and the browser print the same text. */
+export function alertTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  })} UTC`;
+}

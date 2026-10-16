@@ -27,11 +27,28 @@ export function orientMatchup(matchup: Matchup, myRosterId: number | null): Matc
   return { ...matchup, teams };
 }
 
+/** A team's matchup this week, with that team first; null when the lineups have no such team. */
+export function matchupFor(
+  lineups: Lineups | null | undefined,
+  rosterId: number,
+): { team: TeamLineup; opponent: TeamLineup | null; state: WeekState; week: number | null } | null {
+  if (!lineups || lineups.week === null || lineups.current_week == null) return null; // no season yet
+  const matchup = lineups.matchups.find((m) => m.teams.some((t) => t.roster_id === rosterId));
+  const team = matchup?.teams.find((t) => t.roster_id === rosterId);
+  if (!matchup || !team) return null;
+  return {
+    team,
+    opponent: matchup.teams.find((t) => t.roster_id !== rosterId) ?? null,
+    state: weekState(lineups.week, lineups.current_week),
+    week: lineups.week,
+  };
+}
+
 export function isMine(matchup: Matchup, myRosterId: number | null): boolean {
   return myRosterId !== null && matchup.teams.some((t) => t.roster_id === myRosterId);
 }
 
-export type RowKind = "starter" | "bench" | "ir" | "taxi";
+type RowKind = "starter" | "bench" | "ir" | "taxi";
 
 export interface PairedRow {
   /** Lineup slot (QB, RB, FLEX, ...) or the group name: Bench, IR, Taxi. */
@@ -60,7 +77,8 @@ export function pairRows(left: TeamLineup, right: TeamLineup): PairedRow[] {
   const isParked = (p: LineupPlayer) => PARKED.some((g) => g.slot !== "BN" && g.slot === p.slot);
   for (const group of PARKED) {
     // anything that is not explicitly IR or taxi counts as bench, so no player can be dropped
-    const inGroup = (p: LineupPlayer) => (group.slot === "BN" ? !isParked(p) : p.slot === group.slot);
+    const inGroup = (p: LineupPlayer) =>
+      group.slot === "BN" ? !isParked(p) : p.slot === group.slot;
     const l = left.bench.filter(inGroup);
     const r = right.bench.filter(inGroup);
     for (let i = 0; i < Math.max(l.length, r.length); i++) {
@@ -78,4 +96,33 @@ export function winnerId(a: TeamLineup, b: TeamLineup): number | null {
 
 export function formatPoints(value: number | null): string {
   return value === null ? "–" : value.toFixed(2);
+}
+
+/** 0.6234 becomes 62: a whole percent, never 0 or 100 because the model is never certain. */
+export function winPercent(probability: number | null | undefined): number | null {
+  if (probability === null || probability === undefined || Number.isNaN(probability)) return null;
+  return Math.min(99, Math.max(1, Math.round(probability * 100)));
+}
+
+/** A projection to two decimals, or null when there is none (never a misleading 0). */
+export function formatProjection(value: number | null | undefined): string | null {
+  return value === null || value === undefined ? null : value.toFixed(2);
+}
+
+/**
+ * Actual minus projected as signed text ("+3.2"), for a finished week only. In the current week the
+ * actual points are partial (games still to play), so "-127.3 against projection" would mislead.
+ * Either number missing also means no comparison.
+ */
+export function projectionDelta(
+  actual: number | null | undefined,
+  projected: number | null | undefined,
+  state: WeekState,
+): string | null {
+  if (state !== "played") return null;
+  if (actual === null || actual === undefined) return null;
+  if (projected === null || projected === undefined) return null;
+  const diff = Math.round((actual - projected) * 10) / 10;
+  if (diff === 0) return "0.0";
+  return `${diff > 0 ? "+" : "-"}${Math.abs(diff).toFixed(1)}`;
 }

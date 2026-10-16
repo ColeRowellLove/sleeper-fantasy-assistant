@@ -29,7 +29,7 @@ check each provider's pricing page before relying on a number.
 - **What it is:** a hosting platform that builds and deploys straight from GitHub, giving every branch
   and pull request its own preview URL.
 - **What it does here:** two projects. `web` serves the Next.js site; `api` runs the FastAPI backend as
-  a Python serverless function. Merges to `main` go to production; `develop` and PR branches get previews.
+  a Python serverless function. Merges to `main` go to production and `develop` gets a preview; work branches do not deploy (the free plan caps deployments per day).
 - **Why it was chosen:**
   - Zero-config deploys for both Next.js and FastAPI, and no server to look after.
   - Preview deployments per branch make it possible to test changes before they reach `main`.
@@ -55,6 +55,41 @@ check each provider's pricing page before relying on a number.
 - **What it does here:** the system of record for everything about a league. No login is needed.
 - **Why:** it is public, covers what the app needs, and never requires users' credentials.
 - **Trade-offs:** it has no projections or live game state; those come from other sources later (issues #109, #131).
+
+### ESPN fantasy API (ownership, start percentages, depth charts and live games)
+
+- **What it is:** ESPN's public fantasy football API. It is undocumented, needs no key, and is the one free
+  source we found for "what share of leagues roster and start this player".
+- **What it does here:** every few hours the worker pulls the top 900 players' `percentOwned` and
+  `percentStarted` (about 4 MB compressed) and the Players tab shows them as ESPN-wide numbers, never as
+  Sleeper's. ESPN players are matched to Sleeper players by ESPN id where Sleeper has one, otherwise by
+  name, team and position; a name that matches two players is left out rather than guessed (97% of players
+  with points, and every rostered or high-scoring one, matched on real data).
+- **Depth charts:** the same family of free endpoints gives each team's full depth chart (offense
+  including the offensive line, defense by scheme, and special teams with the holder and returners), one
+  request per team. The worker refreshes all 32 every few hours (a few seconds in total) and matches the
+  players to Sleeper's by ESPN id or name within the team (99% matched on real data). Sleeper's own depth
+  chart fields are the fallback when ESPN has nothing, and a failed pull keeps the last good chart.
+- **Live games:** ESPN's scoreboard (one small request for the whole week) gives each game's score,
+  quarter and clock to the minute. The API asks for it only while a game could be on (from an hour before
+  a kickoff to five hours after, or while Sleeper says a game is in progress) and keeps the answer for 45
+  seconds in memory, so many viewers cause one request. If ESPN is down the badge falls back to Sleeper's
+  state, and final scores come from the nflverse schedule. Where ESPN and Sleeper disagree about whether
+  a game has started, ESPN's answer is shown, because it is fresher.
+- **Why:** Sleeper publishes no such numbers, and this is free.
+- **Trade-offs:** it can change without notice, so the parser is tested against a recorded shape and a
+  failed or empty pull leaves the previous numbers in place. Personal, non-commercial use only; revisit if
+  the project ever charges or runs ads.
+
+### nflverse (kickoff times)
+
+- **What it is:** an open-source project that publishes NFL data, including the full schedule, under CC BY 4.0.
+- **What it does here:** Sleeper's schedule has game dates but no kickoff time, so a daily job reads
+  nflverse's schedule file and stores each game's kickoff (converted from US Eastern to UTC). The site
+  then shows it in each viewer's own time zone.
+- **Why:** free, no key, complete (all 272 regular-season games matched Sleeper's), and credit is all it asks.
+- **Trade-offs:** it is a third-party file, so a failed download just leaves the last known times, and
+  the footer credits nflverse. nflverse calls the Rams `LA` where Sleeper says `LAR`; one code is mapped.
 
 ## Backend
 

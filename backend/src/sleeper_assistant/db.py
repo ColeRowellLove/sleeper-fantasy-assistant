@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
+    UniqueConstraint,
     create_engine,
     text,
 )
@@ -72,6 +73,7 @@ class UserLeagueRow(Base):
 
     user_id: Mapped[str] = mapped_column(ForeignKey("sleeper_users.user_id"), primary_key=True)
     league_id: Mapped[str] = mapped_column(ForeignKey("leagues.league_id"), primary_key=True)
+    team_name: Mapped[str | None] = mapped_column(String)  # the name this manager gave their team
 
 
 class RosterRow(Base):
@@ -89,6 +91,8 @@ class RosterRow(Base):
     ties: Mapped[int] = mapped_column(default=0)
     points_for: Mapped[float] = mapped_column(default=0.0)
     points_against: Mapped[float] = mapped_column(default=0.0)
+    streak: Mapped[str | None] = mapped_column(String)  # current run as Sleeper reports it: 3W, 2L
+    potential_points: Mapped[float | None]  # Sleeper's ppts: points the best lineups would score
 
 
 class MatchupRow(Base):
@@ -133,6 +137,8 @@ class PlayerRow(Base):
     injury_status: Mapped[str | None] = mapped_column(String)
     injury_body_part: Mapped[str | None] = mapped_column(String)
     external_ids: Mapped[dict[str, Any]]
+    # age, height, weight, college, experience, jersey number and depth chart, as Sleeper sends them
+    bio: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
 class CrosswalkRow(Base):
@@ -163,7 +169,128 @@ class NflGameRow(Base):
     game_date: Mapped[str | None] = mapped_column(String)  # ISO date, e.g. 2026-10-18
     status: Mapped[str] = mapped_column(String)  # pre_game, in_game, complete
     kickoff: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # from nflverse
+    home_score: Mapped[int | None]  # final score, from nflverse once the game is over
+    away_score: Mapped[int | None]
+    # game conditions from the nflverse schedule; all optional (unknown until published)
+    roof: Mapped[str | None] = mapped_column(String)  # outdoors, dome, closed, open
+    surface: Mapped[str | None] = mapped_column(String)  # grass, fieldturf, ...
+    stadium: Mapped[str | None] = mapped_column(String)
+    temp: Mapped[int | None]  # degrees Fahrenheit, outdoor games
+    wind: Mapped[int | None]  # miles per hour, outdoor games
+    spread_line: Mapped[float | None]  # points the home team is favoured by (negative: underdog)
+    total_line: Mapped[float | None]  # the over/under
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PlayerProjectionRow(Base):
+    """A player's projected stat line for one week, kept as pulled before the game kicked off."""
+
+    __tablename__ = "player_projections"
+    __table_args__ = (Index("ix_player_projections_season_week", "season", "week"),)
+
+    season: Mapped[str] = mapped_column(String, primary_key=True)
+    week: Mapped[int] = mapped_column(primary_key=True)
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    team: Mapped[str | None] = mapped_column(String)
+    stats: Mapped[dict[str, float]] = mapped_column(JSON)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class TeamDepthChartRow(Base):
+    """One NFL team's depth chart, stored as pulled: group -> slot -> players in depth order."""
+
+    __tablename__ = "team_depth_charts"
+
+    team: Mapped[str] = mapped_column(String, primary_key=True)
+    source: Mapped[str] = mapped_column(String)  # ESPN, or Sleeper when ESPN had nothing
+    chart: Mapped[dict[str, Any]] = mapped_column(JSON)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PlayerOwnershipRow(Base):
+    """ESPN-wide percent of leagues that roster and start a player (not Sleeper's numbers)."""
+
+    __tablename__ = "player_ownership"
+
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)  # the Sleeper player id
+    owned: Mapped[float | None]
+    started: Mapped[float | None]
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PlayerSeasonStatsRow(Base):
+    """A player's stat totals for a past season; the weeks are in player_week_stats."""
+
+    __tablename__ = "player_season_stats"
+
+    season: Mapped[str] = mapped_column(String, primary_key=True)
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    games: Mapped[int]
+    stats: Mapped[dict[str, float]] = mapped_column(JSON)
+    teams: Mapped[list[str] | None] = mapped_column(JSON)  # teams he played for, in order
+
+
+class PlayerTrendRow(Base):
+    """How many Sleeper leagues added and dropped a player in the last 24 hours (top 100 only)."""
+
+    __tablename__ = "player_trends"
+
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    adds: Mapped[int | None]
+    drops: Mapped[int | None]
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PlayerWeekStatsRow(Base):
+    """A player's actual stat line for one week, scored per league when needed."""
+
+    __tablename__ = "player_week_stats"
+
+    season: Mapped[str] = mapped_column(String, primary_key=True)
+    week: Mapped[int] = mapped_column(primary_key=True)
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    team: Mapped[str | None] = mapped_column(String)
+    stats: Mapped[dict[str, float]] = mapped_column(JSON)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PlayerInjuryRow(Base):
+    """The last injury status seen for a player, so a change (ruled out) is a real comparison."""
+
+    __tablename__ = "player_injury_status"
+
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    status: Mapped[str | None] = mapped_column(
+        String
+    )  # Out, Doubtful, Questionable, ...; None = healthy
+    previous: Mapped[str | None] = mapped_column(String)  # the status before the last change
+    changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )  # None = first sight
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AlertRow(Base):
+    """An alert for one team in one league. Created once per event (the dedupe key)."""
+
+    __tablename__ = "alerts"
+    __table_args__ = (
+        UniqueConstraint("league_id", "roster_id", "dedupe_key", name="uq_alerts_event"),
+        Index("ix_alerts_team_created", "league_id", "roster_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    league_id: Mapped[str] = mapped_column(ForeignKey("leagues.league_id"))
+    roster_id: Mapped[int]
+    kind: Mapped[str] = mapped_column(String)  # injury_out, waiver_targets, ...
+    dedupe_key: Mapped[str] = mapped_column(String)  # the same event never alerts a team twice
+    player_id: Mapped[str | None] = mapped_column(
+        String
+    )  # the player it is about, when there is one
+    title: Mapped[str] = mapped_column(String)
+    why: Mapped[str] = mapped_column(String)  # one line with the numbers behind it
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # structured extras
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class JobRow(Base):

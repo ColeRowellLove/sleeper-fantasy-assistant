@@ -4,7 +4,14 @@ import { Archivo, Instrument_Sans } from "next/font/google";
 
 import ThemeToggle from "../components/ThemeToggle";
 import { THEME_INIT } from "../lib/theme";
-import "./globals.css";
+import "./styles/tokens.css";
+import "./styles/shell.css";
+import "./styles/forms.css";
+import "./styles/league.css";
+import "./styles/rosters.css";
+import "./styles/lineups.css";
+import "./styles/widgets.css";
+import "./styles/settings.css";
 
 const display = Archivo({
   subsets: ["latin"],
@@ -23,7 +30,8 @@ const body = Instrument_Sans({
 const host = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
 const siteUrl = host ? `https://${host}` : "http://localhost:3000";
 
-const description = "Standings, rosters and weekly lineups for your Sleeper fantasy football league.";
+const description =
+  "Standings, rosters and weekly lineups for your Sleeper fantasy football league.";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),

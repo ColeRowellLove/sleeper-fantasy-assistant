@@ -15,7 +15,11 @@ import httpx
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from sleeper_assistant import jobs
+from sleeper_assistant import (
+    alert_detectors,  # noqa: F401  (registers the alert detectors)
+    jobs,
+)
+from sleeper_assistant.alerts import run_all_leagues
 from sleeper_assistant.crosswalk import build_crosswalk
 from sleeper_assistant.db import (
     JobRow,
@@ -25,8 +29,19 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
+from sleeper_assistant.depth_sync import sync_depth_charts
+from sleeper_assistant.espn import fetch_ownership
+from sleeper_assistant.ingest import MAX_WEEKS, sync_league, sync_players, sync_schedule
 from sleeper_assistant.kickoffs import sync_kickoffs
+from sleeper_assistant.live_window import live_window_open
+from sleeper_assistant.player_data import (
+    stored_weeks,
+    sync_ownership,
+    sync_season_history,
+    sync_trending,
+    sync_week_stats,
+)
+from sleeper_assistant.projections import sync_projections
 from sleeper_assistant.sleeper import SleeperClient
 
 log = logging.getLogger(__name__)
@@ -42,14 +57,38 @@ PLAYER_SYNC_INTERVAL = timedelta(
 PLAYER_SYNC_FAILURE_COOLDOWN = timedelta(hours=6)  # do not hammer a failing /players endpoint
 SCHEDULE_SYNC_INTERVAL = timedelta(minutes=10)
 SCHEDULE_FAILURE_COOLDOWN = timedelta(minutes=30)
+SCHEDULE_SYNC_INTERVAL_LIVE = timedelta(minutes=3)  # game states and scores, while a game is on
+PROJECTION_SYNC_INTERVAL = timedelta(hours=3)  # projections move with injuries and depth charts
+PROJECTION_FAILURE_COOLDOWN = timedelta(hours=3)
+TRENDING_SYNC_INTERVAL = timedelta(hours=1)  # Sleeper's add/drop counts move all day
+TRENDING_FAILURE_COOLDOWN = timedelta(hours=1)
+STATS_SYNC_INTERVAL = timedelta(hours=1)  # the current week's stats grow during games
+STATS_FAILURE_COOLDOWN = timedelta(hours=3)
+STATS_SYNC_INTERVAL_LIVE = timedelta(minutes=2)  # stat lines grow play by play while a game is on
+STATS_FAILURE_COOLDOWN_LIVE = timedelta(minutes=5)  # back off a little if the source fails
+LIVE_CYCLE_SECONDS = 60.0  # how often a batch repeats inside its job while a game is on
+LIVE_LOOP_BUDGET = timedelta(minutes=11)  # stop well before the 15-minute job limit
+LIVE_CYCLE_BUDGET = timedelta(minutes=2)  # one repeated cycle never runs longer than this
+HISTORY_SYNC_INTERVAL = timedelta(days=7)  # past seasons never change; this only fills gaps
+HISTORY_FAILURE_COOLDOWN = timedelta(hours=12)
+HISTORY_SEASONS = 2  # how many finished seasons the player pop-up shows
+OWNERSHIP_SYNC_INTERVAL = timedelta(hours=3)  # ESPN's percentages move slowly
+OWNERSHIP_FAILURE_COOLDOWN = timedelta(hours=3)
+DEPTH_SYNC_INTERVAL = timedelta(hours=3)  # depth charts change with injuries and news
+DEPTH_FAILURE_COOLDOWN = timedelta(hours=3)
 KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
 KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
+ALERTS_INTERVAL = timedelta(minutes=10)  # detectors run on whatever the syncs have stored
+ALERTS_FAILURE_COOLDOWN = timedelta(minutes=30)
 CYCLE_MAX_JOBS = 50
 CYCLE_BUDGET = timedelta(minutes=10)
 HEARTBEAT_SECONDS = jobs.STALE_AFTER.total_seconds() / 4
 
 
-def default_handlers(client: SleeperClient) -> dict[str, Handler]:
+def default_handlers(
+    client: SleeperClient,
+    http_factory: Callable[[], httpx.Client] = lambda: httpx.Client(timeout=30.0),
+) -> dict[str, Handler]:
     def _sync_league(session: Session, payload: dict[str, Any]) -> None:
         sync_league(session, client, str(payload["league_id"]))
 
@@ -61,14 +100,61 @@ def default_handlers(client: SleeperClient) -> dict[str, Handler]:
         season = str(payload.get("season") or client.get_state().season)
         sync_schedule(session, client, season)
 
+    def _sync_projections(session: Session, payload: dict[str, Any]) -> None:
+        state = client.get_state()
+        if state.season_type != "regular":
+            return  # nothing is projected outside the regular season
+        season = str(payload.get("season") or state.season)
+        # this week and the next, so the coming week is ready before it starts
+        for week in range(state.week, min(state.week + 1, MAX_WEEKS) + 1):
+            sync_projections(session, client, season, week)
+
+    def _sync_trending(session: Session, _payload: dict[str, Any]) -> None:
+        sync_trending(session, client)
+
+    def _sync_stats(session: Session, payload: dict[str, Any]) -> None:
+        state = client.get_state()
+        if state.season_type not in ("regular", "post"):
+            return  # nothing has been played yet
+        season = str(payload.get("season") or state.season)
+        last = MAX_WEEKS if state.season_type == "post" else min(state.week, MAX_WEEKS)
+        have = stored_weeks(session, season)
+        # weeks never loaded, plus the latest week again because it is still changing
+        weeks = {w for w in range(1, last + 1) if w not in have} | {last}
+        sync_week_stats(session, client, season, weeks)
+
+    def _sync_history(session: Session, payload: dict[str, Any]) -> None:
+        current = int(payload.get("season") or client.get_state().season)
+        for season in range(current - 1, current - 1 - HISTORY_SEASONS, -1):
+            sync_season_history(session, client, str(season))
+
+    def _sync_ownership(session: Session, payload: dict[str, Any]) -> None:
+        season = str(payload.get("season") or client.get_state().season)
+        with http_factory() as http:
+            sync_ownership(session, fetch_ownership(http, season))
+
+    def _sync_depth_charts(session: Session, _payload: dict[str, Any]) -> None:
+        with http_factory() as http:
+            sync_depth_charts(session, http)
+
     def _sync_kickoffs(session: Session, payload: dict[str, Any]) -> None:
         season = str(payload.get("season") or client.get_state().season)
-        with httpx.Client(timeout=30.0) as http:
+        with http_factory() as http:
             sync_kickoffs(session, http, season)
 
+    def _run_alerts(session: Session, _payload: dict[str, Any]) -> None:
+        run_all_leagues(session, utcnow() - ACTIVE_WINDOW)
+
     return {
+        "run_alerts": _run_alerts,
+        "sync_depth_charts": _sync_depth_charts,
+        "sync_history": _sync_history,
         "sync_kickoffs": _sync_kickoffs,
+        "sync_projections": _sync_projections,
+        "sync_stats": _sync_stats,
+        "sync_trending": _sync_trending,
         "sync_league": _sync_league,
+        "sync_ownership": _sync_ownership,
         "sync_players": _sync_players,
         "sync_schedule": _sync_schedule,
     }
@@ -184,10 +270,65 @@ def enqueue_player_sync_if_due(session: Session, now: datetime | None = None) ->
 
 
 def enqueue_schedule_sync_if_due(session: Session, now: datetime | None = None) -> bool:
-    """Refresh the NFL schedule (game statuses) about every cycle; it is one small request."""
+    """Refresh the NFL schedule (game states): every few minutes while a game is on, else slower."""
+    live = live_window_open(session, now=now)
+    interval = SCHEDULE_SYNC_INTERVAL_LIVE if live else SCHEDULE_SYNC_INTERVAL
+    return _enqueue_periodic(session, "sync_schedule", interval, SCHEDULE_FAILURE_COOLDOWN, now)
+
+
+def enqueue_projection_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh weekly projections about every few hours."""
     return _enqueue_periodic(
-        session, "sync_schedule", SCHEDULE_SYNC_INTERVAL, SCHEDULE_FAILURE_COOLDOWN, now
+        session,
+        "sync_projections",
+        PROJECTION_SYNC_INTERVAL,
+        PROJECTION_FAILURE_COOLDOWN,
+        now,
     )
+
+
+def enqueue_trending_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh Sleeper's add/drop counts about hourly."""
+    return _enqueue_periodic(
+        session, "sync_trending", TRENDING_SYNC_INTERVAL, TRENDING_FAILURE_COOLDOWN, now
+    )
+
+
+def enqueue_stats_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh the weekly stat lines: every couple of minutes while a game is on, else hourly."""
+    if live_window_open(session, now=now):
+        return _enqueue_periodic(
+            session, "sync_stats", STATS_SYNC_INTERVAL_LIVE, STATS_FAILURE_COOLDOWN_LIVE, now
+        )
+    return _enqueue_periodic(
+        session, "sync_stats", STATS_SYNC_INTERVAL, STATS_FAILURE_COOLDOWN, now
+    )
+
+
+def enqueue_history_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Fill in past seasons' stat totals (cheap to re-check: seasons already stored are skipped)."""
+    return _enqueue_periodic(
+        session, "sync_history", HISTORY_SYNC_INTERVAL, HISTORY_FAILURE_COOLDOWN, now
+    )
+
+
+def enqueue_ownership_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh ESPN's owned and started percentages every few hours."""
+    return _enqueue_periodic(
+        session, "sync_ownership", OWNERSHIP_SYNC_INTERVAL, OWNERSHIP_FAILURE_COOLDOWN, now
+    )
+
+
+def enqueue_depth_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh every team's depth chart every few hours."""
+    return _enqueue_periodic(
+        session, "sync_depth_charts", DEPTH_SYNC_INTERVAL, DEPTH_FAILURE_COOLDOWN, now
+    )
+
+
+def enqueue_alerts_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Run the alert detectors for active leagues every few minutes, after their syncs."""
+    return _enqueue_periodic(session, "run_alerts", ALERTS_INTERVAL, ALERTS_FAILURE_COOLDOWN, now)
 
 
 def enqueue_kickoff_sync_if_due(session: Session, now: datetime | None = None) -> bool:
@@ -219,12 +360,52 @@ def run_cycle(
             + int(enqueue_player_sync_if_due(session))
             + int(enqueue_schedule_sync_if_due(session))
             + int(enqueue_kickoff_sync_if_due(session))
+            + int(enqueue_projection_sync_if_due(session))
+            + int(enqueue_trending_sync_if_due(session))
+            + int(enqueue_stats_sync_if_due(session))
+            + int(enqueue_history_sync_if_due(session))
+            + int(enqueue_ownership_sync_if_due(session))
+            + int(enqueue_depth_sync_if_due(session))
+            + int(enqueue_alerts_if_due(session))
         )
     ran = 0
     while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):
         ran += 1
     log.info("worker cycle: enqueued %d, ran %d", enqueued, ran)
     return CycleResult(enqueued=enqueued, ran=ran)
+
+
+def run_batch(
+    factory: sessionmaker[Session],
+    handlers: dict[str, Handler],
+    *,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], datetime] = utcnow,
+) -> int:
+    """One scheduled batch, repeated about once a minute while a game is on.
+
+    Outside a live window this is a single cycle, exactly as before. While a game is on it keeps
+    cycling (so the stat lines, which sync every couple of minutes then, stay fresh) until the
+    window closes or ``LIVE_LOOP_BUDGET`` is used up, leaving the next scheduled run to carry on.
+    Each repeated cycle has its own short time budget, a failed one is logged and the loop goes on,
+    and the workflow's concurrency group stops two runs overlapping.
+    Returns how many cycles ran.
+    """
+    started = clock()
+    cycles = 1
+    run_cycle(factory, handlers)
+    while clock() - started + timedelta(seconds=LIVE_CYCLE_SECONDS) < LIVE_LOOP_BUDGET:
+        with factory() as session:
+            if not live_window_open(session, now=clock()):
+                break
+        sleep(LIVE_CYCLE_SECONDS)
+        remaining = LIVE_LOOP_BUDGET - (clock() - started)
+        try:
+            run_cycle(factory, handlers, budget=min(LIVE_CYCLE_BUDGET, remaining))
+        except Exception:  # a dropped connection or a source down must not end the live loop
+            log.exception("live worker cycle failed; trying again next minute")
+        cycles += 1
+    return cycles
 
 
 def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process entry point
@@ -234,7 +415,7 @@ def main(argv: list[str] | None = None) -> None:  # pragma: no cover - process e
     if args.once:
         logging.basicConfig(level=logging.INFO)
         factory = make_session_factory(make_engine())
-        run_cycle(factory, default_handlers(SleeperClient()))
+        run_batch(factory, default_handlers(SleeperClient()))
     else:
         run_forever()
 

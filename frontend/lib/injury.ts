@@ -1,6 +1,6 @@
 import type { InjuryInfo } from "./api";
 
-export type InjuryTone = "out" | "doubtful" | "questionable" | "other";
+type InjuryTone = "out" | "doubtful" | "questionable" | "other";
 
 export interface InjuryLabel {
   tone: InjuryTone;

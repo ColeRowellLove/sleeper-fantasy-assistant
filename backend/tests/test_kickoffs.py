@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sleeper_assistant import jobs
 from sleeper_assistant.dashboard import games_for_week
 from sleeper_assistant.db import NflGameRow, utcnow
-from sleeper_assistant.kickoffs import parse_kickoffs, sync_kickoffs
+from sleeper_assistant.kickoffs import parse_conditions, parse_kickoffs, sync_kickoffs
 from sleeper_assistant.worker import enqueue_kickoff_sync_if_due
 
 CSV = """season,game_type,week,gameday,gametime,home_team,away_team
@@ -99,3 +99,62 @@ def test_kickoff_refresh_is_daily(session: Session) -> None:
     jobs.complete(session, job, now)
     assert not enqueue_kickoff_sync_if_due(session, now + timedelta(hours=23))
     assert enqueue_kickoff_sync_if_due(session, now + timedelta(hours=25))
+
+
+WEATHER_CSV = """season,game_type,week,gameday,gametime,home_team,away_team,roof,surface,temp,wind,spread_line,total_line,stadium
+2026,REG,6,2026-10-18,13:00,SF,DAL,outdoors,grass,53,15.0,-3.5,44.5,Levi's Stadium
+2026,REG,6,2026-10-18,16:25,LA,SEA,dome,fieldturf,,,NA,,SoFi Stadium
+2026,REG,7,2026-10-25,,MIN,CHI,,,oops,,2,,
+2026,POST,1,2027-01-10,16:30,SF,DAL,outdoors,grass,40,5,1,40,Levi's Stadium
+2025,REG,6,2025-10-19,13:00,SF,DAL,outdoors,grass,70,2,1,40,Levi's Stadium
+"""  # noqa: E501
+
+
+def test_parse_conditions_reads_weather_roof_and_lines_and_tolerates_blanks() -> None:
+    found = parse_conditions(WEATHER_CSV, "2026")
+    assert len(found) == 3  # no playoffs, no other season
+    outdoor = found[(6, "SF", "DAL")]
+    assert (outdoor.roof, outdoor.surface, outdoor.temp, outdoor.wind) == (
+        "outdoors",
+        "grass",
+        53,
+        15,
+    )
+    assert (outdoor.spread_line, outdoor.total_line, outdoor.stadium) == (
+        -3.5,
+        44.5,
+        "Levi's Stadium",
+    )
+    dome = found[(6, "LAR", "SEA")]  # nflverse says LA, Sleeper says LAR
+    assert (dome.roof, dome.temp, dome.wind, dome.spread_line) == ("dome", None, None, None)
+    junk = found[(7, "MIN", "CHI")]
+    assert (junk.roof, junk.temp, junk.spread_line) == (None, None, 2.0)  # "oops" is not a number
+
+
+def test_sync_stores_conditions_and_games_show_them_from_each_teams_side(session: Session) -> None:
+    session.add_all(
+        [
+            NflGameRow(game_id="a", season="2026", week=6, home="SF", away="DAL",
+                       game_date="2026-10-18", status="pre_game"),
+            NflGameRow(game_id="b", season="2026", week=7, home="MIN", away="CHI",
+                       game_date="2026-10-25", status="pre_game"),
+        ]
+    )  # fmt: skip
+    session.commit()
+    sync_kickoffs(session, _http(WEATHER_CSV), "2026")
+    games = games_for_week(session, "2026", 6)
+    home, away = games["SF"].conditions, games["DAL"].conditions
+    assert home is not None and away is not None
+    assert (home.roof, home.temp, home.wind, home.total) == ("outdoors", 53, 15, 44.5)
+    assert home.spread == 3.5  # nflverse -3.5: the road team is favoured, so the home side is +3.5
+    assert away.spread == -3.5
+    assert games_for_week(session, "2026", 7)["MIN"].conditions is not None  # a line alone is kept
+
+
+def test_a_game_with_nothing_published_has_no_conditions(session: Session) -> None:
+    session.add(
+        NflGameRow(game_id="a", season="2026", week=6, home="SF", away="DAL",
+                   game_date="2026-10-18", status="pre_game")
+    )  # fmt: skip
+    session.commit()
+    assert games_for_week(session, "2026", 6)["SF"].conditions is None

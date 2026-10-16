@@ -35,3 +35,8 @@ export function setCookie(name: string, value: string): void {
   const secure = location.protocol === "https:" ? "; secure" : "";
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=31536000; samesite=lax${secure}`;
 }
+
+/** The cookie holding when the viewer last cleared their alerts in a league (an ISO time). */
+export function alertsSeenCookie(leagueId: string): string {
+  return `sa_alerts_seen_${leagueId}`;
+}

@@ -16,9 +16,9 @@ describe("resolveApiUrl", () => {
     expect(resolveApiUrl({ VERCEL_ENV: "preview" })).toBe(
       "https://api-git-develop-cole-b6ee.vercel.app",
     );
-    expect(resolveApiUrl({ VERCEL_ENV: "preview", DEVELOP_API_URL: "https://dev.example.com" })).toBe(
-      "https://dev.example.com",
-    );
+    expect(
+      resolveApiUrl({ VERCEL_ENV: "preview", DEVELOP_API_URL: "https://dev.example.com" }),
+    ).toBe("https://dev.example.com");
   });
 
   it("never points production at the develop API", () => {

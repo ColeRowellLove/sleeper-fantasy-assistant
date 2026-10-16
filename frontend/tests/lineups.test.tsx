@@ -51,6 +51,7 @@ const cole = team(
   [
     player("QB", "Cole QB", 24.5, {
       game: { state: "final", date: "2026-10-04", opponent: "CHI", home: true },
+      stat_line: "24/35, 281 yds, 2 TD",
     }),
     player("RB", "Cole RB", 10),
   ],
@@ -139,6 +140,12 @@ describe("WeeklyLineups", () => {
     render(<WeeklyLineups data={data} leagueId="9" myRosterId={1} />);
     expect(screen.getByText("Played")).toBeInTheDocument();
     expect(screen.getByText("vs CHI")).toBeInTheDocument();
+  });
+
+  it("summarises how a player did once his game has started, and says nothing before", () => {
+    render(<WeeklyLineups data={data} leagueId="9" myRosterId={1} />);
+    expect(screen.getByText("24/35, 281 yds, 2 TD")).toBeInTheDocument();
+    expect(screen.getAllByText(/Stats this week:/)).toHaveLength(1); // only the one player has a line
   });
 
   it("offers week chips as links with the selected, current and upcoming weeks identified", () => {
@@ -246,7 +253,12 @@ describe("lineup helpers", () => {
     const b = team(2, "B", 9, [player("QB", "B QB", 9)]);
     render(
       <WeeklyLineups
-        data={{ week: 5, current_week: 6, weeks: [5], matchups: [{ matchup_id: 1, teams: [a, b] }] }}
+        data={{
+          week: 5,
+          current_week: 6,
+          weeks: [5],
+          matchups: [{ matchup_id: 1, teams: [a, b] }],
+        }}
         leagueId="9"
         myRosterId={null}
       />,

@@ -5,7 +5,29 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from sleeper_assistant import live, live_window, matchup_rank, team_stats
 from sleeper_assistant.db import Base, make_engine, make_session_factory
+
+
+@pytest.fixture(autouse=True)
+def _no_live_scoreboard(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Tests never call ESPN: the live scoreboard is empty unless a test sets its own."""
+    monkeypatch.setattr(live, "FETCHER", lambda: [])
+    live.reset_cache()
+    yield
+    live.reset_cache()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_defense_table() -> Iterator[None]:
+    """Each test builds its own database, so a table cached by an earlier test must not leak."""
+    matchup_rank.reset_cache()
+    team_stats.reset_cache()
+    live_window.reset_cache()
+    yield
+    matchup_rank.reset_cache()
+    team_stats.reset_cache()
+    live_window.reset_cache()
 
 
 @pytest.fixture
