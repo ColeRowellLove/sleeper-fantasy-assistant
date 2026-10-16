@@ -335,3 +335,25 @@ describe("this week's points on rosters", () => {
     );
   });
 });
+
+describe("a projection of zero", () => {
+  it("is shown like any other projection, so every row has a Proj number", () => {
+    const zero = lineup(1, "Cole", true);
+    zero.starters[0] = {
+      ...zero.starters[0],
+      projected: 0,
+      projection_missing: true,
+    };
+    const matchup = { matchup_id: 1, teams: [zero, lineup(2, "Dad", true)] };
+    render(
+      <MatchupCard
+        matchup={matchup}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    expect(screen.getByText("Proj 0.00")).toBeInTheDocument();
+    expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(1); // the other side still has its number
+  });
+});

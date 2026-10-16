@@ -115,7 +115,8 @@ class LineupPlayer(BaseModel):
     points: float | None
     game: GameInfo | None = None
     injury: InjuryInfo | None = None
-    projected: float | None = None  # scored with the league's rules; None = no projection
+    projected: float | None = None  # scored with the league's rules; 0 when nothing is projected
+    projection_missing: bool = False  # no projection was stored, so the 0 above is an assumption
 
 
 class TeamLineup(BaseModel):
@@ -373,7 +374,7 @@ def _roster_players(  # noqa: PLR0913, PLR0917
             slot=slot,
             game=game,
             injury=_injury(players, pid),
-            projected=projected.get(pid),
+            projected=projected.get(pid, 0.0),
             points=_points_so_far(game, earned.get(pid)),
         )
 
@@ -454,7 +455,11 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
 
 def _starter_states(team: TeamLineup) -> list[StarterState]:
     return [
-        StarterState(p.game.state if p.game else None, p.points, p.projected)
+        StarterState(
+            p.game.state if p.game else None,
+            p.points,
+            None if p.projection_missing else p.projected,
+        )
         for p in team.starters
         if p.player_id is not None  # an empty slot scores nothing and projects nothing
     ]
@@ -510,7 +515,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 points=None if value is None else float(value),
                 game=games.get(nfl_team) if nfl_team else None,
                 injury=_injury(players, pid),
-                projected=projected.get(pid),
+                projected=projected.get(pid, 0.0),
+                projection_missing=pid not in projected,
             )
         )
 
@@ -529,7 +535,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 points=pts(pid),
                 game=games.get(nfl_team) if nfl_team else None,
                 injury=_injury(players, pid),
-                projected=projected.get(pid),
+                projected=projected.get(pid, 0.0),
+                projection_missing=pid not in projected,
             )
         )
     bench.sort(key=lambda p: (_PARKED_ORDER.get(p.slot, 0), -(p.points or 0.0), p.name))
