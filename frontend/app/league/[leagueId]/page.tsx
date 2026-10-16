@@ -109,8 +109,8 @@ export default async function LeaguePage({
     depthDialog,
   ] = await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
-    tab === "lineups"
-      ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
+    tab === "lineups" || tab === "rosters"
+      ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${tab === "rosters" ? "" : weekQuery}`)
       : Promise.resolve(null),
     tab === "games"
       ? getJson<Games>(`/api/leagues/${leagueId}/games${weekQuery}`)
@@ -204,6 +204,8 @@ export default async function LeaguePage({
         <RostersPanel
           key={`${myRosterId ?? "none"}-${linkedRosterId ?? "none"}`} // reset the selection when the team or the link changes
           initialRosterId={linkedRosterId}
+          lineups={lineups}
+          leagueId={leagueId}
           rosters={dashboard.rosters}
           myRosterId={myRosterId}
           week={dashboard.week ?? null}
