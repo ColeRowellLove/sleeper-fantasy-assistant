@@ -35,11 +35,7 @@ describe("projectionDelta", () => {
   });
 });
 
-const lineup = (
-  id: number,
-  name: string,
-  withProjection: boolean,
-): TeamLineup => ({
+const lineup = (id: number, name: string, withProjection: boolean): TeamLineup => ({
   roster_id: id,
   team: name,
   owner_id: null,
@@ -66,81 +62,39 @@ describe("projected points in the matchup", () => {
   });
 
   it("shows each team's projected total and each player's projection beside the actual", () => {
-    render(
-      <MatchupCard
-        matchup={matchup(true, true)}
-        state="played"
-        week={6}
-        myRosterId={1}
-      />,
-    );
+    render(<MatchupCard matchup={matchup(true, true)} state="played" week={6} myRosterId={1} />);
     expect(screen.getAllByText(/Projected 98\.10/)).toHaveLength(2);
     expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(2);
   });
 
   it("states the difference in words for screen readers, not by color", () => {
-    render(
-      <MatchupCard
-        matchup={matchup(true, false)}
-        state="played"
-        week={6}
-        myRosterId={1}
-      />,
-    );
+    render(<MatchupCard matchup={matchup(true, false)} state="played" week={6} myRosterId={1} />);
     // 104.2 - 98.1 = +6.1 for the team, 15.8 - 12.4 = +3.4 for the player
     expect(screen.getByText(/\(\+6\.1/)).toBeInTheDocument();
     expect(screen.getByText(/\(\+3\.4/)).toBeInTheDocument();
-    expect(
-      screen.getAllByText("against projection", { exact: false }),
-    ).toHaveLength(2);
+    expect(screen.getAllByText("against projection", { exact: false })).toHaveLength(2);
   });
 
   it("shows no projection line, and no zero, for a team or player without one", () => {
-    render(
-      <MatchupCard
-        matchup={matchup(false, false)}
-        state="played"
-        week={6}
-        myRosterId={1}
-      />,
-    );
+    render(<MatchupCard matchup={matchup(false, false)} state="played" week={6} myRosterId={1} />);
     expect(screen.queryByText(/Proj/)).not.toBeInTheDocument();
   });
 
   it("shows the projection but no comparison while the week is still being played", () => {
-    render(
-      <MatchupCard
-        matchup={matchup(true, true)}
-        state="current"
-        week={6}
-        myRosterId={1}
-      />,
-    );
+    render(<MatchupCard matchup={matchup(true, true)} state="current" week={6} myRosterId={1} />);
     expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(2);
     expect(screen.queryByText(/against projection/)).not.toBeInTheDocument();
   });
 
   it("shows the projection but no comparison before the games", () => {
-    render(
-      <MatchupCard
-        matchup={matchup(true, true)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
-    );
+    render(<MatchupCard matchup={matchup(true, true)} state="upcoming" week={7} myRosterId={1} />);
     expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(2);
     expect(screen.queryByText(/against projection/)).not.toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(
-      <MatchupCard
-        matchup={matchup(true, true)}
-        state="played"
-        week={6}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={matchup(true, true)} state="played" week={6} myRosterId={1} />,
     );
   });
 });
@@ -181,9 +135,7 @@ describe("projected points on rosters", () => {
   });
 
   it("has no accessibility violations", async () => {
-    await expectNoA11yViolations(
-      <RostersPanel rosters={rosters} myRosterId={1} />,
-    );
+    await expectNoA11yViolations(<RostersPanel rosters={rosters} myRosterId={1} />);
   });
 });
 
@@ -208,12 +160,7 @@ describe("win chance in the matchup", () => {
 
   it("shows each team's chance with a full sentence for screen readers", () => {
     render(
-      <MatchupCard
-        matchup={withChance(0.62, 0.38)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
     expect(screen.getByText("Cole 62%")).toBeInTheDocument();
     expect(screen.getByText("38% Dad")).toBeInTheDocument();
@@ -228,25 +175,15 @@ describe("win chance in the matchup", () => {
 
   it("draws a bar split in proportion to the chances, with each team's number at its end", () => {
     const { container } = render(
-      <MatchupCard
-        matchup={withChance(0.62, 0.38)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
     const a = container.querySelector(".win-bar-a") as HTMLElement;
     const b = container.querySelector(".win-bar-b") as HTMLElement;
     expect(a.style.width).toBe("62%");
     expect(b.style.width).toBe("38%"); // the two always fill the track
-    expect(container.querySelector(".win-bar-labels")?.textContent).toBe(
-      "Cole 62%38% Dad",
-    );
+    expect(container.querySelector(".win-bar-labels")?.textContent).toBe("Cole 62%38% Dad");
     // the picture is decorative; the sentence carries it for screen readers
-    expect(container.querySelector(".win-bar-track")).toHaveAttribute(
-      "aria-hidden",
-      "true",
-    );
+    expect(container.querySelector(".win-bar-track")).toHaveAttribute("aria-hidden", "true");
     expect(
       screen.getByText(
         "Cole has a 62 percent chance to win and Dad has 38 percent, from projected points.",
@@ -256,40 +193,19 @@ describe("win chance in the matchup", () => {
 
   it("colours the team ahead green and the team behind red, and an even matchup neutral", () => {
     const ahead = render(
-      <MatchupCard
-        matchup={withChance(0.62, 0.38)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
     expect(ahead.container.querySelector(".win-bar-a")).toHaveClass("win-lead");
-    expect(ahead.container.querySelector(".win-bar-b")).toHaveClass(
-      "win-trail",
-    );
+    expect(ahead.container.querySelector(".win-bar-b")).toHaveClass("win-trail");
     ahead.unmount();
     const behind = render(
-      <MatchupCard
-        matchup={withChance(0.3, 0.7)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.3, 0.7)} state="upcoming" week={7} myRosterId={1} />,
     );
-    expect(behind.container.querySelector(".win-bar-a")).toHaveClass(
-      "win-trail",
-    );
-    expect(behind.container.querySelector(".win-bar-b")).toHaveClass(
-      "win-lead",
-    );
+    expect(behind.container.querySelector(".win-bar-a")).toHaveClass("win-trail");
+    expect(behind.container.querySelector(".win-bar-b")).toHaveClass("win-lead");
     behind.unmount();
     const even = render(
-      <MatchupCard
-        matchup={withChance(0.5, 0.5)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.5, 0.5)} state="upcoming" week={7} myRosterId={1} />,
     );
     expect(even.container.querySelector(".win-bar-a")).toHaveClass("win-even");
     expect(even.container.querySelector(".win-bar-b")).toHaveClass("win-even");
@@ -297,85 +213,44 @@ describe("win chance in the matchup", () => {
 
   it("never draws a bar that is all one colour, and fills the track for any chances", () => {
     const { container } = render(
-      <MatchupCard
-        matchup={withChance(0.999, 0.001)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.999, 0.001)} state="upcoming" week={7} myRosterId={1} />,
     );
-    expect(
-      (container.querySelector(".win-bar-a") as HTMLElement).style.width,
-    ).toBe("99%");
-    expect(
-      (container.querySelector(".win-bar-b") as HTMLElement).style.width,
-    ).toBe("1%");
+    expect((container.querySelector(".win-bar-a") as HTMLElement).style.width).toBe("99%");
+    expect((container.querySelector(".win-bar-b") as HTMLElement).style.width).toBe("1%");
   });
 
   it("has no bar for a decided matchup or one with no chance to show", () => {
     const decided = render(
-      <MatchupCard
-        matchup={withChance(0.62, 0.38)}
-        state="played"
-        week={5}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.62, 0.38)} state="played" week={5} myRosterId={1} />,
     );
     expect(decided.container.querySelector(".win-bar")).toBeNull();
     decided.unmount();
     const none = render(
-      <MatchupCard
-        matchup={withChance(null, 0.4)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(null, 0.4)} state="upcoming" week={7} myRosterId={1} />,
     );
     expect(none.container.querySelector(".win-bar")).toBeNull(); // both sides are needed
   });
 
   it("is shown while the week is being played too", () => {
-    render(
-      <MatchupCard
-        matchup={withChance(0.8, 0.2)}
-        state="current"
-        week={6}
-        myRosterId={1}
-      />,
-    );
+    render(<MatchupCard matchup={withChance(0.8, 0.2)} state="current" week={6} myRosterId={1} />);
     expect(screen.getByText("Cole 80%")).toBeInTheDocument();
   });
 
   it("is not shown once the matchup is played, or when there is no chance to show", () => {
     const { unmount } = render(
-      <MatchupCard
-        matchup={withChance(0.62, 0.38)}
-        state="played"
-        week={5}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.62, 0.38)} state="played" week={5} myRosterId={1} />,
     );
     expect(screen.queryByText(/Win chance/)).not.toBeInTheDocument();
     unmount();
     render(
-      <MatchupCard
-        matchup={withChance(null, null)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(null, null)} state="upcoming" week={7} myRosterId={1} />,
     );
     expect(screen.queryByText(/Win chance/)).not.toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(
-      <MatchupCard
-        matchup={withChance(0.62, 0.38)}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
+      <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
   });
 });
@@ -423,26 +298,18 @@ describe("this week's points on rosters", () => {
     render(<RostersPanel rosters={withPoints} myRosterId={1} />);
     const scored = screen.getByText("Scored").closest("li") as HTMLElement;
     expect(within(scored).getByText("14.3")).toBeInTheDocument();
-    expect(
-      within(scored).getByText("Points this week", { exact: false }),
-    ).toBeInTheDocument();
-    expect(
-      within(scored).getByText("Projected", { exact: false }),
-    ).toBeInTheDocument(); // still there
+    expect(within(scored).getByText("Points this week", { exact: false })).toBeInTheDocument();
+    expect(within(scored).getByText("Projected", { exact: false })).toBeInTheDocument(); // still there
   });
 
   it("shows a real zero but nothing for a player who has not played", () => {
     render(<RostersPanel rosters={withPoints} myRosterId={1} />);
-    expect(
-      screen.getAllByText("Points this week", { exact: false }),
-    ).toHaveLength(2); // 14.25 and 0
+    expect(screen.getAllByText("Points this week", { exact: false })).toHaveLength(2); // 14.25 and 0
     expect(screen.getByText("0.0")).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
-    await expectNoA11yViolations(
-      <RostersPanel rosters={withPoints} myRosterId={1} />,
-    );
+    await expectNoA11yViolations(<RostersPanel rosters={withPoints} myRosterId={1} />);
   });
 });
 
@@ -455,14 +322,7 @@ describe("a projection of zero", () => {
       projection_missing: true,
     };
     const matchup = { matchup_id: 1, teams: [zero, lineup(2, "Dad", true)] };
-    render(
-      <MatchupCard
-        matchup={matchup}
-        state="upcoming"
-        week={7}
-        myRosterId={1}
-      />,
-    );
+    render(<MatchupCard matchup={matchup} state="upcoming" week={7} myRosterId={1} />);
     expect(screen.getByText("Proj 0.00")).toBeInTheDocument();
     expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(1); // the other side still has its number
   });

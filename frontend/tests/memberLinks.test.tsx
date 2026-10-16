@@ -39,12 +39,7 @@ describe("team names in the standings", () => {
 
   it("are links to that team's roster when the league is known", () => {
     render(
-      <StandingsTable
-        standings={standings}
-        playoffTeams={null}
-        myRosterId={1}
-        leagueId="123"
-      />,
+      <StandingsTable standings={standings} playoffTeams={null} myRosterId={1} leagueId="123" />,
     );
     expect(screen.getByRole("link", { name: "Dad Bods" })).toHaveAttribute(
       "href",
@@ -57,25 +52,14 @@ describe("team names in the standings", () => {
   });
 
   it("stay plain text without a league id, and keep the You marker", () => {
-    render(
-      <StandingsTable
-        standings={standings}
-        playoffTeams={null}
-        myRosterId={1}
-      />,
-    );
+    render(<StandingsTable standings={standings} playoffTeams={null} myRosterId={1} />);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.getByText("You")).toBeInTheDocument();
   });
 
   it("have no accessibility violations", async () => {
     await expectNoA11yViolations(
-      <StandingsTable
-        standings={standings}
-        playoffTeams={null}
-        myRosterId={1}
-        leagueId="123"
-      />,
+      <StandingsTable standings={standings} playoffTeams={null} myRosterId={1} leagueId="123" />,
     );
   });
 });
@@ -96,13 +80,7 @@ describe("team names in a matchup", () => {
 
   it("link to each team's roster", () => {
     render(
-      <MatchupCard
-        matchup={matchup}
-        state="current"
-        week={6}
-        myRosterId={1}
-        leagueId="123"
-      />,
+      <MatchupCard matchup={matchup} state="current" week={6} myRosterId={1} leagueId="123" />,
     );
     const names = screen.getAllByRole("link", { name: "Cole" })[0];
     expect(names).toHaveAttribute("href", "/league/123?tab=rosters&roster=1");
@@ -113,12 +91,8 @@ describe("team names in a matchup", () => {
   });
 
   it("stay plain text without a league id", () => {
-    render(
-      <MatchupCard matchup={matchup} state="current" week={6} myRosterId={1} />,
-    );
-    expect(
-      screen.queryByRole("link", { name: "Cole" }),
-    ).not.toBeInTheDocument();
+    render(<MatchupCard matchup={matchup} state="current" week={6} myRosterId={1} />);
+    expect(screen.queryByRole("link", { name: "Cole" })).not.toBeInTheDocument();
   });
 });
 
@@ -154,9 +128,10 @@ describe("owner team names on the Players tab", () => {
     };
     render(<PlayersTable data={data} myRosterId={null} leagueId="123" />);
     const owned = screen.getByRole("row", { name: /Puka Nacua/ });
-    expect(
-      within(owned).getByRole("link", { name: "Dad Bods" }),
-    ).toHaveAttribute("href", "/league/123?tab=rosters&roster=3");
+    expect(within(owned).getByRole("link", { name: "Dad Bods" })).toHaveAttribute(
+      "href",
+      "/league/123?tab=rosters&roster=3",
+    );
     const free = screen.getByRole("row", { name: /Free Guy/ });
     expect(within(free).getByText("Available")).toBeInTheDocument();
   });
@@ -197,23 +172,17 @@ describe("rosters opened from a link", () => {
   ];
 
   it("starts on the linked team instead of your own", () => {
-    render(
-      <RostersPanel rosters={rosters} myRosterId={1} initialRosterId={3} />,
-    );
+    render(<RostersPanel rosters={rosters} myRosterId={1} initialRosterId={3} />);
     expect(screen.getByRole("combobox", { name: "Team" })).toHaveValue("3");
     expect(screen.getByText("Dad Player")).toBeInTheDocument();
     expect(screen.queryByText("Cole Player")).not.toBeInTheDocument();
   });
 
   it("starts on your team when there is no link, or the link is not one of the league's teams", () => {
-    const { unmount } = render(
-      <RostersPanel rosters={rosters} myRosterId={1} />,
-    );
+    const { unmount } = render(<RostersPanel rosters={rosters} myRosterId={1} />);
     expect(screen.getByRole("combobox", { name: "Team" })).toHaveValue("1");
     unmount();
-    render(
-      <RostersPanel rosters={rosters} myRosterId={1} initialRosterId={99} />,
-    );
+    render(<RostersPanel rosters={rosters} myRosterId={1} initialRosterId={99} />);
     expect(screen.getByRole("combobox", { name: "Team" })).toHaveValue("1");
   });
 });

@@ -4,12 +4,7 @@ import { describe, expect, it } from "vitest";
 import SettingsPanel from "../components/SettingsPanel";
 import type { LeagueSettings } from "../lib/api";
 import { parseTab } from "../lib/league";
-import {
-  rosterSummary,
-  scoringLabel,
-  scoringSummary,
-  settingGroups,
-} from "../lib/leagueSettings";
+import { rosterSummary, scoringLabel, scoringSummary, settingGroups } from "../lib/leagueSettings";
 import { expectNoA11yViolations } from "./a11y";
 
 const data: LeagueSettings = {

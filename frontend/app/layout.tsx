@@ -30,7 +30,8 @@ const body = Instrument_Sans({
 const host = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
 const siteUrl = host ? `https://${host}` : "http://localhost:3000";
 
-const description = "Standings, rosters and weekly lineups for your Sleeper fantasy football league.";
+const description =
+  "Standings, rosters and weekly lineups for your Sleeper fantasy football league.";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),

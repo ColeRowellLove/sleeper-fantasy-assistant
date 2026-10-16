@@ -35,7 +35,10 @@ function Group({ group, prefix }: { group: SettingGroup; prefix: string }) {
 /** Everything Sleeper tells us about how the league is set up, in plain language. */
 export default function SettingsPanel({ data }: { data: LeagueSettings }) {
   const groups = settingGroups(data.settings);
-  const lineup: SettingGroup = { title: "Starting lineup", rows: rosterSummary(data.roster_positions) };
+  const lineup: SettingGroup = {
+    title: "Starting lineup",
+    rows: rosterSummary(data.roster_positions),
+  };
   const scoring = scoringSummary(data.scoring_settings);
 
   return (

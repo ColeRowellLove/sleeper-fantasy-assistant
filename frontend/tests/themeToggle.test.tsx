@@ -11,7 +11,11 @@ function mockDevice(setting: "light" | "dark" | "none") {
   vi.stubGlobal(
     "matchMedia",
     vi.fn().mockImplementation((query: string) => ({
-      matches: query.includes("light") ? setting === "light" : query.includes("dark") ? setting === "dark" : false,
+      matches: query.includes("light")
+        ? setting === "light"
+        : query.includes("dark")
+          ? setting === "dark"
+          : false,
       media: query,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),

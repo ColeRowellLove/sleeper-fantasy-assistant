@@ -49,7 +49,9 @@ export function bioRows(bio: Bio): BioRow[] {
         : null,
     ],
   ];
-  return rows.filter((r): r is [string, string] => r[1] !== null).map(([label, value]) => ({ label, value }));
+  return rows
+    .filter((r): r is [string, string] => r[1] !== null)
+    .map(([label, value]) => ({ label, value }));
 }
 
 const SHORT: Record<string, string> = {

@@ -60,7 +60,8 @@ export function pairRows(left: TeamLineup, right: TeamLineup): PairedRow[] {
   const isParked = (p: LineupPlayer) => PARKED.some((g) => g.slot !== "BN" && g.slot === p.slot);
   for (const group of PARKED) {
     // anything that is not explicitly IR or taxi counts as bench, so no player can be dropped
-    const inGroup = (p: LineupPlayer) => (group.slot === "BN" ? !isParked(p) : p.slot === group.slot);
+    const inGroup = (p: LineupPlayer) =>
+      group.slot === "BN" ? !isParked(p) : p.slot === group.slot;
     const l = left.bench.filter(inGroup);
     const r = right.bench.filter(inGroup);
     for (let i = 0; i < Math.max(l.length, r.length); i++) {

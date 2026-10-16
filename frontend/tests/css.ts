@@ -1,16 +1,7 @@
 import { readFileSync } from "node:fs";
 
 /** The stylesheets in the order app/layout.tsx imports them, as one string (the cascade order). */
-const FILES = [
-  "tokens",
-  "shell",
-  "forms",
-  "league",
-  "rosters",
-  "lineups",
-  "widgets",
-  "settings",
-];
+const FILES = ["tokens", "shell", "forms", "league", "rosters", "lineups", "widgets", "settings"];
 
 export function readAllCss(): string {
   return FILES.map((name) =>

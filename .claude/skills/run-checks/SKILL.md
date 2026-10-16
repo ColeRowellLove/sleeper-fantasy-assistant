@@ -21,7 +21,7 @@ Frontend (from `frontend/`):
 
 ```bash
 npm ci
-npm run typecheck && npm run lint && npm test && npm run build
+npm run format:check && npm run typecheck && npm run lint && npm test && npm run build
 ```
 
 Everything (hooks incl. actionlint and gitleaks), from `backend/`:

@@ -18,9 +18,7 @@ function PlayerCell({ player, myRosterId }: { player: DepthPlayer; myRosterId: n
       <InjuryBadge injury={player.injury} />
       {player.next_up && <span className="depth-tag">Next up</span>}
       {player.owner_team ? (
-        <span className="depth-owner">
-          {mine ? "On your team" : `On ${player.owner_team}`}
-        </span>
+        <span className="depth-owner">{mine ? "On your team" : `On ${player.owner_team}`}</span>
       ) : player.player_id ? (
         <span className="depth-available">Available</span>
       ) : null}
@@ -120,8 +118,8 @@ export default function TeamDepthChart({
         </>
       )}
       <p className="note">
-        Depth order is 1 for the starter. A &quot;Next up&quot; tag shows who is first in line when a
-        starter is out. Charts change with injuries and news, so check close to kickoff.
+        Depth order is 1 for the starter. A &quot;Next up&quot; tag shows who is first in line when
+        a starter is out. Charts change with injuries and news, so check close to kickoff.
       </p>
     </Wrapper>
   );
