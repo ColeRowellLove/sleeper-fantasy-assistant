@@ -70,6 +70,36 @@ function WinChance({ team, state }: { team: TeamLineup; state: WeekState }) {
   );
 }
 
+/**
+ * A bar split in proportion to the two teams' chances, with each team's number at its end. The
+ * bar itself is decorative: the sentence for screen readers carries the same information.
+ */
+function WinBar({ a, b, state }: { a: TeamLineup; b: TeamLineup; state: WeekState }) {
+  const left = winPercent(a.win_probability);
+  const right = winPercent(b.win_probability);
+  if (left === null || right === null || state === "played") return null;
+  return (
+    <div className="win-bar">
+      <span className="visually-hidden">
+        {a.team} has a {left} percent chance to win and {b.team} has {right} percent, from projected
+        points.
+      </span>
+      <div className="win-bar-track" aria-hidden="true">
+        <span className="win-bar-a" style={{ width: `${left}%` }} />
+        <span className="win-bar-b" style={{ width: `${100 - left}%` }} />
+      </div>
+      <div className="win-bar-labels" aria-hidden="true">
+        <span>
+          {a.team} {left}%
+        </span>
+        <span>
+          {right}% {b.team}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function TeamScore({
   team,
   state,
@@ -208,6 +238,7 @@ export default function MatchupCard({
           </span>
           <TeamScore team={b} state={state} isWinner={winner === b.roster_id} isMe={b.roster_id === myRosterId} />
         </div>
+        <WinBar a={a} b={b} state={state} />
       </header>
       <table className="h2h">
         <caption className="visually-hidden">

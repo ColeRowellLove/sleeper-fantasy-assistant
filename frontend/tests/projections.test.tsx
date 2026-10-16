@@ -224,6 +224,73 @@ describe("win chance in the matchup", () => {
     ).toBeInTheDocument();
   });
 
+  it("draws a bar split in proportion to the chances, with each team's number at its end", () => {
+    const { container } = render(
+      <MatchupCard
+        matchup={withChance(0.62, 0.38)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    const a = container.querySelector(".win-bar-a") as HTMLElement;
+    const b = container.querySelector(".win-bar-b") as HTMLElement;
+    expect(a.style.width).toBe("62%");
+    expect(b.style.width).toBe("38%"); // the two always fill the track
+    expect(container.querySelector(".win-bar-labels")?.textContent).toBe(
+      "Cole 62%38% Dad",
+    );
+    // the picture is decorative; the sentence carries it for screen readers
+    expect(container.querySelector(".win-bar-track")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(
+      screen.getByText(
+        "Cole has a 62 percent chance to win and Dad has 38 percent, from projected points.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("never draws a bar that is all one colour, and fills the track for any chances", () => {
+    const { container } = render(
+      <MatchupCard
+        matchup={withChance(0.999, 0.001)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    expect(
+      (container.querySelector(".win-bar-a") as HTMLElement).style.width,
+    ).toBe("99%");
+    expect(
+      (container.querySelector(".win-bar-b") as HTMLElement).style.width,
+    ).toBe("1%");
+  });
+
+  it("has no bar for a decided matchup or one with no chance to show", () => {
+    const decided = render(
+      <MatchupCard
+        matchup={withChance(0.62, 0.38)}
+        state="played"
+        week={5}
+        myRosterId={1}
+      />,
+    );
+    expect(decided.container.querySelector(".win-bar")).toBeNull();
+    decided.unmount();
+    const none = render(
+      <MatchupCard
+        matchup={withChance(null, 0.4)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    expect(none.container.querySelector(".win-bar")).toBeNull(); // both sides are needed
+  });
+
   it("is shown while the week is being played too", () => {
     render(
       <MatchupCard
