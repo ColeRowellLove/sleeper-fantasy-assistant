@@ -20,11 +20,10 @@ export function entriesFor(data: WaiverWireData, view: WireView): WireEntry[] {
   if (view === "top") {
     const top = data.top ?? [];
     // the server's mixed list (in its own order); without it, the best few of everything
-    return top.length > 0
-      ? top
-          .map((id) => data.entries.find((e) => e.player_id === id))
-          .filter((e): e is WireEntry => e !== undefined)
-      : data.entries.slice(0, 10);
+    const mixed = top
+      .map((id) => data.entries.find((e) => e.player_id === id))
+      .filter((e): e is WireEntry => e !== undefined);
+    return mixed.length > 0 ? mixed : data.entries.slice(0, 10);
   }
   if (view === "FLEX") return data.entries.filter((e) => FLEX.includes(e.position ?? ""));
   return data.entries.filter((e) => e.position === view);

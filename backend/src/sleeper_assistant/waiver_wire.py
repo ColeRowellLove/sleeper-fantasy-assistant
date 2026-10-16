@@ -25,7 +25,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.alert_waiver import (
-    ALERT_CAPS,
     EASTERN,
     Pickup,
     WaiverBoard,
@@ -40,6 +39,7 @@ from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerOwnershipRow, utcn
 # how many of each position the page lists (a lineup can use more receivers than kickers)
 WIRE_CAPS = {"QB": 6, "RB": 10, "WR": 10, "TE": 6, "K": 3, "DEF": 4}
 TOP_COUNT = 10  # the mixed "Top" view
+TOP_CAPS = {"QB": 2, "TE": 2, "K": 1, "DEF": 1}  # one slot each, so one defense in the mix
 SOFT = 0.25  # the opponent is among the easiest quarter of teams for his position
 TOUGH = 0.75  # ... or among the hardest quarter
 FORM_GAP = 2.0  # points a game that his last three differ from his projection to be worth saying
@@ -93,7 +93,7 @@ def _ordinal(n: int) -> str:
     return f"{n}{({1: 'st', 2: 'nd', 3: 'rd'}).get(n % 10, 'th')}"
 
 
-def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:
+def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:  # noqa: PLR0912
     """The reasons for and against adding this player, only those that apply."""
     out = [
         Reason(
@@ -118,8 +118,10 @@ def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:
         )
     m = pick.matchup
     if m is not None and m.teams:
-        what = "offense" if m.side == "offense" else "defense"
-        text = f"{m.opponent} {what} ranks {_ordinal(m.rank)} of {m.teams}"
+        if m.side == "offense":  # a team defense: the opponent's offense, fewest points first
+            text = f"{m.opponent} offense scores the {_ordinal(m.rank)}-fewest points of {m.teams}"
+        else:
+            text = f"{m.opponent} gives up the {_ordinal(m.rank)}-most points to this position"
         if m.rank <= m.teams * SOFT:
             out.append(Reason(stance="for", label="Soft matchup", detail=text))
         elif m.rank > m.teams * TOUGH:
@@ -201,7 +203,7 @@ def build_waiver_wire(
     if not board.has_projections:
         wire.note = f"Week {week} projections are not out yet; check back later."
         return wire
-    picks = board.pickups(roster, board.lineup(roster), None, WIRE_CAPS)
+    picks = board.pickups(roster, board.lineup(roster), None, WIRE_CAPS, detail=True)
     owned = {
         row.player_id: row.owned
         for row in session.scalars(
@@ -230,7 +232,7 @@ def build_waiver_wire(
                 reasons=reasons,
             )
         )
-    wire.top = [x.player.player_id for x in capped(picks, ALERT_CAPS, TOP_COUNT)]
+    wire.top = [x.player.player_id for x in capped(picks, TOP_CAPS, TOP_COUNT)]
     if not wire.entries:
         wire.note = "Nobody available would improve this team's lineup this week."
     return wire
