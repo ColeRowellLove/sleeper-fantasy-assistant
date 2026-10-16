@@ -14,7 +14,7 @@ from sleeper_assistant.db import (
     RosterRow,
     TransactionRow,
 )
-from sleeper_assistant.ingest import sync_league, sync_players
+from sleeper_assistant.ingest import _streak, sync_league, sync_players
 from sleeper_assistant.sleeper import BASE_URL, SleeperClient
 
 FIXTURE: dict[str, Any] = json.loads(
@@ -119,3 +119,14 @@ def test_sync_players_stores_injury_status_and_body_part(session: Session) -> No
     cmc = session.get(PlayerRow, "4034")
     assert cmc is not None
     assert (cmc.injury_status, cmc.injury_body_part) == ("Doubtful", "Knee")
+
+
+def test_streak_accepts_only_sleepers_format() -> None:
+    assert _streak({"streak": "3W"}) == "3W"
+    assert _streak({"streak": "12L"}) == "12L"
+    assert _streak({"streak": "1T"}) == "1T"
+    assert _streak({"streak": ""}) is None
+    assert _streak({"streak": "W3"}) is None
+    assert _streak({"streak": 3}) is None
+    assert _streak({}) is None
+    assert _streak(None) is None

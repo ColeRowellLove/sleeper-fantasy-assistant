@@ -83,13 +83,20 @@ describe("injury status on rosters and lineups", () => {
           slot: "RB",
           injury: injury("Questionable", "Hamstring"),
         },
-        { player_id: "2", name: "Healthy QB", position: "QB", team: "HOU", status: "bench", slot: null },
+        {
+          player_id: "2",
+          name: "Healthy QB",
+          position: "QB",
+          team: "HOU",
+          status: "bench",
+          slot: null,
+        },
       ],
     },
   ];
 
   it("shows the designation next to the player on the roster", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={1} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
     expect(screen.getByText("Questionable")).toBeInTheDocument();
     expect(screen.getByText("Hamstring")).toBeInTheDocument();
     expect(screen.getAllByText(/Questionable/)).toHaveLength(1); // the healthy player has none

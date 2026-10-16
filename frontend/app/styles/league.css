@@ -1,0 +1,245 @@
+/* My team */
+.my-team {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.my-team label {
+  margin: 0;
+}
+
+.my-team select {
+  max-width: 20rem;
+}
+
+tr.mine {
+  background: color-mix(in srgb, var(--focus) 14%, transparent);
+}
+
+.you {
+  background: var(--accent);
+  border-radius: 999px;
+  color: var(--on-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  vertical-align: middle;
+}
+
+/* League header, tabs and standings */
+.league-head {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2rem;
+  justify-content: space-between;
+  padding-top: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.league-head h1 {
+  font-size: clamp(1.9rem, 4.5vw, 2.8rem);
+}
+
+.league-meta {
+  color: var(--muted);
+  margin: 0.35rem 0 0;
+}
+
+.rule-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.rule-chips li {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0.3rem 0.75rem;
+}
+
+.league-head .my-team {
+  margin-top: 0;
+}
+
+.tabs {
+  border-bottom: 1px solid var(--line);
+  margin-top: 1.75rem;
+  overflow-x: auto;
+  position: relative;
+}
+
+.tabs ul {
+  display: flex;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tabs a {
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  display: block;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tabs a:hover {
+  color: var(--text);
+}
+
+.tabs a[aria-current="page"] {
+  border-bottom-color: var(--focus);
+  color: var(--text);
+}
+
+.card.flush {
+  overflow-x: auto;
+  padding: 0;
+}
+
+table.standings {
+  margin: 0;
+}
+
+.standings th,
+.standings td {
+  padding: 0.85rem 1rem;
+}
+
+.standings thead th {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.standings tbody th {
+  font-weight: 600;
+}
+
+.sort-button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 0.4rem;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 0.3rem;
+  margin: -0.25rem -0.4rem;
+  padding: 0.25rem 0.4rem;
+  white-space: nowrap;
+}
+
+.sort-button:hover {
+  color: var(--text);
+}
+
+.standings th[aria-sort="ascending"] .sort-button,
+.standings th[aria-sort="descending"] .sort-button {
+  color: var(--text);
+}
+
+.manager {
+  color: var(--muted);
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.streak {
+  font-weight: 700;
+}
+
+.streak-W {
+  color: var(--game-live);
+}
+
+.streak-L {
+  color: var(--injury-out);
+}
+
+.streak-T,
+.streak-none {
+  color: var(--muted);
+}
+
+.sort-arrow {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.standings .rank {
+  color: var(--muted);
+  width: 3.5rem;
+}
+
+.standings tr:last-child th,
+.standings tr:last-child td {
+  border-bottom: 0;
+}
+
+.standings tr.playoff td:first-child,
+.standings tr.playoff th:first-child {
+  box-shadow: inset 3px 0 0 var(--rb);
+}
+
+.standings tr.cutoff th,
+.standings tr.cutoff td {
+  border-bottom: 2px dashed var(--muted);
+}
+
+.num-col {
+  text-align: right !important;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.75rem 0 0;
+}
+
+.back {
+  margin-top: 2.5rem;
+}
+
+@media (max-width: 40rem) {
+  .standings {
+    font-size: 0.85rem;
+  }
+
+  .standings th,
+  .standings td {
+    padding: 0.7rem 0.4rem;
+  }
+
+  .standings th:first-child,
+  .standings td:first-child {
+    padding-left: 0.7rem;
+    width: 1.75rem;
+  }
+
+  .standings th:last-child,
+  .standings td:last-child {
+    padding-right: 0.7rem;
+  }
+
+  .standings .you {
+    font-size: 0.65rem;
+    margin-left: 0.35rem;
+    padding: 0.1rem 0.4rem;
+  }
+}

@@ -43,6 +43,7 @@ export default function WeeklyLineups({
       <div className="matchups">
         {orderMatchups(data.matchups, myRosterId).map((m, i) => (
           <MatchupCard
+            leagueId={leagueId}
             key={m.matchup_id ?? `solo-${i}`}
             matchup={orientMatchup(m, myRosterId)}
             state={state}

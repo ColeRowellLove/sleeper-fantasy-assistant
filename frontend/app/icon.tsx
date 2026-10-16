@@ -15,28 +15,26 @@ const BARS = [
 
 export default function Icon() {
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "center",
-          gap: 3,
-          background: "#0e1120",
-          borderRadius: 14,
-          paddingBottom: 10,
-        }}
-      >
-        {BARS.map((bar) => (
-          <div
-            key={bar.color}
-            style={{ width: 6, height: bar.height, background: bar.color, borderRadius: 1 }}
-          />
-        ))}
-      </div>
-    ),
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+        gap: 3,
+        background: "#0e1120",
+        borderRadius: 14,
+        paddingBottom: 10,
+      }}
+    >
+      {BARS.map((bar) => (
+        <div
+          key={bar.color}
+          style={{ width: 6, height: bar.height, background: bar.color, borderRadius: 1 }}
+        />
+      ))}
+    </div>,
     { ...size },
   );
 }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -53,6 +54,14 @@ def _regular_season_weeks(settings: dict[str, Any]) -> range:
     return range(1, min(last, MAX_WEEKS) + 1)
 
 
+def _streak(metadata: dict[str, Any] | None) -> str | None:
+    """Sleeper's "3W" / "2L" / "1T" streak, or None when it is missing or unrecognisable."""
+    value = (metadata or {}).get("streak")
+    if isinstance(value, str) and re.fullmatch(r"\d{1,2}[WLT]", value):
+        return value
+    return None
+
+
 def sync_league(session: Session, client: SleeperClient, league_id: str) -> LeagueRow:
     """Fetch and upsert league settings, users, rosters, matchups and transactions."""
     client = client.with_recorder(
@@ -82,7 +91,10 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                     user_id=user.user_id, username=user.username, display_name=user.display_name
                 )
             )
-            session.merge(UserLeagueRow(user_id=user.user_id, league_id=league_id))
+            team_name = str((user.metadata or {}).get("team_name") or "").strip() or None
+            session.merge(
+                UserLeagueRow(user_id=user.user_id, league_id=league_id, team_name=team_name)
+            )
         session.flush()
 
         for roster in client.get_rosters(league_id):
@@ -102,6 +114,8 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                     points_for=float(rs.get("fpts", 0)) + float(rs.get("fpts_decimal", 0)) / 100,
                     points_against=float(rs.get("fpts_against", 0))
                     + float(rs.get("fpts_against_decimal", 0)) / 100,
+                    streak=_streak(roster.metadata),
+                    potential_points=_potential(rs),
                 )
             )
 
@@ -142,6 +156,30 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
     return row
 
 
+def _potential(settings: dict[str, Any]) -> float | None:
+    """Sleeper's potential points (``ppts``): what the best lineups would score; None if absent."""
+    if "ppts" not in settings:
+        return None
+    return float(settings["ppts"]) + float(settings.get("ppts_decimal", 0)) / 100
+
+
+def _bio(p: SleeperPlayer) -> dict[str, Any] | None:
+    """The pop-up's bio fields that Sleeper actually has for this player."""
+    bio = {
+        "age": p.age,
+        "birth_date": p.birth_date,
+        "height": p.height,
+        "weight": p.weight,
+        "college": p.college,
+        "years_exp": p.years_exp,
+        "number": p.number,
+        "depth_chart_position": p.depth_chart_position,
+        "depth_chart_order": p.depth_chart_order,
+    }
+    present = {k: v for k, v in bio.items() if v not in (None, "")}
+    return present or None
+
+
 def _player_row(p: SleeperPlayer) -> PlayerRow:
     external = {
         "gsis": p.gsis_id,
@@ -161,6 +199,7 @@ def _player_row(p: SleeperPlayer) -> PlayerRow:
         injury_status=p.injury_status,
         injury_body_part=p.injury_body_part,
         external_ids={k: v for k, v in external.items() if v is not None},
+        bio=_bio(p),
     )
 
 
@@ -183,6 +222,7 @@ def sync_players(session: Session, client: SleeperClient) -> int:
         row.injury_status = new.injury_status
         row.injury_body_part = new.injury_body_part
         row.external_ids = new.external_ids
+        row.bio = new.bio
     session.commit()
     return len(players)
 

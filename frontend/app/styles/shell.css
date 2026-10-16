@@ -1,0 +1,156 @@
+/* App shell */
+.site-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.site-header .container {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  min-height: 4rem;
+}
+
+.wordmark {
+  align-items: center;
+  display: inline-flex;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-stretch: 118%;
+  font-weight: 700;
+  gap: 0.65rem;
+  text-decoration: none;
+}
+
+.mark {
+  align-items: flex-end;
+  display: inline-flex;
+  gap: 2px;
+  height: 1.3rem;
+}
+
+.mark i {
+  background: var(--pos);
+  border-radius: 1px;
+  display: block;
+  width: 0.28rem;
+}
+
+.mark i:nth-child(1) {
+  height: 100%;
+}
+.mark i:nth-child(2) {
+  height: 78%;
+}
+.mark i:nth-child(3) {
+  height: 90%;
+}
+.mark i:nth-child(4) {
+  height: 62%;
+}
+.mark i:nth-child(5) {
+  height: 74%;
+}
+.mark i:nth-child(6) {
+  height: 50%;
+}
+
+.site-nav a {
+  color: var(--muted);
+  font-size: 0.95rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.site-nav a:hover {
+  color: var(--text);
+}
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 4rem;
+  padding-block: 1.75rem;
+}
+
+.site-footer p {
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* Position colors: set --pos on any element with .pos-xx */
+.pos-qb {
+  --pos: var(--qb);
+}
+.pos-rb {
+  --pos: var(--rb);
+}
+.pos-wr {
+  --pos: var(--wr);
+}
+.pos-te {
+  --pos: var(--te);
+}
+.pos-k {
+  --pos: var(--k);
+}
+.pos-def {
+  --pos: var(--def);
+}
+.pos-na {
+  --pos: var(--pos-na);
+}
+
+.chip {
+  background: color-mix(in srgb, var(--pos) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--pos) 40%, transparent);
+  border-radius: 999px;
+  color: var(--pos);
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.32rem 0.6rem;
+}
+
+/* Hero and landing */
+.hero {
+  display: grid;
+  gap: 2.5rem;
+  padding-block: clamp(2rem, 7vw, 5rem) 1rem;
+}
+
+@media (min-width: 60rem) {
+  .hero {
+    align-items: center;
+    grid-template-columns: 1.15fr 1fr;
+  }
+}
+
+.hero h1 {
+  font-size: clamp(2.3rem, 5.4vw, 3.9rem);
+  max-width: 16ch;
+}
+
+.hero .lede {
+  color: var(--muted);
+  font-size: 1.15rem;
+  margin: 1.25rem 0 0;
+  max-width: 44ch;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 1.75rem 0 0;
+  padding: 0;
+}
+
+.legend-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 0.75rem 0 0;
+  max-width: 44ch;
+}

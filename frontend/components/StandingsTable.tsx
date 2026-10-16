@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { StandingsRow } from "../lib/api";
-import { formatRecord } from "../lib/league";
+import { formatRecord, rosterPath } from "../lib/league";
 import {
   DEFAULT_SORT,
   nextSort,
+  parseStreak,
   sortStandings,
   type SortKey,
   type SortState,
@@ -16,9 +18,31 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "rank", label: "Rank" },
   { key: "team", label: "Team" },
   { key: "record", label: "Record" },
+  { key: "streak", label: "Streak" },
   { key: "points_for", label: "PF", numeric: true },
   { key: "points_against", label: "PA", numeric: true },
 ];
+
+function StreakBadge({ streak }: { streak: string | null | undefined }) {
+  const parsed = parseStreak(streak);
+  if (!parsed) return <span className="streak streak-none">&ndash;</span>;
+  const [one, many] = {
+    W: ["win", "wins"],
+    L: ["loss", "losses"],
+    T: ["tie", "ties"],
+  }[parsed.kind];
+  return (
+    <span className={`streak streak-${parsed.kind}`}>
+      <span aria-hidden="true">
+        {parsed.kind}
+        {parsed.length}
+      </span>
+      <span className="visually-hidden">
+        {parsed.length} {parsed.length === 1 ? one : many} in a row
+      </span>
+    </span>
+  );
+}
 
 function describe(sort: SortState): string {
   const column = COLUMNS.find((c) => c.key === sort.key)?.label ?? "";
@@ -37,13 +61,18 @@ export default function StandingsTable({
   standings,
   playoffTeams,
   myRosterId,
+  leagueId,
 }: {
   standings: StandingsRow[];
   playoffTeams: number | null;
   myRosterId: number | null;
+  /** When given, each team name links to that team's roster. */
+  leagueId?: string;
 }) {
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
   const rows = sortStandings(standings, sort);
+  // the playoff bar only means something while the table runs from first place down
+  const showPlayoffs = playoffTeams !== null && sort.key === "rank" && sort.direction === "asc";
 
   return (
     <section aria-labelledby="standings-heading">
@@ -86,7 +115,7 @@ export default function StandingsTable({
           <tbody>
             {rows.map((row) => {
               const mine = row.roster_id === myRosterId;
-              const inPlayoffs = playoffTeams !== null && row.rank <= playoffTeams;
+              const inPlayoffs = showPlayoffs && row.rank <= playoffTeams;
               const classes = [
                 mine ? "mine" : "",
                 inPlayoffs ? "playoff" : "",
@@ -105,10 +134,25 @@ export default function StandingsTable({
                     {inPlayoffs && <span className="visually-hidden"> (playoff position)</span>}
                   </td>
                   <th scope="row">
-                    {row.team}
+                    {leagueId ? (
+                      <Link href={rosterPath(leagueId, row.roster_id)} className="member-link">
+                        {row.team}
+                      </Link>
+                    ) : (
+                      row.team
+                    )}
                     {mine && <span className="you">You</span>}
+                    {row.manager && row.manager !== row.team && (
+                      <span className="manager">
+                        <span className="visually-hidden">Manager: </span>
+                        {row.manager}
+                      </span>
+                    )}
                   </th>
                   <td className="num">{formatRecord(row.wins, row.losses, row.ties)}</td>
+                  <td className="num">
+                    <StreakBadge streak={row.streak} />
+                  </td>
                   <td className="num num-col">{row.points_for.toFixed(2)}</td>
                   <td className="num num-col">{row.points_against.toFixed(2)}</td>
                 </tr>
@@ -120,7 +164,7 @@ export default function StandingsTable({
       <p className="visually-hidden" role="status">
         {describe(sort)}
       </p>
-      {playoffTeams !== null && (
+      {showPlayoffs && (
         <p className="note">
           The top {playoffTeams} teams make the playoffs (marked with a bar and a line below
           {` #${playoffTeams}`}).

@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 
-import type { Dashboard, RosterPlayer, RosterStatus } from "../lib/api";
+import type { Dashboard, Lineups, RosterPlayer, RosterStatus } from "../lib/api";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
+import PlayerLink from "./PlayerLink";
+import TeamLink from "./TeamLink";
 import PositionChip from "./PositionChip";
+import RosterMatchup from "./RosterMatchup";
 
 type Roster = Dashboard["rosters"][number];
 
@@ -22,16 +25,25 @@ export default function RostersPanel({
   rosters,
   myRosterId,
   week = null,
+  initialRosterId = null,
+  lineups = null,
+  leagueId,
 }: {
   rosters: Roster[];
   myRosterId: number | null;
   week?: number | null;
+  /** The team to start on (from a link); your own team when absent or unknown. */
+  initialRosterId?: number | null;
+  /** This week's lineups: the selected team's matchup and win chance come from here. */
+  lineups?: Lineups | null;
+  leagueId: string;
 }) {
   const ordered = [
     ...rosters.filter((r) => r.roster_id === myRosterId),
     ...rosters.filter((r) => r.roster_id !== myRosterId),
   ];
-  const [selectedId, setSelectedId] = useState(ordered[0]?.roster_id ?? null);
+  const linked = ordered.find((r) => r.roster_id === initialRosterId);
+  const [selectedId, setSelectedId] = useState(linked?.roster_id ?? ordered[0]?.roster_id ?? null);
   const selected = ordered.find((r) => r.roster_id === selectedId) ?? ordered[0];
 
   if (!selected) return <p className="note">No rosters have been synced yet.</p>;
@@ -57,10 +69,10 @@ export default function RostersPanel({
         </select>
       </div>
 
+      <RosterMatchup lineups={lineups} rosterId={selected.roster_id} leagueId={leagueId} />
+
       {week !== null && (
-        <p className="note">
-          Game status is for NFL week {week}: upcoming, live, played, or bye.
-        </p>
+        <p className="note">Game status is for NFL week {week}: upcoming, live, played, or bye.</p>
       )}
 
       <p role="status" className="visually-hidden">
@@ -73,7 +85,11 @@ export default function RostersPanel({
           const players = selected.players.filter((p) => p.status === status);
           if (players.length === 0) return null;
           return (
-            <section key={status} className={`roster-group role-${status}`} aria-labelledby={`g-${status}`}>
+            <section
+              key={status}
+              className={`roster-group role-${status}`}
+              aria-labelledby={`g-${status}`}
+            >
               <header>
                 <h3 id={`g-${status}`}>
                   {title} <span className="count">{players.length}</span>
@@ -103,22 +119,63 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
         team={player.team}
       />
       <span className="player-main">
-        <span className="player-name">{player.name}</span>
+        <span className="player-name">
+          <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
+        </span>
         <span className="player-sub">
-          {player.team ?? "No team"}
+          {player.team ? <TeamLink team={player.team}>{player.team}</TeamLink> : "No team"}
           <InjuryBadge injury={player.injury} />
         </span>
         <span className="player-tags">
-          <GameBadge game={player.game} />
+          <GameBadge
+            game={player.game}
+            matchup={player.matchup}
+            position={player.position}
+            conditions="compact"
+          />
         </span>
+        {player.stat_line && (
+          <span className="stat-line">
+            <span className="visually-hidden">Stats this week: </span>
+            {player.stat_line}
+          </span>
+        )}
       </span>
-      {player.status === "starter" && player.slot && (
+      {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with
+          no value keeps its (empty) column */}
+      {player.points !== null && player.points !== undefined ? (
+        <span className="player-proj player-pts num">
+          <span className="visually-hidden">Points this week </span>
+          {player.points.toFixed(1)}
+          <span className="player-proj-label" aria-hidden="true">
+            pts
+          </span>
+        </span>
+      ) : (
+        <span className="player-proj player-pts" aria-hidden="true" />
+      )}
+      {player.projected !== null && player.projected !== undefined ? (
+        <span className="player-proj num">
+          <span className="visually-hidden">Projected </span>
+          {player.projected.toFixed(1)}
+          <span className="player-proj-label" aria-hidden="true">
+            proj
+          </span>
+        </span>
+      ) : (
+        <span className="player-proj" aria-hidden="true" />
+      )}
+      {player.status === "starter" && player.slot ? (
         <span className="slot" title="Lineup slot">
           <span className="visually-hidden">Slot </span>
           {player.slot}
         </span>
+      ) : (
+        <span className="slot" aria-hidden="true" />
       )}
-      <PositionChip position={player.position} />
+      <span className="player-chip">
+        <PositionChip position={player.position} />
+      </span>
     </li>
   );
 }

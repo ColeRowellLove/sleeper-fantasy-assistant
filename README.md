@@ -24,10 +24,28 @@ waiver alerts, trade ideas, rankings, playoff odds and weekly league recaps.
 | Recaps | Weekly write-ups, trash talk, team names, season awards (family-friendly by default) |
 | Offseason | News feed, draft assistant, keeper/dynasty mode, ask-the-assistant chat |
 
-See [docs/PLAN.md](docs/PLAN.md) for the plan, [docs/TOOLS.md](docs/TOOLS.md) for what each tool and
+See [docs/PLAN.md](docs/PLAN.md) for the plan, [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) for what to build next, [docs/TOOLS.md](docs/TOOLS.md) for what each tool and
 service is and why it was chosen, [docs/DEPLOY.md](docs/DEPLOY.md) for hosting, and the
 [milestones](https://github.com/ColeRowellLove/sleeper-fantasy-assistant/milestones) and
 [issues](https://github.com/ColeRowellLove/sleeper-fantasy-assistant/issues) for progress.
+
+## What works today
+
+Connect a league by Sleeper username and the app shows, for each league:
+
+- **Standings:** sortable by any column (rank, team, record, streak, points for and against), with
+  each manager's team name and your own team highlighted, plus the playoff line.
+- **Rosters:** starters, bench, injured reserve and taxi, with injury status and each player's NFL
+  game (kickoff in your time zone, the quarter, clock and score while it is live, the final score, or bye week).
+- **Lineups:** every matchup side by side for any week, in the Sleeper starter order.
+- **Players:** every relevant NFL player through your league: filter by position and availability, search, and sort by Sleeper adds and drops, ESPN owned and start percentages, positional rank, season points under your scoring, and projected points.
+- **Player pop-up:** click any player (rosters, lineups, Players tab) for their bio, position rank, week-by-week points with the team and opponent for each game and every stat that counted, this week's projected stats, and past seasons with the teams he played for and each season open game by game (regular season only), all scored with your league's rules.
+- **Projections:** projected points (scored with your league's own rules) next to actual points on rosters and lineups, updated live while a game is played (what he has scored plus the rest of the projection by the game clock, and exactly his score once the game is over; the pre-game projection stays frozen for comparing), with a team total in each matchup and a win chance for each team (a simple model from the two projected totals; see `backend/src/sleeper_assistant/win_probability.py` for the assumptions).
+- **Teams:** any NFL team's full depth chart (offense including the line, defense and special teams) with injuries, who is next up when a starter is out, and which of the players are on your league's rosters.
+- **Settings:** the league's rules and scoring as Sleeper reports them.
+
+Dark and light themes, phone and desktop layouts, and keyboard and screen-reader support throughout.
+Kickoff times come from [nflverse](https://github.com/nflverse/nflverse-data) (CC BY 4.0).
 
 ## Principles
 
@@ -51,7 +69,7 @@ Sleeper API + other sources -> ingest jobs -> Postgres -> FastAPI -> Next.js das
 | Backend (`backend/`) | Python 3.12, FastAPI, Pydantic, SQLAlchemy, Alembic, httpx, managed with [uv](https://docs.astral.sh/uv/) |
 | Frontend (`frontend/`) | Next.js (App Router), TypeScript, Vitest, ESLint |
 | Storage | Postgres (SQLite for quick local tests) |
-| CI | GitHub Actions: ruff, mypy (strict), pytest + coverage, tsc, eslint, vitest |
+| CI | GitHub Actions: ruff, mypy (strict), pytest + coverage, tsc, eslint, vitest, accessibility and screenshot checks |
 
 ## Project structure
 
@@ -61,7 +79,7 @@ backend/
   migrations/              Alembic migrations
   tests/                   pytest tests and recorded JSON fixtures
 frontend/                  Next.js app
-docs/PLAN.md               build plan and milestones
+docs/                      PLAN.md (build plan), TOOLS.md (tools and why), DEPLOY.md (hosting)
 CLAUDE.md                  workflow and engineering rules for contributors and AI agents
 ```
 

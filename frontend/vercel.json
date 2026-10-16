@@ -1,6 +1,15 @@
 {
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- .",
-  "regions": [
-    "pdx1"
-  ]
+  "regions": ["pdx1"],
+  "git": {
+    "deploymentEnabled": {
+      "feature/*": false,
+      "bugfix/*": false,
+      "chore/*": false,
+      "docs/*": false,
+      "refactor/*": false,
+      "test/*": false,
+      "hotfix/*": false
+    }
+  }
 }

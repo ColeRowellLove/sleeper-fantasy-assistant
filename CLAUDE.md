@@ -35,6 +35,7 @@ Frontend (run from `frontend/`):
 
 ```bash
 npm ci
+npm run format         # prettier --write (CI runs npm run format:check)
 npm run lint
 npm run typecheck
 npm test
@@ -49,7 +50,7 @@ npm run dev
   Tests that hit the real network are marked `@pytest.mark.live` and are skipped in CI.
 - **hypothesis** for simulator invariants (odds sum to 1, W+L = games played).
 - Every parser for an unofficial source gets a fixture test so schema changes fail CI, not silently drop data.
-- Frontend: `tsc --noEmit`, `eslint`, `vitest` (including accessibility tests) must pass.
+- Frontend: `prettier --check`, `tsc --noEmit`, `eslint`, `vitest` (including accessibility tests) must pass.
 
 ## Workflow (required)
 

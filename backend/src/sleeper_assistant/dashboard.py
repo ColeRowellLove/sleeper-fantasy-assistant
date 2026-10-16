@@ -16,7 +16,20 @@ from sleeper_assistant.db import (
     PlayerRow,
     RosterRow,
     SleeperUserRow,
+    UserLeagueRow,
 )
+from sleeper_assistant.live import LiveGame, Situation, current_games, describe, fraction_elapsed
+from sleeper_assistant.live import window_open as live_window_open
+from sleeper_assistant.live_projection import live_projection
+from sleeper_assistant.matchup_rank import (
+    DefenseTable,
+    MatchupRank,
+    build_defense_table,
+    matchup_rank,
+)
+from sleeper_assistant.projections import projected_points
+from sleeper_assistant.stat_lines import week_stat_lines
+from sleeper_assistant.win_probability import StarterState, matchup_chances
 
 # Sleeper marks an empty starter slot with the player id "0".
 EMPTY_SLOT = "0"
@@ -42,26 +55,47 @@ class InjuryInfo(BaseModel):
     body_part: str | None = None
 
 
+class GameConditions(BaseModel):
+    """The setting of a game: roof, surface, weather and the betting line, from this team's side."""
+
+    roof: str | None = None  # outdoors, dome, closed or open
+    surface: str | None = None
+    stadium: str | None = None
+    temp: int | None = None  # degrees Fahrenheit
+    wind: int | None = None  # miles per hour
+    spread: float | None = None  # this team's spread: -3.5 means favoured by 3.5, +3.5 an underdog
+    total: float | None = None  # the over/under for the game
+
+
 class GameInfo(BaseModel):
     """A player's NFL game in a week: upcoming, live, final, or the team is on a bye."""
 
     state: GameState
     date: str | None = None  # ISO date
     kickoff: str | None = None  # ISO UTC timestamp, once the schedule publishes a time
+    team: str | None = None  # the NFL team this game is for
+    team_score: int | None = None  # live or final score, from this team's side
+    opponent_score: int | None = None
+    period_text: str | None = None  # where a live game is: "Q2 2:24", "Halftime"; "Final" when over
+    elapsed: float | None = None  # share of the game played, 0 to 1; None when the clock is unknown
     opponent: str | None = None
     home: bool | None = None
+    conditions: GameConditions | None = None
+    situation: Situation | None = None  # who has the ball and where, while the game is live
 
 
 class StandingsRow(BaseModel):
     rank: int
     roster_id: int
     team: str
+    manager: str | None = None  # the manager's Sleeper username
     owner_id: str | None = None
     wins: int
     losses: int
     ties: int
     points_for: float
     points_against: float
+    streak: str | None = None  # e.g. "3W" (three straight wins) or "2L"
 
 
 class RosterPlayer(BaseModel):
@@ -73,6 +107,13 @@ class RosterPlayer(BaseModel):
     slot: str | None  # lineup slot for starters, e.g. QB, RB, FLEX
     game: GameInfo | None = None  # this week's game (or bye) for the player's NFL team
     injury: InjuryInfo | None = None
+    projected: float | None = (
+        None  # this week, scored with the league's rules; None = no projection
+    )
+    points: float | None = None  # this week's actual points once the game has started
+    projected_pregame: float | None = None  # the projection frozen before kickoff
+    matchup: MatchupRank | None = None  # the opponent's defense rank against his position
+    stat_line: str | None = None  # how he did, once his game has started: "18 car, 92 yds, 1 TD"
 
 
 class RosterView(BaseModel):
@@ -100,6 +141,11 @@ class LineupPlayer(BaseModel):
     points: float | None
     game: GameInfo | None = None
     injury: InjuryInfo | None = None
+    projected: float | None = None  # live: equals the score once the game is over
+    projected_pregame: float | None = None  # the projection frozen before kickoff
+    projection_missing: bool = False  # no projection was stored, so the 0 above is an assumption
+    matchup: MatchupRank | None = None  # the opponent's defense rank against his position
+    stat_line: str | None = None  # how he did, once his game has started
 
 
 class TeamLineup(BaseModel):
@@ -107,6 +153,13 @@ class TeamLineup(BaseModel):
     team: str
     owner_id: str | None = None
     points: float
+    projected: float | None = (
+        None  # sum of the starters' live projections; None when there are none
+    )
+    projected_pregame: float | None = None  # the same, from the projections frozen before kickoff
+    win_probability: float | None = (
+        None  # chance to win from projections; None = nothing fair to say
+    )
     starters: list[LineupPlayer]
     bench: list[LineupPlayer]
 
@@ -128,15 +181,31 @@ def starter_slots(league: LeagueRow) -> list[str]:
     return [p for p in league.roster_positions if p not in NON_STARTER_SLOTS]
 
 
-def _team_names(session: Session, rosters: list[RosterRow]) -> dict[int, str]:
+def _team_names(
+    session: Session, rosters: list[RosterRow]
+) -> tuple[dict[int, str], dict[int, str]]:
+    """(roster_id -> team name, roster_id -> manager's username). The team name is what the
+    manager chose in Sleeper, falling back to their username."""
     owner_ids = {r.owner_id for r in rosters if r.owner_id}
-    names = {
+    league_ids = {r.league_id for r in rosters}
+    managers = {
         u.user_id: u.display_name
         for u in session.scalars(
             select(SleeperUserRow).where(SleeperUserRow.user_id.in_(owner_ids))
         )
     }
-    return {r.roster_id: names.get(r.owner_id or "", f"Team {r.roster_id}") for r in rosters}
+    chosen = {
+        link.user_id: link.team_name
+        for link in session.scalars(
+            select(UserLeagueRow).where(
+                UserLeagueRow.user_id.in_(owner_ids), UserLeagueRow.league_id.in_(league_ids)
+            )
+        )
+        if link.team_name
+    }
+    manager = {r.roster_id: managers.get(r.owner_id or "", f"Team {r.roster_id}") for r in rosters}
+    team = {r.roster_id: chosen.get(r.owner_id or "", manager[r.roster_id]) for r in rosters}
+    return team, manager
 
 
 def _players(session: Session, player_ids: set[str]) -> dict[str, PlayerRow]:
@@ -190,24 +259,69 @@ def _utc_iso(moment: datetime | None) -> str | None:
     return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
+def _live_games(week_games: list[NflGameRow], week: int) -> dict[tuple[str, str], LiveGame]:
+    """ESPN's live status for this week's games, only while a game could be on (else empty)."""
+    in_progress = any(g.status == "in_game" for g in week_games)
+    if not live_window_open([g.kickoff for g in week_games], in_progress):
+        return {}
+    return {(g.home, g.away): g for g in current_games() if g.week in (None, week)}
+
+
+def _conditions(g: NflGameRow) -> tuple[GameConditions | None, GameConditions | None]:
+    """(home side, away side) conditions of a game; None when nothing is known."""
+    if all(
+        v is None
+        for v in (g.roof, g.surface, g.stadium, g.temp, g.wind, g.spread_line, g.total_line)
+    ):
+        return None, None
+    common = {
+        "roof": g.roof, "surface": g.surface, "stadium": g.stadium, "temp": g.temp,
+        "wind": g.wind, "total": g.total_line,
+    }  # fmt: skip
+    home_spread = None if g.spread_line is None else -g.spread_line
+    away_spread = g.spread_line
+    return (
+        GameConditions(**common, spread=home_spread),
+        GameConditions(**common, spread=away_spread),
+    )
+
+
 def games_for_week(session: Session, season: str, week: int) -> dict[str, GameInfo]:
     """NFL team -> that team's game in the week; teams with no game in the week are on a bye."""
     games = list(session.scalars(select(NflGameRow).where(NflGameRow.season == season)))
     all_teams = {g.home for g in games} | {g.away for g in games}
     week_games = [g for g in games if g.week == week]
     playing = {g.home for g in week_games} | {g.away for g in week_games}
+    live_by_game = _live_games(week_games, week)
     out: dict[str, GameInfo] = {}
     for g in week_games:
         state = _STATUS_STATE.get(g.status)
         if state is None:
             continue
         kickoff = _utc_iso(g.kickoff)
+        live = live_by_game.get((g.home, g.away))
+        game_state = live.state if live else state  # ESPN is fresher than Sleeper's schedule
+        home_score, away_score = (
+            (live.home_score, live.away_score) if live else (g.home_score, g.away_score)
+        )
+        if game_state == "upcoming":
+            home_score = away_score = None
+        words = describe(live) if live else ("Final" if game_state == "final" else None)
+        played = {"upcoming": 0.0, "final": 1.0}.get(game_state)
+        if live is not None and game_state == "live":
+            played = fraction_elapsed(live)
+        home_cond, away_cond = _conditions(g)
+        situation = live.situation if live and game_state == "live" else None
         out[g.home] = GameInfo(
-            state=state, date=g.game_date, kickoff=kickoff, opponent=g.away, home=True
-        )
+            state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.away, home=True,
+            team=g.home, team_score=home_score, opponent_score=away_score, period_text=words,
+            elapsed=played, conditions=home_cond, situation=situation,
+        )  # fmt: skip
         out[g.away] = GameInfo(
-            state=state, date=g.game_date, kickoff=kickoff, opponent=g.home, home=False
-        )
+            state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.home, home=False,
+            team=g.away, team_score=away_score, opponent_score=home_score, period_text=words,
+            elapsed=played, conditions=away_cond, situation=situation,
+        )  # fmt: skip
     if week_games:  # without any games in the week we cannot tell a bye from missing data
         for team in all_teams - playing:
             out[team] = GameInfo(state="bye")
@@ -218,12 +332,27 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team = _team_names(session, rosters)
+    team, manager = _team_names(session, rosters)
     owners = {r.roster_id: r.owner_id for r in rosters}
     players = _players(session, {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]})
     slots = starter_slots(league)
     week = current_week(session, league.season)
     games = games_for_week(session, league.season, week) if week else {}
+    defense = build_defense_table(session, league.season, league.scoring_settings)
+    projected = (
+        projected_points(
+            session,
+            league.season,
+            week,
+            league.scoring_settings,
+            {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]},
+        )
+        if week
+        else {}
+    )
+
+    earned = _week_points(session, league.league_id, week) if week else {}
+    lines = _stat_lines(session, league, week, players, games) if week else {}
 
     ordered = sorted(rosters, key=lambda r: (-r.wins, r.losses, -r.ties, -r.points_for))
     standings = [
@@ -231,12 +360,14 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
             rank=i,
             roster_id=r.roster_id,
             team=team[r.roster_id],
+            manager=manager[r.roster_id],
             owner_id=owners[r.roster_id],
             wins=r.wins,
             losses=r.losses,
             ties=r.ties,
             points_for=round(r.points_for, 2),
             points_against=round(r.points_against, 2),
+            streak=r.streak,
         )
         for i, r in enumerate(ordered, start=1)
     ]
@@ -246,7 +377,9 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
             roster_id=r.roster_id,
             team=team[r.roster_id],
             owner_id=owners[r.roster_id],
-            players=_roster_players(r, players, slots, games),
+            players=_roster_players(
+                r, players, slots, games, projected, earned.get(r.roster_id, {}), defense, lines
+            ),
         )
         for r in sorted(rosters, key=lambda r: r.roster_id)
     ]
@@ -260,14 +393,58 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
     )
 
 
-def _roster_players(
+def _stat_lines(
+    session: Session,
+    league: LeagueRow,
+    week: int,
+    players: dict[str, PlayerRow],
+    games: dict[str, GameInfo],
+) -> dict[str, str]:
+    """Summaries for players whose game is live or over (nothing is said before kickoff)."""
+    started = {
+        pid: p.position
+        for pid, p in players.items()
+        if (game := games.get(p.team or "")) is not None and game.state in ("live", "final")
+    }
+    return week_stat_lines(session, league.season, week, started, league.scoring_settings)
+
+
+def _week_points(session: Session, league_id: str, week: int) -> dict[int, dict[str, float]]:
+    """roster_id -> player_id -> the points Sleeper credited that roster's player this week."""
+    out: dict[int, dict[str, float]] = {}
+    for m in session.scalars(
+        select(MatchupRow).where(MatchupRow.league_id == league_id, MatchupRow.week == week)
+    ):
+        out[m.roster_id] = {
+            pid: float(value)
+            for pid, value in (m.players_points or {}).items()
+            if value is not None
+        }
+    return out
+
+
+def _points_so_far(game: GameInfo | None, value: float | None) -> float | None:
+    """A player's points once his game has started; before that there is nothing to show (not 0)."""
+    if value is None or game is None or game.state not in ("live", "final"):
+        return None
+    return round(value, 2)
+
+
+def _roster_players(  # noqa: PLR0913, PLR0917
     roster: RosterRow,
     players: dict[str, PlayerRow],
     slots: list[str],
     games: dict[str, GameInfo],
+    projected: dict[str, float],
+    earned: dict[str, float],
+    defense: DefenseTable,
+    lines: dict[str, str],
 ) -> list[RosterPlayer]:
     def make(pid: str, status: Status, slot: str | None = None) -> RosterPlayer:
         name, position, nfl_team = _display(players, pid)
+        game = games.get(nfl_team) if nfl_team else None
+        pregame = projected.get(pid, 0.0)
+        scored = _points_so_far(game, earned.get(pid))
         return RosterPlayer(
             player_id=pid,
             name=name,
@@ -275,8 +452,13 @@ def _roster_players(
             team=nfl_team,
             status=status,
             slot=slot,
-            game=games.get(nfl_team) if nfl_team else None,
+            game=game,
             injury=_injury(players, pid),
+            projected=_live(pregame, scored, game),
+            projected_pregame=pregame,
+            points=scored,
+            matchup=matchup_rank(defense, position, game.opponent if game else None),
+            stat_line=lines.get(pid),
         )
 
     out: list[RosterPlayer] = []
@@ -316,11 +498,20 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team = _team_names(session, rosters)
+    team, _ = _team_names(session, rosters)
     owners = {r.roster_id: r.owner_id for r in rosters}
     players = _players(session, {pid for m in week_rows for pid in [*m.starters, *m.players]})
     slots = starter_slots(league)
     games = games_for_week(session, league.season, week)
+    defense = build_defense_table(session, league.season, league.scoring_settings)
+    lines = _stat_lines(session, league, week, players, games)
+    projected = projected_points(
+        session,
+        league.season,
+        week,
+        league.scoring_settings,
+        {pid for m in week_rows for pid in [*m.starters, *m.players]},
+    )
     # IR and taxi come from the current roster (past weeks use today's IR list)
     parked = {
         r.roster_id: {**{pid: "IR" for pid in r.reserve}, **{pid: "TAXI" for pid in r.taxi}}
@@ -329,16 +520,68 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
 
     by_matchup: dict[int, list[TeamLineup]] = {}
     for m in sorted(week_rows, key=lambda m: m.roster_id):
-        lineup = _team_lineup(m, team, owners, players, slots, games, parked.get(m.roster_id, {}))
+        lineup = _team_lineup(
+            m,
+            team,
+            owners,
+            players,
+            slots,
+            games,
+            parked.get(m.roster_id, {}),
+            projected,
+            defense,
+            lines,
+        )
         # a missing matchup_id (bye/unscheduled) must not group unrelated teams together
         key = m.matchup_id if m.matchup_id is not None else -m.roster_id
         by_matchup.setdefault(key, []).append(lineup)
+
+    for teams in by_matchup.values():
+        if len(teams) == 2:  # noqa: PLR2004 - a matchup is two teams
+            _set_win_probability(teams[0], teams[1])
 
     matchups = [
         MatchupView(matchup_id=key if key > 0 else None, teams=teams)
         for key, teams in sorted(by_matchup.items(), key=lambda kv: abs(kv[0]))
     ]
     return Lineups(week=week, current_week=current, weeks=weeks, matchups=matchups)
+
+
+def _starter_states(team: TeamLineup) -> list[StarterState]:
+    return [
+        StarterState(
+            p.game.state if p.game else None,
+            p.points,
+            None if p.projection_missing else p.projected,
+            pregame=None if p.projection_missing else p.projected_pregame,
+            elapsed=p.game.elapsed if p.game else None,
+        )
+        for p in team.starters
+        if p.player_id is not None  # an empty slot scores nothing and projects nothing
+    ]
+
+
+def _set_win_probability(a: TeamLineup, b: TeamLineup) -> None:
+    chances = matchup_chances(_starter_states(a), _starter_states(b))
+    if chances is not None:
+        a.win_probability, b.win_probability = chances
+
+
+def _live(pregame: float, scored: float | None, game: GameInfo | None) -> float:
+    """The projection now: the pre-game one before kickoff, the score once the game is over."""
+    return live_projection(
+        pregame, scored, game.state if game else None, game.elapsed if game else None
+    )
+
+
+def _team_projection(starters: list[LineupPlayer], *, pregame: bool = False) -> float | None:
+    """Sum of the starters' projections, or None when no starter has one (never a misleading 0)."""
+    values: list[float] = []
+    for p in starters:
+        value = p.projected_pregame if pregame else p.projected
+        if value is not None:
+            values.append(value)
+    return round(sum(values), 2) if values else None
 
 
 def _team_lineup(  # noqa: PLR0913, PLR0917
@@ -349,6 +592,9 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
     slots: list[str],
     games: dict[str, GameInfo],
     parked: dict[str, str],
+    projected: dict[str, float],
+    defense: DefenseTable,
+    lines: dict[str, str],
 ) -> TeamLineup:
     points: dict[str, Any] = m.players_points
 
@@ -368,6 +614,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
             continue
         name, position, nfl_team = _display(players, pid)
         value = m.starters_points[i] if i < len(m.starters_points) else pts(pid)
+        game = games.get(nfl_team) if nfl_team else None
+        pregame = projected.get(pid, 0.0)
         starters.append(
             LineupPlayer(
                 slot=slot,
@@ -376,8 +624,13 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 position=position,
                 team=nfl_team,
                 points=None if value is None else float(value),
-                game=games.get(nfl_team) if nfl_team else None,
+                game=game,
                 injury=_injury(players, pid),
+                projected=_live(pregame, None if value is None else float(value), game),
+                projected_pregame=pregame,
+                projection_missing=pid not in projected,
+                matchup=matchup_rank(defense, position, game.opponent if game else None),
+                stat_line=lines.get(pid),
             )
         )
 
@@ -386,6 +639,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
         if pid in m.starters:
             continue
         name, position, nfl_team = _display(players, pid)
+        game = games.get(nfl_team) if nfl_team else None
+        pregame = projected.get(pid, 0.0)
         bench.append(
             LineupPlayer(
                 slot=parked.get(pid, "BN"),
@@ -394,8 +649,13 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 position=position,
                 team=nfl_team,
                 points=pts(pid),
-                game=games.get(nfl_team) if nfl_team else None,
+                game=game,
                 injury=_injury(players, pid),
+                projected=_live(pregame, pts(pid), game),
+                projected_pregame=pregame,
+                projection_missing=pid not in projected,
+                matchup=matchup_rank(defense, position, game.opponent if game else None),
+                stat_line=lines.get(pid),
             )
         )
     bench.sort(key=lambda p: (_PARKED_ORDER.get(p.slot, 0), -(p.points or 0.0), p.name))
@@ -404,6 +664,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
         team=team.get(m.roster_id, f"Team {m.roster_id}"),
         owner_id=owners.get(m.roster_id),
         points=round(m.points, 2),
+        projected=_team_projection(starters),
+        projected_pregame=_team_projection(starters, pregame=True),
         starters=starters,
         bench=bench,
     )

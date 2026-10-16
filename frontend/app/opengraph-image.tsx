@@ -16,37 +16,35 @@ const BARS = [
 
 export default function Image() {
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          background: "#0e1120",
-          color: "#eef0f8",
-          padding: 80,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 150 }}>
-          {BARS.map((bar) => (
-            <div
-              key={bar.color}
-              style={{ width: 26, height: bar.height, background: bar.color, borderRadius: 3 }}
-            />
-          ))}
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        background: "#0e1120",
+        color: "#eef0f8",
+        padding: 80,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 150 }}>
+        {BARS.map((bar) => (
+          <div
+            key={bar.color}
+            style={{ width: 26, height: bar.height, background: bar.color, borderRadius: 3 }}
+          />
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ fontSize: 84, fontWeight: 800, lineHeight: 1.05, letterSpacing: -2 }}>
+          Every lineup in your league, side by side.
         </div>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 84, fontWeight: 800, lineHeight: 1.05, letterSpacing: -2 }}>
-            Every lineup in your league, side by side.
-          </div>
-          <div style={{ fontSize: 34, color: "#9aa1c0", marginTop: 28 }}>
-            Sleeper Assistant: standings, rosters and weekly matchups
-          </div>
+        <div style={{ fontSize: 34, color: "#9aa1c0", marginTop: 28 }}>
+          Sleeper Assistant: standings, rosters and weekly matchups
         </div>
       </div>
-    ),
+    </div>,
     { ...size },
   );
 }

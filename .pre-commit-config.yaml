@@ -25,6 +25,12 @@ repos:
         files: ^backend/
   - repo: local
     hooks:
+      - id: prettier
+        name: prettier (frontend)
+        entry: bash -c 'cd frontend && npx prettier --write --ignore-unknown "${@#frontend/}"' --
+        language: system
+        files: ^frontend/
+        exclude: ^frontend/package-lock\.json$
       - id: mypy
         name: mypy (strict)
         entry: bash -c 'cd backend && uv run mypy'

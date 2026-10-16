@@ -19,9 +19,13 @@ const alreadyUp = await fetch(`http://localhost:${PORT}/`).then(
 if (alreadyUp) throw new Error(`port ${PORT} is already in use; stop that server first`);
 
 // Run next directly (no shell) so server.kill() really stops it, including on Windows.
-const server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", String(PORT)], {
-  stdio: "ignore",
-});
+const server = spawn(
+  process.execPath,
+  ["node_modules/next/dist/bin/next", "start", "-p", String(PORT)],
+  {
+    stdio: "ignore",
+  },
+);
 
 async function waitForServer() {
   for (let i = 0; i < 60; i++) {

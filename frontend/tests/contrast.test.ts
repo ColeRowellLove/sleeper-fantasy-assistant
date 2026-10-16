@@ -1,10 +1,11 @@
 // @vitest-environment node
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { readAllCss } from "./css";
+
 // jsdom cannot compute CSS, so axe never checks palette contrast. This reads the real tokens from
-// globals.css and checks WCAG AA (4.5:1 for normal text) for both themes.
-const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf-8");
+// the stylesheets and checks WCAG AA (4.5:1 for normal text) for both themes.
+const css = readAllCss();
 
 function block(source: string): Record<string, string> {
   const tokens: Record<string, string> = {};
@@ -15,7 +16,7 @@ function block(source: string): Record<string, string> {
 /** The text between a selector's "{" and its closing "}" (the token blocks have no nesting). */
 function sliceBlock(selector: string): string {
   const start = css.indexOf(selector);
-  if (start === -1) throw new Error(`selector not found in globals.css: ${selector}`);
+  if (start === -1) throw new Error(`selector not found in the stylesheets: ${selector}`);
   const open = css.indexOf("{", start);
   return css.slice(open + 1, css.indexOf("}", open));
 }
@@ -44,7 +45,7 @@ function ratio(a: [number, number, number], b: [number, number, number]): number
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/** A color at the given opacity over a surface (the chip and badge tints in globals.css). */
+/** A color at the given opacity over a surface (the chip and badge tints in the stylesheets). */
 function chipBackgroundAt(color: string, surface: string, alpha: number): [number, number, number] {
   const p = rgb(color);
   const s = rgb(surface);
@@ -99,13 +100,21 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
 
   it("game status badge text is readable on its tint, on cards and on the page", () => {
     for (const token of ["game-bye", "game-live"]) {
-      expect(ratio(rgb(t[token]), chipBackgroundAt(t[token], t.surface, 0.16))).toBeGreaterThanOrEqual(4.5);
-      expect(ratio(rgb(t[token]), chipBackgroundAt(t[token], t.bg, 0.16))).toBeGreaterThanOrEqual(4.5);
+      expect(
+        ratio(rgb(t[token]), chipBackgroundAt(t[token], t.surface, 0.16)),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(rgb(t[token]), chipBackgroundAt(t[token], t.bg, 0.16))).toBeGreaterThanOrEqual(
+        4.5,
+      );
     }
   });
 
   it("lineup row tints (bench 7%, IR and taxi 8% of their role color) keep text readable", () => {
-    for (const [role, alpha] of [["role-bench", 0.07], ["role-ir", 0.08], ["role-taxi", 0.08]] as const) {
+    for (const [role, alpha] of [
+      ["role-bench", 0.07],
+      ["role-ir", 0.08],
+      ["role-taxi", 0.08],
+    ] as const) {
       const tint = chipBackgroundAt(t[role], t.surface, alpha);
       expect(ratio(rgb(t.muted), tint)).toBeGreaterThanOrEqual(4.5);
       expect(ratio(rgb(t.text), tint)).toBeGreaterThanOrEqual(7);
@@ -121,13 +130,28 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
 
   it("injury badge text is readable on its tint, on cards and on the page", () => {
     for (const token of ["injury-out", "injury-doubtful", "injury-questionable"]) {
-      expect(ratio(rgb(t[token]), chipBackgroundAt(t[token], t.surface, 0.16))).toBeGreaterThanOrEqual(4.5);
-      expect(ratio(rgb(t[token]), chipBackgroundAt(t[token], t.bg, 0.16))).toBeGreaterThanOrEqual(4.5);
+      expect(
+        ratio(rgb(t[token]), chipBackgroundAt(t[token], t.surface, 0.16)),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(rgb(t[token]), chipBackgroundAt(t[token], t.bg, 0.16))).toBeGreaterThanOrEqual(
+        4.5,
+      );
     }
   });
 
   it("focus ring and error color stand out from the page", () => {
     expect(ratio(rgb(t.focus), rgb(t.bg))).toBeGreaterThanOrEqual(3);
     expect(ratio(rgb(t.danger), rgb(t.surface))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// the win chance bar is a graphic, so it needs 3:1 (WCAG non-text contrast) for each segment against
+// the card it sits on, in both themes; colour is never the only signal (each end names team and number)
+describe.each(Object.entries(themes))("%s theme win chance bar", (_name, t) => {
+  it("keeps the green, red and neutral segments visible against the card", () => {
+    const card = rgb(t.surface);
+    expect(ratio(rgb(t["game-live"]), card)).toBeGreaterThanOrEqual(3); // ahead
+    expect(ratio(rgb(t["injury-out"]), card)).toBeGreaterThanOrEqual(3); // behind
+    expect(ratio(rgb(t.muted), card)).toBeGreaterThanOrEqual(3); // even
   });
 });

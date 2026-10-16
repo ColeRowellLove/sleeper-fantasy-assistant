@@ -1,0 +1,193 @@
+/* Design tokens. Chrome is quiet ink and chalk; color comes from the data: one hue per
+   position and a separate treatment per roster role. Dark by default, light follows the device. */
+:root {
+  color-scheme: dark light;
+
+  --bg: #0e1120;
+  --surface: #161a2e;
+  --surface-2: #1d2238;
+  --line: #2a3050;
+  --text: #eef0f8;
+  --muted: #9aa1c0;
+  --accent: #ffd24a;
+  --on-accent: #14172a;
+  --chalk: #f3f1e8;
+  --danger: #ff8a80;
+  --focus: #ffd24a;
+
+  --qb: #f472b6;
+  --rb: #34d399;
+  --wr: #60a5fa;
+  --te: #fb923c;
+  --k: #a78bfa;
+  --def: #d4a373;
+  --pos-na: #9aa1c0;
+
+  --game-bye: #fbbf24;
+  --game-live: #34d399;
+  --injury-out: #ff7a6b;
+  --injury-doubtful: #fb923c;
+  --injury-questionable: #fbbf24;
+
+  --role-starter: #eef0f8;
+  --role-bench: #8a91b4;
+  --role-ir: #ff7a6b;
+  --role-taxi: #4fd1c5;
+
+  --font-display: var(--font-display-face), system-ui, sans-serif;
+  --font-body: var(--font-body-face), system-ui, sans-serif;
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f4f9;
+    --surface: #ffffff;
+    --surface-2: #eceef7;
+    --line: #dcdff0;
+    --text: #14172a;
+    --muted: #565d7e;
+    --accent: #14172a;
+    --on-accent: #f3f1e8;
+    --danger: #b3261e;
+    --focus: #1d4ed8;
+
+    --qb: #b0165a;
+    --rb: #065f46;
+    --wr: #1d4ed8;
+    --te: #9a3412;
+    --k: #6d28d9;
+    --def: #92400e;
+    --pos-na: #565d7e;
+
+    --game-bye: #92400e;
+    --game-live: #065f46;
+    --injury-out: #b3261e;
+    --injury-doubtful: #9a3412;
+    --injury-questionable: #92400e;
+
+    --role-starter: #14172a;
+    --role-bench: #565d7e;
+    --role-ir: #b3261e;
+    --role-taxi: #0f766e;
+  }
+}
+
+/* Explicit choice from the theme toggle (keep the tokens identical to the media block above) */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f4f9;
+  --surface: #ffffff;
+  --surface-2: #eceef7;
+  --line: #dcdff0;
+  --text: #14172a;
+  --muted: #565d7e;
+  --accent: #14172a;
+  --on-accent: #f3f1e8;
+  --danger: #b3261e;
+  --focus: #1d4ed8;
+
+  --qb: #b0165a;
+  --rb: #065f46;
+  --wr: #1d4ed8;
+  --te: #9a3412;
+  --k: #6d28d9;
+  --def: #92400e;
+  --pos-na: #565d7e;
+
+  --game-bye: #92400e;
+  --game-live: #065f46;
+  --injury-out: #b3261e;
+  --injury-doubtful: #9a3412;
+  --injury-questionable: #92400e;
+
+  --role-starter: #14172a;
+  --role-bench: #565d7e;
+  --role-ir: #b3261e;
+  --role-taxi: #0f766e;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.55;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-stretch: 118%;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+a {
+  color: var(--text);
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.num {
+  font-family: var(--font-display);
+  font-stretch: 118%;
+  font-variant-numeric: tabular-nums;
+}
+
+.container {
+  margin-inline: auto;
+  max-width: 72rem;
+  padding-inline: clamp(1rem, 4vw, 2rem);
+}
+
+.visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.skip {
+  background: var(--accent);
+  color: var(--on-accent);
+  left: 1rem;
+  padding: 0.6rem 1rem;
+  position: absolute;
+  top: -4rem;
+  z-index: 10;
+  border-radius: var(--radius-sm);
+}
+
+.skip:focus {
+  top: 1rem;
+}
