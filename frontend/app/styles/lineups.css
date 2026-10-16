@@ -75,7 +75,7 @@
 }
 
 .scoreboard {
-  padding: 1.1rem 1.25rem 0.9rem;
+  padding: 0.85rem 1.25rem 0.7rem;
 }
 
 .mine-label {
@@ -142,7 +142,7 @@ table.h2h {
 .h2h th,
 .h2h td {
   border-bottom: 1px solid var(--line);
-  padding: 0.55rem 0.5rem;
+  padding: 0.4rem 0.5rem;
   vertical-align: middle;
 }
 
@@ -298,6 +298,11 @@ table.h2h {
 
 .h2h .game {
   margin-top: 0;
+}
+
+/* lineup rows: smaller faces so a full roster fits without much scrolling */
+.h2h .avatar {
+  --size: 2.1rem;
 }
 
 @media (max-width: 40rem) {

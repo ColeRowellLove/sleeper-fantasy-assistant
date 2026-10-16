@@ -87,3 +87,20 @@ describe("roster row columns", () => {
     }
   });
 });
+
+describe("compact tables", () => {
+  it("keeps the player tables narrow enough for a laptop and a phone's sideways scroll", () => {
+    expect(rule("table.players")).toContain("min-width: 36rem");
+    expect(rule(".players .player-cell")).toContain("min-width: 16rem");
+    expect(rule(".players-list tbody tr")).toContain("height: 4rem");
+  });
+
+  it("uses tighter row padding in the standings and the lineups", () => {
+    expect(rule(".standings th,\n.standings td")).toContain("padding: 0.6rem 0.85rem");
+    expect(rule(".h2h th,\n.h2h td")).toContain("padding: 0.4rem 0.5rem");
+    // the desktop face size comes before the phone override, so the phone size still wins
+    expect(css.indexOf(".h2h .avatar {\n  --size: 2.1rem;")).toBeLessThan(
+      css.indexOf(".h2h .avatar {\n    --size: 2rem;"),
+    );
+  });
+});
