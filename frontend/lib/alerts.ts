@@ -1,5 +1,34 @@
 import type { AlertItem } from "./api";
 
+export interface WaiverTarget {
+  player_id: string;
+  name: string;
+  position?: string | null;
+  team?: string | null;
+  projected: number;
+  gain: number;
+  /** The sentence after the name: "(WR, SEA): projected 11.4, +4.2 over ...". */
+  detail?: string;
+  /** The whole sentence, name included (used if there is no detail). */
+  line: string;
+}
+
+/** The pickups in a waiver alert's data, ignoring anything that is not shaped like one. */
+export function waiverTargets(alert: AlertItem): WaiverTarget[] {
+  const raw = alert.data?.targets;
+  if (alert.kind !== "waiver_targets" || !Array.isArray(raw)) return [];
+  return raw.filter(
+    (t): t is WaiverTarget =>
+      typeof t === "object" &&
+      t !== null &&
+      typeof (t as WaiverTarget).player_id === "string" &&
+      typeof (t as WaiverTarget).name === "string" &&
+      typeof (t as WaiverTarget).line === "string" &&
+      typeof (t as WaiverTarget).projected === "number" &&
+      typeof (t as WaiverTarget).gain === "number",
+  );
+}
+
 /** The viewer's "cleared at" time from their cookie: a valid ISO time, or null (never throws). */
 export function parseSeen(raw: string | null | undefined): string | null {
   if (!raw) return null;

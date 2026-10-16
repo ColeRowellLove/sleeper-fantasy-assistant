@@ -426,3 +426,12 @@
 .alerts-unread {
   font-weight: 600;
 }
+
+.alert-targets {
+  margin: 0 0 0.35rem;
+  padding-left: 1.25rem;
+}
+
+.alert-targets li {
+  margin-bottom: 0.25rem;
+}
