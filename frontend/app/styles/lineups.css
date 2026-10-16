@@ -300,6 +300,11 @@ table.h2h {
   margin-top: 0;
 }
 
+/* lineup rows: smaller faces so a full roster fits without much scrolling */
+.h2h .avatar {
+  --size: 2.1rem;
+}
+
 @media (max-width: 40rem) {
   .h2h th,
   .h2h td {
@@ -443,9 +448,4 @@ table.h2h {
   font-size: 0.85rem;
   margin: 0;
   padding: 0 1.25rem 0.5rem;
-}
-
-/* lineup rows: smaller faces so a full roster fits without much scrolling */
-.h2h .avatar {
-  --size: 2.1rem;
 }

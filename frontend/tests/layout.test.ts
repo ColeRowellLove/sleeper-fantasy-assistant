@@ -96,7 +96,11 @@ describe("compact tables", () => {
   });
 
   it("uses tighter row padding in the standings and the lineups", () => {
-    expect(css).toContain("padding: 0.6rem 0.85rem;");
+    expect(rule(".standings th,\n.standings td")).toContain("padding: 0.6rem 0.85rem");
     expect(rule(".h2h th,\n.h2h td")).toContain("padding: 0.4rem 0.5rem");
+    // the desktop face size comes before the phone override, so the phone size still wins
+    expect(css.indexOf(".h2h .avatar {\n  --size: 2.1rem;")).toBeLessThan(
+      css.indexOf(".h2h .avatar {\n    --size: 2rem;"),
+    );
   });
 });
