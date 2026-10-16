@@ -732,3 +732,28 @@
   display: flex;
   gap: 0.5rem;
 }
+
+/* Start/Sit recommendation: the explanation sits inside the card, the verdict is a short chip */
+.startsit-why {
+  margin: 0;
+  padding: 0.5rem 1.25rem 0.75rem;
+}
+
+.verdict {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.15rem 0.65rem;
+}
+
+.verdict-start {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
+  border-color: var(--accent);
+}
+
+.verdict-out {
+  border-style: dashed; /* the words say it; the dashed edge only adds to them */
+}
