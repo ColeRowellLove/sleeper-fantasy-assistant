@@ -15,7 +15,9 @@ const FILES = [
 export function readAllCss(): string {
   return FILES.map((name) =>
     readFileSync(new URL(`../app/styles/${name}.css`, import.meta.url), "utf-8"),
-  ).join("\n");
+  )
+    .join("\n")
+    .replace(/\r\n/g, "\n"); // a checkout with Windows line endings must read the same as Linux
 }
 
 export const STYLE_FILES = FILES;

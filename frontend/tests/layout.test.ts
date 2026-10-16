@@ -60,3 +60,21 @@ describe("player pop-up", () => {
     expect(rule(".player-dialog-body")).toContain("minmax(0, 1fr)");
   });
 });
+
+describe("Players list rows", () => {
+  // a game badge, a long team name or an injury must not make one row taller than the rest
+  it("keeps one fixed height per row and keeps each line from wrapping", () => {
+    expect(rule(".players-list tbody tr")).toContain("height:");
+    expect(rule(".player-meta")).toContain("white-space: nowrap");
+    expect(rule(".player-meta")).toContain("min-height");
+    expect(rule(".status-owned")).toContain("white-space: nowrap");
+  });
+
+  it("keeps the game and injury badges on one line inside a row", () => {
+    expect(rule(".player-meta .game,\n.player-meta .injury")).toContain("flex-wrap: nowrap");
+  });
+
+  it("does not apply the fixed row height to the pop-up's tables", () => {
+    expect(rule(".players tbody tr")).toBe("");
+  });
+});
