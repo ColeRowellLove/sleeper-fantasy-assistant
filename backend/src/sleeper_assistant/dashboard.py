@@ -19,6 +19,7 @@ from sleeper_assistant.db import (
     UserLeagueRow,
 )
 from sleeper_assistant.projections import projected_points
+from sleeper_assistant.win_probability import StarterState, matchup_chances
 
 # Sleeper marks an empty starter slot with the player id "0".
 EMPTY_SLOT = "0"
@@ -116,6 +117,9 @@ class TeamLineup(BaseModel):
     owner_id: str | None = None
     points: float
     projected: float | None = None  # sum of the starters' projections; None when there are none
+    win_probability: float | None = (
+        None  # chance to win from projections; None = nothing fair to say
+    )
     starters: list[LineupPlayer]
     bench: list[LineupPlayer]
 
@@ -383,11 +387,29 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
         key = m.matchup_id if m.matchup_id is not None else -m.roster_id
         by_matchup.setdefault(key, []).append(lineup)
 
+    for teams in by_matchup.values():
+        if len(teams) == 2:  # noqa: PLR2004 - a matchup is two teams
+            _set_win_probability(teams[0], teams[1])
+
     matchups = [
         MatchupView(matchup_id=key if key > 0 else None, teams=teams)
         for key, teams in sorted(by_matchup.items(), key=lambda kv: abs(kv[0]))
     ]
     return Lineups(week=week, current_week=current, weeks=weeks, matchups=matchups)
+
+
+def _starter_states(team: TeamLineup) -> list[StarterState]:
+    return [
+        StarterState(p.game.state if p.game else None, p.points, p.projected)
+        for p in team.starters
+        if p.player_id is not None  # an empty slot scores nothing and projects nothing
+    ]
+
+
+def _set_win_probability(a: TeamLineup, b: TeamLineup) -> None:
+    chances = matchup_chances(_starter_states(a), _starter_states(b))
+    if chances is not None:
+        a.win_probability, b.win_probability = chances
 
 
 def _team_projection(starters: list[LineupPlayer]) -> float | None:

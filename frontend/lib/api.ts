@@ -224,6 +224,8 @@ export interface TeamLineup {
   points: number;
   /** Sum of the starters' projections; null/absent when none has one. */
   projected?: number | null;
+  /** Chance to win from projected points, 0 to 1; null/absent when there is nothing fair to say. */
+  win_probability?: number | null;
   starters: LineupPlayer[];
   bench: LineupPlayer[];
 }

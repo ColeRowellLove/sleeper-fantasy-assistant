@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import MatchupCard from "../components/MatchupCard";
 import RostersPanel from "../components/RostersPanel";
 import type { Dashboard, TeamLineup } from "../lib/api";
-import { formatProjection, projectionDelta } from "../lib/lineups";
+import { formatProjection, projectionDelta, winPercent } from "../lib/lineups";
 import { expectNoA11yViolations } from "./a11y";
 
 describe("formatProjection", () => {
@@ -35,7 +35,11 @@ describe("projectionDelta", () => {
   });
 });
 
-const lineup = (id: number, name: string, withProjection: boolean): TeamLineup => ({
+const lineup = (
+  id: number,
+  name: string,
+  withProjection: boolean,
+): TeamLineup => ({
   roster_id: id,
   team: name,
   owner_id: null,
@@ -62,39 +66,81 @@ describe("projected points in the matchup", () => {
   });
 
   it("shows each team's projected total and each player's projection beside the actual", () => {
-    render(<MatchupCard matchup={matchup(true, true)} state="played" week={6} myRosterId={1} />);
+    render(
+      <MatchupCard
+        matchup={matchup(true, true)}
+        state="played"
+        week={6}
+        myRosterId={1}
+      />,
+    );
     expect(screen.getAllByText(/Projected 98\.10/)).toHaveLength(2);
     expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(2);
   });
 
   it("states the difference in words for screen readers, not by color", () => {
-    render(<MatchupCard matchup={matchup(true, false)} state="played" week={6} myRosterId={1} />);
+    render(
+      <MatchupCard
+        matchup={matchup(true, false)}
+        state="played"
+        week={6}
+        myRosterId={1}
+      />,
+    );
     // 104.2 - 98.1 = +6.1 for the team, 15.8 - 12.4 = +3.4 for the player
     expect(screen.getByText(/\(\+6\.1/)).toBeInTheDocument();
     expect(screen.getByText(/\(\+3\.4/)).toBeInTheDocument();
-    expect(screen.getAllByText("against projection", { exact: false })).toHaveLength(2);
+    expect(
+      screen.getAllByText("against projection", { exact: false }),
+    ).toHaveLength(2);
   });
 
   it("shows no projection line, and no zero, for a team or player without one", () => {
-    render(<MatchupCard matchup={matchup(false, false)} state="played" week={6} myRosterId={1} />);
+    render(
+      <MatchupCard
+        matchup={matchup(false, false)}
+        state="played"
+        week={6}
+        myRosterId={1}
+      />,
+    );
     expect(screen.queryByText(/Proj/)).not.toBeInTheDocument();
   });
 
   it("shows the projection but no comparison while the week is still being played", () => {
-    render(<MatchupCard matchup={matchup(true, true)} state="current" week={6} myRosterId={1} />);
+    render(
+      <MatchupCard
+        matchup={matchup(true, true)}
+        state="current"
+        week={6}
+        myRosterId={1}
+      />,
+    );
     expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(2);
     expect(screen.queryByText(/against projection/)).not.toBeInTheDocument();
   });
 
   it("shows the projection but no comparison before the games", () => {
-    render(<MatchupCard matchup={matchup(true, true)} state="upcoming" week={7} myRosterId={1} />);
+    render(
+      <MatchupCard
+        matchup={matchup(true, true)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
     expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(2);
     expect(screen.queryByText(/against projection/)).not.toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(
-      <MatchupCard matchup={matchup(true, true)} state="played" week={6} myRosterId={1} />,
+      <MatchupCard
+        matchup={matchup(true, true)}
+        state="played"
+        week={6}
+        myRosterId={1}
+      />,
     );
   });
 });
@@ -115,7 +161,14 @@ describe("projected points on rosters", () => {
           slot: "WR",
           projected: 22.44,
         },
-        { player_id: "2", name: "No Projection", position: "WR", team: "SEA", status: "bench", slot: null },
+        {
+          player_id: "2",
+          name: "No Projection",
+          position: "WR",
+          team: "SEA",
+          status: "bench",
+          slot: null,
+        },
       ],
     },
   ];
@@ -128,6 +181,91 @@ describe("projected points on rosters", () => {
   });
 
   it("has no accessibility violations", async () => {
-    await expectNoA11yViolations(<RostersPanel rosters={rosters} myRosterId={1} />);
+    await expectNoA11yViolations(
+      <RostersPanel rosters={rosters} myRosterId={1} />,
+    );
+  });
+});
+
+describe("win chance in the matchup", () => {
+  const withChance = (a: number | null, b: number | null) => ({
+    matchup_id: 1,
+    teams: [
+      { ...lineup(1, "Cole", true), win_probability: a },
+      { ...lineup(2, "Dad", true), win_probability: b },
+    ],
+  });
+
+  it("rounds to a whole percent and never shows 0 or 100", () => {
+    expect(winPercent(0.6234)).toBe(62);
+    expect(winPercent(0.5)).toBe(50);
+    expect(winPercent(0.9999)).toBe(99);
+    expect(winPercent(0.0001)).toBe(1);
+    expect(winPercent(null)).toBeNull();
+    expect(winPercent(undefined)).toBeNull();
+    expect(winPercent(Number.NaN)).toBeNull();
+  });
+
+  it("shows each team's chance with a full sentence for screen readers", () => {
+    render(
+      <MatchupCard
+        matchup={withChance(0.62, 0.38)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    expect(screen.getByText("Win chance 62%")).toBeInTheDocument();
+    expect(screen.getByText("Win chance 38%")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Cole has a 62 percent chance to win, from projected points",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("is shown while the week is being played too", () => {
+    render(
+      <MatchupCard
+        matchup={withChance(0.8, 0.2)}
+        state="current"
+        week={6}
+        myRosterId={1}
+      />,
+    );
+    expect(screen.getByText("Win chance 80%")).toBeInTheDocument();
+  });
+
+  it("is not shown once the matchup is played, or when there is no chance to show", () => {
+    const { unmount } = render(
+      <MatchupCard
+        matchup={withChance(0.62, 0.38)}
+        state="played"
+        week={5}
+        myRosterId={1}
+      />,
+    );
+    expect(screen.queryByText(/Win chance/)).not.toBeInTheDocument();
+    unmount();
+    render(
+      <MatchupCard
+        matchup={withChance(null, null)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    expect(screen.queryByText(/Win chance/)).not.toBeInTheDocument();
+  });
+
+  it("has no accessibility violations", async () => {
+    await expectNoA11yViolations(
+      <MatchupCard
+        matchup={withChance(0.62, 0.38)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
   });
 });
