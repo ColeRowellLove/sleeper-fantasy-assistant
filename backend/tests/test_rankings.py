@@ -121,3 +121,64 @@ def test_no_schedule_gives_an_empty_page(session: Session) -> None:
     session.commit()
     result = build_rankings(session, league)
     assert result.week is None and result.players == []
+
+
+def _with_lines(session: Session) -> LeagueRow:
+    """AAA hosts BBB, favoured by 6 with a total of 50: the line implies AAA 28, BBB 22."""
+    league = _setup(session)
+    game = session.get(NflGameRow, "g2")
+    assert game is not None
+    game.spread_line, game.total_line = 6.0, 50.0
+    session.add_all([_player("b1", "RB", "BBB"), _proj("b1", 2, {"rush_yd": 140.0})])
+    session.commit()
+    return league
+
+
+def test_the_available_signals_are_listed_and_all_are_selected_by_default(session: Session) -> None:
+    result = build_rankings(session, _with_lines(session))
+    assert list(result.signals) == ["projection", "form", "start", "vegas"]
+    assert result.selected == ["projection", "form", "start", "vegas"]
+    assert "fantasypros" in result.unavailable  # asked for, not connected: said so, not faked
+
+
+def test_ranking_by_one_source_uses_only_that_source(session: Session) -> None:
+    result = build_rankings(session, _with_lines(session), sources=["form"])
+    assert result.selected == ["form"]
+    rbs = [p for p in result.players if p.position == "RB"]
+    assert [p.player_id for p in rbs] == ["c", "b", "a"]  # last-three form: c ran best
+    assert all(set(p.signal_ranks) == {"form"} and p.sources == 1 and p.spread == 0 for p in rbs)
+    assert "b1" not in {p.player_id for p in result.players}  # no form: left out, not guessed
+
+
+def test_vegas_ranks_by_the_points_the_line_implies_for_the_team(session: Session) -> None:
+    result = build_rankings(session, _with_lines(session), sources=["vegas"])
+    by_id = {p.player_id: p for p in result.players}
+    assert by_id["a"].implied_points == 28.0 and by_id["b1"].implied_points == 22.0
+    assert by_id["a"].signal_ranks == {"vegas": 1}  # the home team's players share the top rank
+    assert by_id["c"].rank == 1 and by_id["b1"].rank == 4  # BBB's back is after AAA's three
+    assert "Vegas has AAA scoring 28.0" in by_id["a"].why
+
+
+def test_two_sources_are_averaged_and_their_gap_is_shown(session: Session) -> None:
+    result = build_rankings(session, _with_lines(session), sources=["projection", "vegas"])
+    assert result.selected == ["projection", "vegas"]
+    a = next(p for p in result.players if p.player_id == "a")
+    assert a.signal_ranks == {"projection": 1, "vegas": 1} and a.spread == 0
+
+
+def test_unknown_or_unavailable_choices_fall_back_to_everything_available(
+    session: Session,
+) -> None:
+    league = _with_lines(session)
+    assert build_rankings(session, league, sources=["nonsense"]).selected == [
+        "projection", "form", "start", "vegas",
+    ]  # fmt: skip
+    past = build_rankings(session, league, week=1, sources=["start"])
+    assert "start" not in past.signals  # ESPN's share is current-week only
+    assert past.selected == list(past.signals)
+
+
+def test_without_betting_lines_there_is_no_vegas_signal(session: Session) -> None:
+    result = build_rankings(session, _setup(session))
+    assert "vegas" not in result.signals
+    assert all(p.implied_points is None for p in result.players)

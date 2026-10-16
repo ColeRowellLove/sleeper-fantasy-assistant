@@ -375,6 +375,8 @@ export interface RankedPlayer {
   form?: number | null;
   /** ESPN-wide share of leagues that start him, in percent. */
   started_pct?: number | null;
+  /** The points the betting line implies for his team this week. */
+  implied_points?: number | null;
   /** Rank within the position from each signal that has him. */
   signal_ranks: Record<string, number>;
   /** Consensus rank within the position, and among RB, WR and TE together. */
@@ -392,8 +394,12 @@ export interface Rankings {
   week: number | null;
   current_week: number | null;
   weeks: number[];
-  /** Signal key -> label, for the legend. */
+  /** The signals available this week: key -> label. */
   signals: Record<string, string>;
+  /** The signals the ranks were computed from. */
+  selected?: string[];
+  /** Sources asked for that are not connected yet, with the reason. */
+  unavailable?: Record<string, string>;
   players: RankedPlayer[];
 }
 

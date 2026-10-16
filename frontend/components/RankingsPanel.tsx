@@ -6,6 +6,7 @@ import type { Rankings } from "../lib/api";
 import {
   RANK_POSITIONS,
   agreementText,
+  sourcesQuery,
   rankedFor,
   type RankAvailability,
   type RankPosition,
@@ -17,6 +18,7 @@ import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
 import PositionChip from "./PositionChip";
 import TeamLink from "./TeamLink";
+import { leaguePath } from "../lib/league";
 import WeekChips from "./WeekChips";
 
 const AVAILABILITY: { value: RankAvailability; label: string }[] = [
@@ -47,7 +49,11 @@ export default function RankingsPanel({
   const [availability, setAvailability] = useState<RankAvailability>("all");
   const rows = rankedFor(data.players, position, availability, myRosterId);
   const flex = position === "FLEX";
-  const labels = Object.values(data.signals);
+  const available = Object.keys(data.signals);
+  const selected = data.selected ?? available;
+  const labels = selected.map((s) => data.signals[s]);
+  const sources = sourcesQuery(selected, available);
+  const sourcesParam = sources ? `&sources=${sources}` : "";
 
   return (
     <section aria-labelledby="rankings-heading">
@@ -63,7 +69,40 @@ export default function RankingsPanel({
           selected={data.week}
           currentWeek={data.current_week}
           tab="rankings"
+          extraQuery={`${sourcesParam}&pos=${position}`}
         />
+      )}
+
+      {available.length > 0 && (
+        <form method="get" action={leaguePath(leagueId)} className="card rank-sources">
+          <input type="hidden" name="tab" value="rankings" />
+          {data.week !== null && <input type="hidden" name="week" value={data.week} />}
+          <input type="hidden" name="pos" value={position} />
+          <fieldset>
+            <legend>Ranked by</legend>
+            <ul className="startsit-picks">
+              {available.map((key) => (
+                <li key={key}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="sources"
+                      value={key}
+                      defaultChecked={selected.includes(key)}
+                    />{" "}
+                    {data.signals[key]}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+          <button type="submit" className="btn">
+            Update rankings
+          </button>
+          {data.unavailable && Object.keys(data.unavailable).length > 0 && (
+            <p className="note">Not connected yet: {Object.values(data.unavailable).join("; ")}.</p>
+          )}
+        </form>
       )}
 
       <div className="players-controls">

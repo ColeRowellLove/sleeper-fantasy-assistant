@@ -4,6 +4,21 @@ export const RANK_POSITIONS = ["QB", "RB", "WR", "TE", "FLEX", "K", "DEF"] as co
 export type RankPosition = (typeof RANK_POSITIONS)[number];
 export type RankAvailability = "all" | "available" | "mine";
 
+/** The `sources` query value for a choice: empty when it is every available source. */
+export function sourcesQuery(selected: string[], available: string[]): string {
+  const chosen = available.filter((s) => selected.includes(s));
+  return chosen.length === 0 || chosen.length === available.length ? "" : chosen.join(",");
+}
+
+/** Only well-formed source names go into a request. */
+export function parseSources(value: string | string[] | undefined): string[] {
+  const text = Array.isArray(value) ? value.join(",") : (value ?? "");
+  return text
+    .split(",")
+    .filter((s) => /^[a-z]{1,20}$/.test(s))
+    .slice(0, 8);
+}
+
 export function parseRankPosition(value: string | null | undefined): RankPosition {
   return RANK_POSITIONS.find((p) => p === value) ?? "RB";
 }

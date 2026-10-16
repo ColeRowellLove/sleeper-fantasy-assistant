@@ -33,6 +33,7 @@ import type {
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
 import { leaguePath, parseTab } from "../../../lib/league";
+import { parseRankPosition, parseSources } from "../../../lib/rankings";
 import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 
 export const dynamic = "force-dynamic";
@@ -61,10 +62,22 @@ export default async function LeaguePage({
     team?: string;
     depth?: string;
     pick?: string | string[];
+    sources?: string | string[];
+    pos?: string;
   }>;
 }) {
   const { leagueId } = await params;
-  const { tab: tabParam, week, player, team, depth: depthParam, roster, pick } = await searchParams;
+  const {
+    tab: tabParam,
+    week,
+    player,
+    team,
+    depth: depthParam,
+    roster,
+    pick,
+    sources,
+    pos,
+  } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
   const weekNumber = Number(week);
@@ -73,6 +86,14 @@ export default async function LeaguePage({
     Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18
       ? `?week=${weekNumber}`
       : "";
+
+  // the rankings take a week and the chosen sources; only well-formed names go into the request
+  const sourceList = parseSources(sources);
+  const rankingParts = [
+    weekQuery ? weekQuery.slice(1) : "",
+    sourceList.length > 0 ? `sources=${sourceList.join(",")}` : "",
+  ].filter(Boolean);
+  const rankingsQuery = rankingParts.length > 0 ? `?${rankingParts.join("&")}` : "";
 
   // the header needs the dashboard on every tab; lineups are only fetched for their own tab
   const [
@@ -95,7 +116,7 @@ export default async function LeaguePage({
       ? getJson<Games>(`/api/leagues/${leagueId}/games${weekQuery}`)
       : Promise.resolve(null),
     tab === "rankings"
-      ? getJson<Rankings>(`/api/leagues/${leagueId}/rankings${weekQuery}`)
+      ? getJson<Rankings>(`/api/leagues/${leagueId}/rankings${rankingsQuery}`)
       : Promise.resolve(null),
     tab === "accuracy"
       ? getJson<LineupAccuracy>(`/api/leagues/${leagueId}/accuracy`)
@@ -195,7 +216,12 @@ export default async function LeaguePage({
         <GamesPanel data={games} leagueId={leagueId} myRosterId={myRosterId} />
       )}
       {tab === "rankings" && rankings && (
-        <RankingsPanel data={rankings} leagueId={leagueId} myRosterId={myRosterId} />
+        <RankingsPanel
+          data={rankings}
+          leagueId={leagueId}
+          myRosterId={myRosterId}
+          initialPosition={parseRankPosition(pos)}
+        />
       )}
       {tab === "startsit" && startSit && (
         <StartSitTool
