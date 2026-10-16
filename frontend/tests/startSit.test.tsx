@@ -187,5 +187,12 @@ describe("recommendation table", () => {
     );
     expect(container.querySelector(".verdict-start")).toHaveTextContent("Start (close call)");
     expect(screen.getByText("No game found")).toBeInTheDocument();
+    expect(screen.getByText("Start (close call)")).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations with start, sit and can't-start verdicts", async () => {
+    await expectNoA11yViolations(
+      <StartSitTool {...props} picks={["1", "2", "9"]} comparison={comparison} />,
+    );
   });
 });

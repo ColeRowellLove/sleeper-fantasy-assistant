@@ -94,13 +94,19 @@ class _Extra:
     defense: DefenseTable
 
 
-def _extra(session: Session, league: LeagueRow, rankings: Rankings, ids: list[str]) -> _Extra:
-    """Projections (scored with the league's rules), games and the defense table for ``ids``."""
+def _extra(
+    session: Session, league: LeagueRow, rankings: Rankings, ids: list[str], ranked: set[str]
+) -> _Extra:
+    """Projections (scored with the league's rules), games and the defense table for the players
+    in ``ids`` the rankings leave out; nothing is looked up when the rankings have them all."""
     week = rankings.week
-    if week is None:
+    missing = [pid for pid in ids if pid not in ranked]
+    if week is None or not missing:
         return _Extra(projections={}, games={}, defense={})
     return _Extra(
-        projections=projected_points(session, league.season, week, league.scoring_settings, ids),
+        projections=projected_points(
+            session, league.season, week, league.scoring_settings, missing
+        ),
         games=games_for_week(session, league.season, week),
         defense=build_defense_table(session, league.season, league.scoring_settings),
     )
@@ -170,19 +176,21 @@ def compare_players(
         p.player_id: p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
     }
-    extra = _extra(session, league, rankings, ids)
+    extra = _extra(session, league, rankings, ids, set(ranked))
     candidates = [_candidate(pid, ranked, info, extra) for pid in ids]
     eligible = [c for c in candidates if c.out is None and c.projected is not None]
-    # the consensus decides; projected points break a tie, then the name keeps it stable
-    candidates.sort(
-        key=lambda c: (
-            c.out is not None,
-            c.score if c.score is not None else 1e9,
-            -(c.projected or 0.0),
-            c.name,
-        )
-    )
-    eligible.sort(key=lambda c: (c.score if c.score is not None else 1e9, -(c.projected or 0.0)))
+    # the consensus decides; projected points break a tie, then the name keeps it stable. A player
+    # the rankings left out has no consensus score, so when anyone lacks one the projections
+    # decide for everybody (a score and a projection cannot be compared with each other).
+    by_projection = any(c.score is None for c in eligible)
+
+    def order(c: Candidate) -> tuple[float, float, str]:
+        score = c.score if c.score is not None else 1e9
+        projected = -(c.projected or 0.0)
+        return (projected, score, c.name) if by_projection else (score, projected, c.name)
+
+    candidates.sort(key=lambda c: (c.out is not None, *order(c)))
+    eligible.sort(key=order)
     if not eligible:
         return Comparison(
             league_id=league.league_id, week=rankings.week, candidates=candidates, start=None,
@@ -194,7 +202,8 @@ def compare_players(
     if len(eligible) > 1:
         runner = eligible[1]
         gap = (best.projected or 0.0) - (runner.projected or 0.0)
-        close = abs(gap) < CLOSE_CALL or best.score == runner.score
+        same_score = best.score is not None and best.score == runner.score
+        close = abs(gap) < CLOSE_CALL or same_score
     why = f"Start {best.name}: {_line(best)}."
     if len(eligible) > 1 and gap is not None:
         runner = eligible[1]
@@ -225,7 +234,7 @@ def best_lineup(
         p.player_id: p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
     }
-    extra = _extra(session, league, rankings, ids)
+    extra = _extra(session, league, rankings, ids, set(ranked))
     cands = {pid: _candidate(pid, ranked, info, extra) for pid in ids}
     usable = [
         (pid, c.position or "", c.projected or 0.0)
