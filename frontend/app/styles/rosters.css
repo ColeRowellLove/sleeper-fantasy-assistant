@@ -506,6 +506,9 @@
 }
 
 .pick-row:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
 
 /* a group of checkboxes as compact choices that wrap */
 .rank-sources fieldset,
