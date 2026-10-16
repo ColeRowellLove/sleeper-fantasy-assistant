@@ -94,7 +94,14 @@
   padding: 0.3rem 0.85rem;
 }
 
-.filter-chip[aria-pressed="true"] {
+a.filter-chip {
+  align-items: center;
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.filter-chip[aria-pressed="true"],
+.filter-chip[aria-current="page"] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);

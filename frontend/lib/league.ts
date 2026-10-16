@@ -2,21 +2,60 @@ import type { ConnectedLeague } from "./api";
 
 export type Rules = ConnectedLeague["rules"];
 
-export const TABS = [
-  { key: "standings", label: "Standings", group: "main" },
-  { key: "rosters", label: "Rosters", group: "main" },
-  { key: "lineups", label: "Lineups", group: "main" },
-  { key: "games", label: "Games", group: "main" },
-  { key: "alerts", label: "Alerts", group: "main" },
-  { key: "waiver", label: "Waiver wire", group: "main" },
-  { key: "rankings", label: "Rankings", group: "more" },
-  { key: "startsit", label: "Start/Sit", group: "more" },
-  { key: "players", label: "Players", group: "more" },
-  { key: "teams", label: "Teams", group: "more" },
-  { key: "settings", label: "Settings", group: "more" },
+/**
+ * The sections of a league page, most important first, each with its pages. The nav shows the
+ * sections; a section with more than one page shows them as a second row. `?tab=` keeps naming a
+ * page, so every older link still works.
+ */
+export const SECTIONS = [
+  {
+    key: "team",
+    label: "My team",
+    pages: [
+      { key: "rosters", label: "Roster" },
+      { key: "startsit", label: "Start/Sit" },
+    ],
+  },
+  {
+    key: "scores",
+    label: "Scores",
+    pages: [
+      { key: "lineups", label: "Matchups" },
+      { key: "games", label: "NFL games" },
+    ],
+  },
+  {
+    key: "players",
+    label: "Players",
+    pages: [
+      { key: "players", label: "Browse" },
+      { key: "waiver", label: "Waiver wire" },
+      { key: "rankings", label: "Rankings" },
+      { key: "teams", label: "NFL teams" },
+    ],
+  },
+  {
+    key: "league",
+    label: "League",
+    pages: [
+      { key: "standings", label: "Standings" },
+      { key: "settings", label: "Rules" },
+    ],
+  },
+  { key: "alerts", label: "Alerts", pages: [{ key: "alerts", label: "Alerts" }] },
 ] as const;
 
-export type TabKey = (typeof TABS)[number]["key"];
+export type TabKey = (typeof SECTIONS)[number]["pages"][number]["key"];
+export type Section = (typeof SECTIONS)[number];
+
+export const TABS: readonly { key: TabKey; label: string }[] = SECTIONS.flatMap(
+  (s): readonly { key: TabKey; label: string }[] => s.pages,
+);
+
+/** The section a page belongs to. */
+export function sectionOf(tab: TabKey): Section {
+  return SECTIONS.find((s) => s.pages.some((p) => p.key === tab)) ?? SECTIONS[0];
+}
 
 export function parseTab(value: string | undefined): TabKey {
   return TABS.find((t) => t.key === value)?.key ?? "standings";

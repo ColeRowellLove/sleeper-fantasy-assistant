@@ -1,19 +1,40 @@
+import Link from "next/link";
+
 /**
- * A group of toggle chips for choosing one value (a position, availability, a view). A named
- * group of buttons with aria-pressed, so it works the same by keyboard and screen reader on every
- * tab.
+ * A group of chips for choosing one value (a position, availability, a view, a page of a section).
+ * Buttons with aria-pressed by default; with `hrefFor` they are links to real pages (the open one
+ * is aria-current) so the choice has its own address. The same look and keyboard behaviour on
+ * every tab.
  */
 export default function FilterChips<T extends string>({
   label,
   options,
   value,
   onChange,
+  hrefFor,
 }: {
   label: string;
   options: readonly { value: T; label: string }[];
   value: T;
-  onChange: (value: T) => void;
+  onChange?: (value: T) => void;
+  hrefFor?: (value: T) => string;
 }) {
+  if (hrefFor) {
+    return (
+      <nav className="players-filter" aria-label={label}>
+        {options.map((option) => (
+          <Link
+            key={option.value}
+            href={hrefFor(option.value)}
+            className="filter-chip"
+            aria-current={option.value === value ? "page" : undefined}
+          >
+            {option.label}
+          </Link>
+        ))}
+      </nav>
+    );
+  }
   return (
     <div className="players-filter" role="group" aria-label={label}>
       {options.map((option) => (
@@ -22,7 +43,7 @@ export default function FilterChips<T extends string>({
           type="button"
           className="filter-chip"
           aria-pressed={option.value === value}
-          onClick={() => onChange(option.value)}
+          onClick={() => onChange?.(option.value)}
         >
           {option.label}
         </button>
