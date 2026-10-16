@@ -449,3 +449,8 @@ table.h2h {
   margin: 0;
   padding: 0 1.25rem 0.5rem;
 }
+
+.win-bar-rough {
+  font-size: 0.75rem;
+  margin: 0.2rem 0 0;
+}

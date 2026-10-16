@@ -342,6 +342,7 @@ export interface TeamLineup {
   projected_pregame?: number | null;
   /** Chance to win from projected points, 0 to 1; null/absent when there is nothing fair to say. */
   win_probability?: number | null;
+  win_probability_rough?: boolean;
   starters: LineupPlayer[];
   bench: LineupPlayer[];
 }
