@@ -99,6 +99,23 @@ describe("LeagueTabs", () => {
     );
   });
 
+  it("a link to the open section stays on the open page", () => {
+    render(<LeagueTabs leagueId="9" active="waiver" />);
+    const nav = screen.getByRole("navigation", { name: "League sections" });
+    expect(within(nav).getByRole("link", { name: "Players" })).toHaveAttribute(
+      "href",
+      "/league/9?tab=waiver",
+    );
+    expect(within(nav).getByRole("link", { name: "My team" })).toHaveAttribute(
+      "href",
+      "/league/9?tab=rosters",
+    );
+  });
+
+  it("has no accessibility violations with the page chips showing", async () => {
+    await expectNoA11yViolations(<LeagueTabs leagueId="9" active="waiver" />);
+  });
+
   it("has no second row for a section with one page", () => {
     render(<LeagueTabs leagueId="9" active="alerts" />);
     expect(screen.queryByRole("navigation", { name: "Alerts pages" })).not.toBeInTheDocument();

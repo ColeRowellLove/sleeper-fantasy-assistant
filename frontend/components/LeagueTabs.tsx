@@ -29,7 +29,7 @@ export default function LeagueTabs({
           {SECTIONS.map((section) => (
             <li key={section.key}>
               <Link
-                href={href(section.pages[0].key)}
+                href={href(section.key === open.key ? active : section.pages[0].key)}
                 aria-current={section.key === open.key ? "page" : undefined}
               >
                 {section.key === "alerts" ? alertsTabLabel(unreadAlerts) : section.label}

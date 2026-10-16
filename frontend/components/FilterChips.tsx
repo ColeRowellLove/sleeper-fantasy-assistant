@@ -16,9 +16,10 @@ export default function FilterChips<T extends string>({
   label: string;
   options: readonly { value: T; label: string }[];
   value: T;
-  onChange?: (value: T) => void;
-  hrefFor?: (value: T) => string;
-}) {
+} & (
+  | { onChange: (value: T) => void; hrefFor?: undefined }
+  | { hrefFor: (value: T) => string; onChange?: undefined }
+)) {
   if (hrefFor) {
     return (
       <nav className="players-filter" aria-label={label}>
@@ -43,7 +44,7 @@ export default function FilterChips<T extends string>({
           type="button"
           className="filter-chip"
           aria-pressed={option.value === value}
-          onClick={() => onChange?.(option.value)}
+          onClick={() => onChange(option.value)}
         >
           {option.label}
         </button>
