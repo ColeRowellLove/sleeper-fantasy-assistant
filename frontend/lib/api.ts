@@ -501,3 +501,21 @@ export interface Games {
   /** In kickoff order. */
   games: GameCard[];
 }
+
+export interface AlertItem {
+  id: number;
+  kind: string;
+  title: string;
+  /** One line with the numbers behind it. */
+  why: string;
+  player_id?: string | null;
+  created_at: string;
+  data?: Record<string, unknown>;
+}
+
+export interface AlertsData {
+  league_id: string;
+  roster_id: number;
+  /** Newest first, the last 14 days. */
+  alerts: AlertItem[];
+}

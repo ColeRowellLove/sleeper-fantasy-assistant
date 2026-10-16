@@ -18,12 +18,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant import __version__
+from sleeper_assistant.alerts import AlertsView, build_alerts
 from sleeper_assistant.crosswalk import build_crosswalk
 from sleeper_assistant.dashboard import Dashboard, Lineups, build_dashboard, build_lineups
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
     PlayerRow,
+    RosterRow,
     as_utc,
     make_engine,
     make_session_factory,
@@ -410,6 +412,25 @@ def get_games(
         raise HTTPException(status_code=404, detail="League not connected yet")
     response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_games(session, row, week)
+
+
+@app.get("/api/leagues/{league_id}/alerts")
+def get_alerts(
+    league_id: LeagueId,
+    session: SessionDep,
+    response: Response,
+    roster: Annotated[int, Query(ge=1, le=64)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> AlertsView:
+    """A team's recent alerts, newest first. Whether they have been read is the viewer's own
+    business (kept in their browser), because anyone can open this public page."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    if session.get(RosterRow, (league_id, roster)) is None:
+        raise HTTPException(status_code=404, detail="Team not found")
+    response.headers["Cache-Control"] = read_cache(session, row.season)
+    return build_alerts(session, league_id, roster, limit)
 
 
 @app.get("/api/leagues/{league_id}/rankings")

@@ -372,6 +372,18 @@ def test_games_endpoint(client: TestClient) -> None:
     assert client.get("/api/leagues/1/games?week=99").status_code == 422
 
 
+def test_alerts_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/alerts?roster=1").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/alerts?roster=1").json()
+    assert body == {"league_id": "1", "roster_id": 1, "alerts": []}
+    assert client.get("/api/leagues/1/alerts").status_code == 422  # a team is required
+    assert client.get("/api/leagues/1/alerts?roster=0").status_code == 422
+    assert client.get("/api/leagues/1/alerts?roster=40").status_code == 404  # not a team here
+    assert client.get("/api/leagues/1/alerts?roster=1&limit=5").status_code == 200
+    assert client.get("/api/leagues/1/alerts?roster=1&limit=0").status_code == 422
+
+
 def test_rankings_endpoint(client: TestClient) -> None:
     assert client.get("/api/leagues/1/rankings").status_code == 404  # league not connected
     assert client.post("/api/leagues/1/connect").status_code == 200

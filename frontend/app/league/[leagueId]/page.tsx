@@ -16,6 +16,7 @@ import StartSitTool from "../../../components/StartSitTool";
 import LiveRefresh from "../../../components/LiveRefresh";
 import GamesPanel from "../../../components/GamesPanel";
 import RankingsPanel from "../../../components/RankingsPanel";
+import AlertsPanel from "../../../components/AlertsPanel";
 import AccuracyTable from "../../../components/AccuracyTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
@@ -23,6 +24,7 @@ import type {
   Games,
   LeagueSettings,
   BestLineup,
+  AlertsData,
   LineupAccuracy,
   StartSitComparison,
   Rankings,
@@ -36,7 +38,8 @@ import { isTeamCode } from "../../../lib/depth";
 import { leaguePath, parseTab } from "../../../lib/league";
 import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
-import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
+import { USER_COOKIE, alertsSeenCookie, findMyRosterId, teamCookie } from "../../../lib/myTeam";
+import { parseSeen, unreadAlerts } from "../../../lib/alerts";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "League", robots: { index: false } };
@@ -176,6 +179,26 @@ export default async function LeaguePage({
     ? Number(roster)
     : null;
 
+  // Alerts: your team's feed is always fetched (for the new-alert count on the tab); the Alerts
+  // tab shows the chosen team's. Neither may break the page, so a failure shows as no alerts.
+  const seenRaw = jar.get(alertsSeenCookie(leagueId))?.value;
+  const alertsSeen = parseSeen(seenRaw);
+  const alertsTeam = linkedRosterId ?? myRosterId ?? dashboard.rosters[0]?.roster_id ?? null;
+  const loadAlerts = (rosterId: number | null, limit = 20) =>
+    rosterId === null
+      ? Promise.resolve(null)
+      : getJson<AlertsData>(
+          `/api/leagues/${leagueId}/alerts?roster=${rosterId}&limit=${limit}`,
+        ).catch(() => null);
+  const myAlerts = await loadAlerts(myRosterId);
+  const shownAlerts =
+    tab !== "alerts"
+      ? null
+      : alertsTeam === myRosterId
+        ? await loadAlerts(myRosterId, 50)
+        : await loadAlerts(alertsTeam, 50);
+  const newAlerts = unreadAlerts(myAlerts?.alerts ?? [], alertsSeen).length;
+
   // Start/Sit works on one team's roster: the linked team, else yours, else the first. It needs
   // the dashboard (to know the teams), so it is fetched after it.
   let startSit: {
@@ -208,7 +231,7 @@ export default async function LeaguePage({
   return (
     <main id="main" className="container">
       <LeagueHeader data={dashboard} myRosterId={myRosterId} />
-      <LeagueTabs leagueId={leagueId} active={tab} />
+      <LeagueTabs leagueId={leagueId} active={tab} unreadAlerts={newAlerts} />
       <LiveRefresh active={liveNow} />
       {tab === "standings" && (
         <StandingsTable
@@ -252,6 +275,15 @@ export default async function LeaguePage({
           week={weekQuery ? weekNumber : null}
           best={startSit.best}
           comparison={startSit.comparison}
+        />
+      )}
+      {tab === "alerts" && (
+        <AlertsPanel
+          data={shownAlerts ?? { league_id: leagueId, roster_id: alertsTeam ?? 0, alerts: [] }}
+          rosters={dashboard.rosters}
+          leagueId={leagueId}
+          myRosterId={myRosterId}
+          seen={alertsSeen}
         />
       )}
       {tab === "accuracy" && accuracy && (
