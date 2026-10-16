@@ -36,3 +36,8 @@ jobs:
       - run: uv run python -m sleeper_assistant.worker --once
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # optional: model-written alert advice (all empty = off); see docs/DEPLOY.md
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}

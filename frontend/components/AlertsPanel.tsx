@@ -3,7 +3,13 @@
 import { useRouter } from "next/navigation";
 
 import type { AlertItem, AlertsData, Dashboard } from "../lib/api";
-import { alertTime, newestAlertTime, unreadAlerts, waiverTargets } from "../lib/alerts";
+import {
+  alertAdvice,
+  alertTime,
+  newestAlertTime,
+  unreadAlerts,
+  waiverTargets,
+} from "../lib/alerts";
 import { leaguePath } from "../lib/league";
 import { alertsSeenCookie, setCookie } from "../lib/myTeam";
 import PlayerLink from "./PlayerLink";
@@ -11,12 +17,29 @@ import PlayerLink from "./PlayerLink";
 /** One alert: title, what happened, and for a waiver alert the pickups as a linked, numbered list. */
 function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
   const targets = waiverTargets(alert);
+  const advice = alertAdvice(alert);
   return (
     <li className={`card alert${isNew ? " unread" : ""}`}>
       <h3>
         {isNew && <span className="alert-new">New</span>}
         {alert.title}
       </h3>
+      {advice && (
+        <div className="alert-advice">
+          <p className="alert-advice-label">Suggested by an AI assistant</p>
+          <p>{advice.summary}</p>
+          <ol>
+            {advice.picks.map((pick) => (
+              <li key={pick.player_id}>
+                <PlayerLink playerId={pick.player_id}>{pick.name}</PlayerLink>
+                {pick.position ? ` (${pick.position}${pick.team ? `, ${pick.team}` : ""})` : ""}
+                {pick.action === "pickup" ? " — pick up" : " — start from your bench"}
+                {pick.drop_name ? `, dropping ${pick.drop_name}` : ""}: {pick.reason}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
       {targets.length > 0 ? (
         <ol className="alert-targets">
           {targets.map((t) => (

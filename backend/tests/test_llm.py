@@ -181,3 +181,7 @@ def test_prompts_load_from_the_prompts_folder(
     assert load_prompt("task.v1") == "You are a coach."
     with pytest.raises(FileNotFoundError):
         load_prompt("missing.v1")
+
+
+def test_an_empty_provider_from_unset_workflow_variables_means_off() -> None:
+    assert client_from_env({"LLM_PROVIDER": "", "LLM_MODEL": "", "LLM_API_KEY": ""}) is None

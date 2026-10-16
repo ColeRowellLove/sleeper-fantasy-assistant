@@ -1,12 +1,13 @@
 """The first injury alert: a player is ruled out, told once to every team that has him."""
 
+import json
 from datetime import timedelta
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import alert_injury, alerts
+from sleeper_assistant import alert_advice, alert_injury, alerts
 from sleeper_assistant.alerts import run_all_leagues
 from sleeper_assistant.db import (
     AlertRow,
@@ -483,3 +484,110 @@ def test_players_nobody_owns_cost_no_depth_chart_work(
     _healthy_first_then_out(session, league, now)
     assert _run(session, league, now) == 0
     assert calls == []
+
+
+class FakeLlm:
+    """A model that answers with a fixed reply and remembers what it was asked."""
+
+    def __init__(self, reply: str) -> None:
+        self.reply, self.calls = reply, 0
+
+    def complete(self, system: str, user: str) -> str:
+        self.calls += 1
+        return self.reply
+
+
+def _answer(pid: str, reason: str = "He is projected 8.0.", drop: str | None = None) -> str:
+    return json.dumps(
+        {
+            "summary": "Make the move.",
+            "picks": [{"player_id": pid, "drop_id": drop, "reason": reason}],
+        }
+    )
+
+
+def _with_model(monkeypatch: pytest.MonkeyPatch, reply: str) -> FakeLlm:
+    model = FakeLlm(reply)
+    monkeypatch.setattr(alert_advice, "client", lambda: model)
+    return model
+
+
+def _advice_for_team_one(session: Session) -> dict[str, object] | None:
+    alert = next(a for a in session.scalars(select(AlertRow)) if a.roster_id == 1)
+    return alert.data.get("advice")  # type: ignore[return-value]
+
+
+def _ruled_out_with_a_free_back(session: Session) -> tuple[LeagueRow, object]:
+    league = _setup(session)
+    session.add_all([_player("free", "RB", "Free Back"), _proj("free", 110.0)])
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    return league, now
+
+
+def test_a_model_picks_a_bench_player_and_the_computed_text_stays(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    league, now = _ruled_out_with_a_free_back(session)
+    model = _with_model(monkeypatch, _answer("bench"))
+    _run(session, league, now)
+    advice = _advice_for_team_one(session)
+    assert advice is not None and advice["source"] == "model"
+    pick = advice["picks"][0]  # type: ignore[index]
+    assert (pick["name"], pick["action"], pick["reason"]) == (
+        "Bench Back", "bench", "He is projected 8.0.",
+    )  # fmt: skip
+    why = next(a.why for a in session.scalars(select(AlertRow)) if a.roster_id == 1)
+    assert "Best replacement on your bench: Bench Back" in why  # the computed line is still there
+    assert model.calls == 1  # only team 1 starts him
+    _run(session, league, now + timedelta(minutes=10))
+    assert model.calls == 1  # a later run does not ask again for an alert already told
+
+
+def test_a_model_can_pick_an_available_player(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    league, now = _ruled_out_with_a_free_back(session)
+    _with_model(monkeypatch, _answer("free", "He is projected 11.0."))
+    _run(session, league, now)
+    pick = _advice_for_team_one(session)["picks"][0]  # type: ignore[index]
+    assert (pick["player_id"], pick["action"]) == ("free", "pickup")
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        _answer("hurt"),  # the player who is out is not an option
+        _answer("wr"),  # a starter who does not fit the slot is not an option
+        _answer("nobody"),  # an unknown player
+        _answer("bench", "He will score 31.5 points."),  # a number that is not in the facts
+        _answer("bench", drop="wr"),  # a drop is not allowed here
+        _answer("bench", "See https://example.com"),
+        "I think you should start the bench back.",  # not JSON
+    ],
+)
+def test_advice_that_breaks_a_rule_never_reaches_the_alert(
+    session: Session, monkeypatch: pytest.MonkeyPatch, reply: str
+) -> None:
+    league, now = _ruled_out_with_a_free_back(session)
+    _with_model(monkeypatch, reply)
+    _run(session, league, now)
+    assert _advice_for_team_one(session) is None
+    why = next(a.why for a in session.scalars(select(AlertRow)) if a.roster_id == 1)
+    assert "Best replacement on your bench: Bench Back" in why
+
+
+def test_a_bench_player_on_a_bye_is_not_offered(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    league, now = _ruled_out_with_a_free_back(session)
+    bench = session.get(PlayerRow, "bench")
+    assert bench is not None
+    bench.team = "ABC"  # plays in week 8 only: a bye in week 7
+    session.add(NflGameRow(game_id="g8", season="2026", week=8, home="ABC", away="XYZ",
+                           game_date="2026-11-01", status="pre_game"))  # fmt: skip
+    session.commit()
+    _with_model(monkeypatch, _answer("bench"))
+    _run(session, league, now)
+    assert _advice_for_team_one(session) is None

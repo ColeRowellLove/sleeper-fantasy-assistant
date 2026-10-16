@@ -85,4 +85,11 @@ facts. Set these as environment variables (never commit keys):
 - `LLM_MODEL`, `LLM_API_KEY` (or `ANTHROPIC_API_KEY`), `LLM_BASE_URL` (OpenAI-compatible only).
 - `LLM_MAX_CALLS_PER_RUN`: call cap per worker run (default 50).
 
+Free option (Google Gemini, no code change): create an API key in Google AI Studio, then set
+`LLM_PROVIDER=openai_compatible`, `LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`,
+`LLM_MODEL=gemini-2.5-flash` (repository variables) and `LLM_API_KEY=<the key>` (a repository
+secret) for the worker.
+Free-tier limits and terms are Google's and can change; when it throttles, alerts keep their
+computed text. The ruled-out and waiver alerts then carry an "AI assistant" suggestion.
+
 A Claude.ai chat subscription cannot be used by a server; Claude needs an Anthropic API key.

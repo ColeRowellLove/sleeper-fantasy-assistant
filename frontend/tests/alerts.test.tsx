@@ -6,6 +6,7 @@ import AlertsPanel from "../components/AlertsPanel";
 import LeagueTabs from "../components/LeagueTabs";
 import type { AlertsData, Dashboard } from "../lib/api";
 import {
+  alertAdvice,
   alertTime,
   alertsTabLabel,
   newestAlertTime,
@@ -327,5 +328,60 @@ describe("keyboard", () => {
     await user.tab(); // its button
     await user.tab(); // the first alert's player link
     expect(screen.getByRole("link", { name: "T. Horton" })).toHaveFocus();
+  });
+});
+
+describe("model advice", () => {
+  const advice = {
+    source: "model",
+    summary: "Start the backup.",
+    picks: [
+      {
+        player_id: "9",
+        name: "Bench Back",
+        position: "RB",
+        team: "SF",
+        action: "bench",
+        reason: "He is projected 8.0.",
+      },
+      {
+        player_id: "7",
+        name: "Free Back",
+        position: "RB",
+        team: "SF",
+        action: "pickup",
+        drop_name: "Slow Back",
+        reason: "He is projected 11.0.",
+      },
+    ],
+  };
+  const withAdvice: AlertsData = {
+    ...data,
+    alerts: [{ ...data.alerts[0], data: { advice } }],
+  };
+
+  it("reads well-formed advice and ignores anything else", () => {
+    expect(alertAdvice(withAdvice.alerts[0])?.picks).toHaveLength(2);
+    expect(alertAdvice(data.alerts[0])).toBeNull();
+    expect(alertAdvice({ ...data.alerts[0], data: { advice: "text" } })).toBeNull();
+    expect(
+      alertAdvice({ ...data.alerts[0], data: { advice: { summary: "x", picks: [{ nope: 1 }] } } }),
+    ).toBeNull();
+  });
+
+  it("shows the advice, labelled as AI, above the numbers", async () => {
+    const panel = (
+      <AlertsPanel data={withAdvice} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />
+    );
+    render(panel);
+    expect(screen.getByText("Suggested by an AI assistant")).toBeInTheDocument();
+    expect(screen.getByText("Start the backup.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Bench Back" })).toBeInTheDocument();
+    expect(screen.getByText(/start from your bench: He is projected 8.0/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/pick up, dropping Slow Back: He is projected 11.0/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/He starts at RB for you/)).toBeInTheDocument();
+    await expectNoA11yViolations(panel);
   });
 });

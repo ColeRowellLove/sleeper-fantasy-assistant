@@ -120,6 +120,20 @@ def store_new(session: Session, league: LeagueRow, raised: list[NewAlert], now: 
     return created
 
 
+def already_told(session: Session, league_id: str, roster_id: int, dedupe_key: str) -> bool:
+    """Whether a team already has this event's alert (so costly extras are not made again)."""
+    return (
+        session.scalar(
+            select(AlertRow.id).where(
+                AlertRow.league_id == league_id,
+                AlertRow.roster_id == roster_id,
+                AlertRow.dedupe_key == dedupe_key,
+            )
+        )
+        is not None
+    )
+
+
 def run_alerts(
     session: Session,
     league: LeagueRow,

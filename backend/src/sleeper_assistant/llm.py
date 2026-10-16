@@ -104,7 +104,7 @@ class OpenAICompatibleClient:
 def client_from_env(env: Mapping[str, str] | None = None) -> LlmClient | None:
     """The configured client, or None when no provider is set (or it is incomplete)."""
     values = os.environ if env is None else env
-    provider = values.get("LLM_PROVIDER", "none").strip().lower()
+    provider = (values.get("LLM_PROVIDER") or "none").strip().lower()
     model = values.get("LLM_MODEL", "").strip()
     if provider == "anthropic":
         key = values.get("LLM_API_KEY") or values.get("ANTHROPIC_API_KEY", "")

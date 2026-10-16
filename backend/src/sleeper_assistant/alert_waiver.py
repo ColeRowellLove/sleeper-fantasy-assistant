@@ -25,7 +25,8 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.alerts import NewAlert, register
+from sleeper_assistant import alert_advice
+from sleeper_assistant.alerts import NewAlert, already_told, register
 from sleeper_assistant.dashboard import current_week, games_for_week, starter_slots
 from sleeper_assistant.db import (
     LeagueRow,
@@ -130,6 +131,42 @@ def _opening(
                         found[player.player_id] = starter.name
         cache[team] = found
     return cache[team]
+
+
+def _advice(  # noqa: PLR0913, PLR0917
+    session: Session,
+    league: LeagueRow,
+    roster: RosterRow,
+    top: list[tuple[float, PlayerRow, str]],
+    projections: dict[str, float],
+    slots: list[str],
+    week: int,
+    key: str,
+    lineup: list[tuple[str, str]],
+    players: dict[str, PlayerRow],
+) -> dict[str, object] | None:
+    """The model's ranking of the computed pickups for this roster, or None (also None when this
+    team already has the alert, so the model is asked once per event)."""
+    if already_told(session, league.league_id, roster.roster_id, key):
+        return None
+    options = [
+        alert_advice.option(p, "pickup", projections[p.player_id], gain=round(gain, 1), over=over)
+        for gain, p, over in top
+    ]
+    starters = {pid for _, pid in lineup}
+    droppable = {
+        pid
+        for pid in roster.players
+        if pid in players and pid not in starters and pid not in roster.reserve
+    }
+    facts: dict[str, object] = {
+        "week": week,
+        "league_slots": slots,
+        "roster": alert_advice.roster_facts(session, roster, projections, slots),
+        "droppable": sorted(droppable),
+        "options": options,
+    }
+    return alert_advice.advise("waiver.v1", facts, options, droppable)
 
 
 @register("waiver_targets")
@@ -243,14 +280,23 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
                     "line": f"{name} {detail}",
                 }
             )
+        key = f"waiver_targets:{league.league_id}:{waiver.isoformat()}"
+        advice = _advice(
+            session, league, roster, top, projections, slots, week, key, lineup, players
+        )
         raised.append(
             NewAlert(
                 roster_id=roster.roster_id,
                 kind="waiver_targets",
-                dedupe_key=f"waiver_targets:{league.league_id}:{waiver.isoformat()}",
+                dedupe_key=key,
                 title=f"Top waiver targets for {when}",
                 why=" ".join(f"{i}. {line}" for i, line in enumerate(lines, start=1)),
-                data={"week": week, "waiver_date": waiver.isoformat(), "targets": targets},
+                data={
+                    "week": week,
+                    "waiver_date": waiver.isoformat(),
+                    "targets": targets,
+                    **({"advice": advice} if advice else {}),
+                },
             )
         )
     return raised
