@@ -27,6 +27,23 @@ export function orientMatchup(matchup: Matchup, myRosterId: number | null): Matc
   return { ...matchup, teams };
 }
 
+/** A team's matchup this week, with that team first; null when the lineups have no such team. */
+export function matchupFor(
+  lineups: Lineups | null | undefined,
+  rosterId: number,
+): { team: TeamLineup; opponent: TeamLineup | null; state: WeekState; week: number | null } | null {
+  if (!lineups || lineups.week === null || lineups.current_week == null) return null; // no season yet
+  const matchup = lineups.matchups.find((m) => m.teams.some((t) => t.roster_id === rosterId));
+  const team = matchup?.teams.find((t) => t.roster_id === rosterId);
+  if (!matchup || !team) return null;
+  return {
+    team,
+    opponent: matchup.teams.find((t) => t.roster_id !== rosterId) ?? null,
+    state: weekState(lineups.week, lineups.current_week),
+    week: lineups.week,
+  };
+}
+
 export function isMine(matchup: Matchup, myRosterId: number | null): boolean {
   return myRosterId !== null && matchup.teams.some((t) => t.roster_id === myRosterId);
 }

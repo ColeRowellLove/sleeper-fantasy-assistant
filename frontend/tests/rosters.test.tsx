@@ -71,11 +71,11 @@ const rosters: Rosters = [
 
 describe("RostersPanel", () => {
   it("has no accessibility violations", async () => {
-    await expectNoA11yViolations(<RostersPanel rosters={rosters} myRosterId={2} />);
+    await expectNoA11yViolations(<RostersPanel leagueId="1" rosters={rosters} myRosterId={2} />);
   });
 
   it("shows your team first and selected, labelled in the dropdown", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={2} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={2} />);
     const select = screen.getByLabelText("Team");
     expect(select).toHaveValue("2");
     const options = within(select)
@@ -87,19 +87,19 @@ describe("RostersPanel", () => {
   });
 
   it("shows how a player did under his game, readable without color", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={1} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
     expect(screen.getByText("18 car, 92 yds, 1 TD")).toBeInTheDocument();
     expect(screen.getByText("Stats this week:")).toBeInTheDocument(); // the screen-reader label
   });
 
   it("falls back to the first team when none is yours", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={null} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={null} />);
     expect(screen.getByLabelText("Team")).toHaveValue("1");
     expect(screen.getByText("Dad Back")).toBeInTheDocument();
   });
 
   it("groups players into labelled Starters, Bench, IR and Taxi sections with counts", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={2} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={2} />);
     const titles = screen
       .getAllByRole("heading", { level: 3 })
       .map((h) => h.textContent?.replace(/\s+/g, " ").trim());
@@ -110,20 +110,20 @@ describe("RostersPanel", () => {
   });
 
   it("omits empty groups", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={1} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
     expect(screen.queryByRole("heading", { level: 3, name: /Bench/ })).not.toBeInTheDocument();
   });
 
   it("switches the roster when another team is chosen", async () => {
     const user = userEvent.setup();
-    render(<RostersPanel rosters={rosters} myRosterId={2} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={2} />);
     await user.selectOptions(screen.getByLabelText("Team"), "1");
     expect(screen.getByText("Dad Back")).toBeInTheDocument();
     expect(screen.queryByText("Star QB")).not.toBeInTheDocument();
   });
 
   it("gives each position its own color class on the chip", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={2} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={2} />);
     const chip = (text: string) =>
       screen.getAllByText(text).find((e) => e.className.includes("chip"));
     expect(chip("QB")?.className).toContain("pos-qb");
@@ -133,7 +133,7 @@ describe("RostersPanel", () => {
   });
 
   it("explains an empty league instead of rendering nothing", () => {
-    render(<RostersPanel rosters={[]} myRosterId={null} />);
+    render(<RostersPanel leagueId="1" rosters={[]} myRosterId={null} />);
     expect(screen.getByText(/no rosters have been synced/i)).toBeInTheDocument();
   });
 });

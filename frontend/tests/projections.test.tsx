@@ -128,14 +128,14 @@ describe("projected points on rosters", () => {
   ];
 
   it("shows a projection with a spoken label, and nothing for a player without one", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={1} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
     expect(screen.getByText("Projected", { exact: false })).toBeInTheDocument();
     expect(screen.getByText(/22\.4/)).toBeInTheDocument();
     expect(screen.getAllByText("Projected", { exact: false })).toHaveLength(1);
   });
 
   it("has no accessibility violations", async () => {
-    await expectNoA11yViolations(<RostersPanel rosters={rosters} myRosterId={1} />);
+    await expectNoA11yViolations(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
   });
 });
 
@@ -295,7 +295,7 @@ describe("this week's points on rosters", () => {
   ];
 
   it("shows points for a player whose game has started, with a spoken label", () => {
-    render(<RostersPanel rosters={withPoints} myRosterId={1} />);
+    render(<RostersPanel leagueId="1" rosters={withPoints} myRosterId={1} />);
     const scored = screen.getByText("Scored").closest("li") as HTMLElement;
     expect(within(scored).getByText("14.3")).toBeInTheDocument();
     expect(within(scored).getByText("Points this week", { exact: false })).toBeInTheDocument();
@@ -303,13 +303,13 @@ describe("this week's points on rosters", () => {
   });
 
   it("shows a real zero but nothing for a player who has not played", () => {
-    render(<RostersPanel rosters={withPoints} myRosterId={1} />);
+    render(<RostersPanel leagueId="1" rosters={withPoints} myRosterId={1} />);
     expect(screen.getAllByText("Points this week", { exact: false })).toHaveLength(2); // 14.25 and 0
     expect(screen.getByText("0.0")).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
-    await expectNoA11yViolations(<RostersPanel rosters={withPoints} myRosterId={1} />);
+    await expectNoA11yViolations(<RostersPanel leagueId="1" rosters={withPoints} myRosterId={1} />);
   });
 });
 

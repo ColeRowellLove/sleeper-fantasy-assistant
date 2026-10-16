@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 
-import type { Dashboard, RosterPlayer, RosterStatus } from "../lib/api";
+import type { Dashboard, Lineups, RosterPlayer, RosterStatus } from "../lib/api";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
 import TeamLink from "./TeamLink";
 import PositionChip from "./PositionChip";
+import RosterMatchup from "./RosterMatchup";
 
 type Roster = Dashboard["rosters"][number];
 
@@ -25,12 +26,17 @@ export default function RostersPanel({
   myRosterId,
   week = null,
   initialRosterId = null,
+  lineups = null,
+  leagueId,
 }: {
   rosters: Roster[];
   myRosterId: number | null;
   week?: number | null;
   /** The team to start on (from a link); your own team when absent or unknown. */
   initialRosterId?: number | null;
+  /** This week's lineups: the selected team's matchup and win chance come from here. */
+  lineups?: Lineups | null;
+  leagueId: string;
 }) {
   const ordered = [
     ...rosters.filter((r) => r.roster_id === myRosterId),
@@ -62,6 +68,8 @@ export default function RostersPanel({
           ))}
         </select>
       </div>
+
+      <RosterMatchup lineups={lineups} rosterId={selected.roster_id} leagueId={leagueId} />
 
       {week !== null && (
         <p className="note">Game status is for NFL week {week}: upcoming, live, played, or bye.</p>

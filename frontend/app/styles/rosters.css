@@ -314,3 +314,19 @@
 .player-pts {
   color: var(--text);
 }
+
+/* the selected team's matchup and win chance above its roster */
+.roster-matchup {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1.25rem;
+}
+
+.roster-matchup h3 {
+  font-size: 1rem;
+  margin: 0 0 0.35rem;
+}
+
+.roster-matchup-line {
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
