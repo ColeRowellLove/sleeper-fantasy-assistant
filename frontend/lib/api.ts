@@ -76,6 +76,9 @@ export interface PlayerDetail {
   /** The owning manager's Sleeper username, and the league, for linking to their roster. */
   owner_manager?: string | null;
   league_id?: string | null;
+  /** ESPN-wide ownership and start shares in percent (not Sleeper leagues); null = no number. */
+  owned_pct?: number | null;
+  started_pct?: number | null;
   adds?: number | null;
   drops?: number | null;
   season: { points: number; games: number; average?: number | null; rank?: number | null };

@@ -137,6 +137,9 @@ function PastSeasonRows({
   );
 }
 
+const percent = (n: number | null | undefined) =>
+  n === null || n === undefined ? "–" : `${n.toFixed(1)}%`;
+
 const count = (n: number | null | undefined) =>
   n === null || n === undefined ? "–" : n.toLocaleString("en-US");
 
@@ -282,6 +285,14 @@ export default function PlayerDialog({
                   ? "–"
                   : detail.season.average.toFixed(1)}
               </dd>
+            </div>
+            <div className="setting-row">
+              <dt>Owned % (ESPN)</dt>
+              <dd>{percent(detail.owned_pct)}</dd>
+            </div>
+            <div className="setting-row">
+              <dt>Started % (ESPN)</dt>
+              <dd>{percent(detail.started_pct)}</dd>
             </div>
             <div className="setting-row">
               <dt>Sleeper adds, last 24 hours</dt>
