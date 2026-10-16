@@ -13,11 +13,13 @@ import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
+import GamesPanel from "../../../components/GamesPanel";
 import RankingsPanel from "../../../components/RankingsPanel";
 import AccuracyTable from "../../../components/AccuracyTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
   Dashboard,
+  Games,
   LeagueSettings,
   BestLineup,
   LineupAccuracy,
@@ -76,6 +78,7 @@ export default async function LeaguePage({
   const [
     dashboard,
     lineups,
+    games,
     rankings,
     accuracy,
     leagueSettings,
@@ -87,6 +90,9 @@ export default async function LeaguePage({
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
     tab === "lineups"
       ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
+      : Promise.resolve(null),
+    tab === "games"
+      ? getJson<Games>(`/api/leagues/${leagueId}/games${weekQuery}`)
       : Promise.resolve(null),
     tab === "rankings"
       ? getJson<Rankings>(`/api/leagues/${leagueId}/rankings${weekQuery}`)
@@ -184,6 +190,9 @@ export default async function LeaguePage({
       )}
       {tab === "lineups" && lineups && (
         <WeeklyLineups data={lineups} leagueId={leagueId} myRosterId={myRosterId} />
+      )}
+      {tab === "games" && games && (
+        <GamesPanel data={games} leagueId={leagueId} myRosterId={myRosterId} />
       )}
       {tab === "rankings" && rankings && (
         <RankingsPanel data={rankings} leagueId={leagueId} myRosterId={myRosterId} />

@@ -30,6 +30,7 @@ from sleeper_assistant.db import (
     utcnow,
 )
 from sleeper_assistant.depth import TEAM_IDS
+from sleeper_assistant.games_view import Games, build_games
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
 from sleeper_assistant.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
@@ -386,6 +387,21 @@ def get_best_lineup(
         raise HTTPException(status_code=404, detail="Team not found")
     response.headers["Cache-Control"] = READ_CACHE
     return result
+
+
+@app.get("/api/leagues/{league_id}/games")
+def get_games(
+    league_id: LeagueId,
+    session: SessionDep,
+    response: Response,
+    week: Annotated[int | None, Query(ge=1, le=18)] = None,
+) -> Games:
+    """Every NFL game of a week with score, line, conditions and the players in it."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = READ_CACHE
+    return build_games(session, row, week)
 
 
 @app.get("/api/leagues/{league_id}/rankings")

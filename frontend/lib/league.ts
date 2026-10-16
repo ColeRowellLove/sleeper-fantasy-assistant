@@ -6,6 +6,7 @@ export const TABS = [
   { key: "standings", label: "Standings" },
   { key: "rosters", label: "Rosters" },
   { key: "lineups", label: "Lineups" },
+  { key: "games", label: "Games" },
   { key: "rankings", label: "Rankings" },
   { key: "startsit", label: "Start/Sit" },
   { key: "accuracy", label: "Accuracy" },
