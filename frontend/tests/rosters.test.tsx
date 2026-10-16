@@ -22,6 +22,7 @@ const rosters: Rosters = [
         team: "DAL",
         status: "starter",
         slot: "RB",
+        stat_line: "18 car, 92 yds, 1 TD",
       },
     ],
   },
@@ -83,6 +84,12 @@ describe("RostersPanel", () => {
     expect(options).toEqual(["Cole (you)", "Dad"]);
     expect(screen.getByText("Star QB")).toBeInTheDocument();
     expect(screen.queryByText("Dad Back")).not.toBeInTheDocument();
+  });
+
+  it("shows how a player did under his game, readable without color", () => {
+    render(<RostersPanel rosters={rosters} myRosterId={1} />);
+    expect(screen.getByText("18 car, 92 yds, 1 TD")).toBeInTheDocument();
+    expect(screen.getByText("Stats this week:")).toBeInTheDocument(); // the screen-reader label
   });
 
   it("falls back to the first team when none is yours", () => {

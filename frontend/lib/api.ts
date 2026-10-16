@@ -279,6 +279,8 @@ export interface RosterPlayer {
   projected_pregame?: number | null;
   /** The opponent's defense rank against his position; null/absent on a bye or without data. */
   matchup?: MatchupRank | null;
+  /** How he did once his game has started, e.g. "18 car, 92 yds, 1 TD"; absent before kickoff. */
+  stat_line?: string | null;
 }
 
 export interface LineupPlayer {
@@ -298,6 +300,8 @@ export interface LineupPlayer {
   projected_pregame?: number | null;
   /** The opponent's defense rank against his position; null/absent on a bye or without data. */
   matchup?: MatchupRank | null;
+  /** How he did once his game has started, e.g. "18 car, 92 yds, 1 TD"; absent before kickoff. */
+  stat_line?: string | null;
 }
 
 export interface TeamLineup {

@@ -126,6 +126,12 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
             conditions="compact"
           />
         </span>
+        {player.stat_line && (
+          <span className="stat-line">
+            <span className="visually-hidden">Stats this week: </span>
+            {player.stat_line}
+          </span>
+        )}
       </span>
       {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with
           no value keeps its (empty) column */}

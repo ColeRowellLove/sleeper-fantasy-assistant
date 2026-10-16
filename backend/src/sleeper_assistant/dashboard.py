@@ -28,6 +28,7 @@ from sleeper_assistant.matchup_rank import (
     matchup_rank,
 )
 from sleeper_assistant.projections import projected_points
+from sleeper_assistant.stat_lines import week_stat_lines
 from sleeper_assistant.win_probability import StarterState, matchup_chances
 
 # Sleeper marks an empty starter slot with the player id "0".
@@ -111,6 +112,7 @@ class RosterPlayer(BaseModel):
     points: float | None = None  # this week's actual points once the game has started
     projected_pregame: float | None = None  # the projection frozen before kickoff
     matchup: MatchupRank | None = None  # the opponent's defense rank against his position
+    stat_line: str | None = None  # how he did, once his game has started: "18 car, 92 yds, 1 TD"
 
 
 class RosterView(BaseModel):
@@ -142,6 +144,7 @@ class LineupPlayer(BaseModel):
     projected_pregame: float | None = None  # the projection frozen before kickoff
     projection_missing: bool = False  # no projection was stored, so the 0 above is an assumption
     matchup: MatchupRank | None = None  # the opponent's defense rank against his position
+    stat_line: str | None = None  # how he did, once his game has started
 
 
 class TeamLineup(BaseModel):
@@ -347,6 +350,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
     )
 
     earned = _week_points(session, league.league_id, week) if week else {}
+    lines = _stat_lines(session, league, week, players, games) if week else {}
 
     ordered = sorted(rosters, key=lambda r: (-r.wins, r.losses, -r.ties, -r.points_for))
     standings = [
@@ -372,7 +376,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
             team=team[r.roster_id],
             owner_id=owners[r.roster_id],
             players=_roster_players(
-                r, players, slots, games, projected, earned.get(r.roster_id, {}), defense
+                r, players, slots, games, projected, earned.get(r.roster_id, {}), defense, lines
             ),
         )
         for r in sorted(rosters, key=lambda r: r.roster_id)
@@ -385,6 +389,22 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
         standings=standings,
         rosters=views,
     )
+
+
+def _stat_lines(
+    session: Session,
+    league: LeagueRow,
+    week: int,
+    players: dict[str, PlayerRow],
+    games: dict[str, GameInfo],
+) -> dict[str, str]:
+    """Summaries for players whose game is live or over (nothing is said before kickoff)."""
+    started = {
+        pid: p.position
+        for pid, p in players.items()
+        if (game := games.get(p.team or "")) is not None and game.state in ("live", "final")
+    }
+    return week_stat_lines(session, league.season, week, started, league.scoring_settings)
 
 
 def _week_points(session: Session, league_id: str, week: int) -> dict[int, dict[str, float]]:
@@ -416,6 +436,7 @@ def _roster_players(  # noqa: PLR0913, PLR0917
     projected: dict[str, float],
     earned: dict[str, float],
     defense: DefenseTable,
+    lines: dict[str, str],
 ) -> list[RosterPlayer]:
     def make(pid: str, status: Status, slot: str | None = None) -> RosterPlayer:
         name, position, nfl_team = _display(players, pid)
@@ -435,6 +456,7 @@ def _roster_players(  # noqa: PLR0913, PLR0917
             projected_pregame=pregame,
             points=scored,
             matchup=matchup_rank(defense, position, game.opponent if game else None),
+            stat_line=lines.get(pid),
         )
 
     out: list[RosterPlayer] = []
@@ -480,6 +502,7 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
     slots = starter_slots(league)
     games = games_for_week(session, league.season, week)
     defense = build_defense_table(session, league.season, league.scoring_settings)
+    lines = _stat_lines(session, league, week, players, games)
     projected = projected_points(
         session,
         league.season,
@@ -496,7 +519,16 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
     by_matchup: dict[int, list[TeamLineup]] = {}
     for m in sorted(week_rows, key=lambda m: m.roster_id):
         lineup = _team_lineup(
-            m, team, owners, players, slots, games, parked.get(m.roster_id, {}), projected, defense
+            m,
+            team,
+            owners,
+            players,
+            slots,
+            games,
+            parked.get(m.roster_id, {}),
+            projected,
+            defense,
+            lines,
         )
         # a missing matchup_id (bye/unscheduled) must not group unrelated teams together
         key = m.matchup_id if m.matchup_id is not None else -m.roster_id
@@ -560,6 +592,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
     parked: dict[str, str],
     projected: dict[str, float],
     defense: DefenseTable,
+    lines: dict[str, str],
 ) -> TeamLineup:
     points: dict[str, Any] = m.players_points
 
@@ -595,6 +628,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 projected_pregame=pregame,
                 projection_missing=pid not in projected,
                 matchup=matchup_rank(defense, position, game.opponent if game else None),
+                stat_line=lines.get(pid),
             )
         )
 
@@ -619,6 +653,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 projected_pregame=pregame,
                 projection_missing=pid not in projected,
                 matchup=matchup_rank(defense, position, game.opponent if game else None),
+                stat_line=lines.get(pid),
             )
         )
     bench.sort(key=lambda p: (_PARKED_ORDER.get(p.slot, 0), -(p.points or 0.0), p.name))
