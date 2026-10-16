@@ -64,24 +64,18 @@ function Projection({
   );
 }
 
-/** "Win chance 62%", spoken in full for screen readers. Only before the matchup is decided. */
-function WinChance({ team, state }: { team: TeamLineup; state: WeekState }) {
-  const percent = winPercent(team.win_probability);
-  if (percent === null || state === "played") return null;
-  return (
-    <span className="win-chance">
-      <span aria-hidden="true">Win chance {percent}%</span>
-      <span className="visually-hidden">
-        {team.team} has a {percent} percent chance to win, from projected points
-      </span>
-    </span>
-  );
+/**
+ * A bar split in proportion to the two teams' chances, with each team's name and number at its
+ * end (the only place the percentage is shown). Green is the team ahead and red the team behind, but
+ * colour is never the only signal: the ends name the team and number, and the bar is decorative
+ * because the sentence for screen readers carries the same information.
+ */
+/** Green for the team ahead, red for the team behind, neutral for an even matchup. */
+function tone(mine: number, theirs: number): string {
+  if (mine === theirs) return "win-even";
+  return mine > theirs ? "win-lead" : "win-trail";
 }
 
-/**
- * A bar split in proportion to the two teams' chances, with each team's number at its end. The
- * bar itself is decorative: the sentence for screen readers carries the same information.
- */
 function WinBar({ a, b, state }: { a: TeamLineup; b: TeamLineup; state: WeekState }) {
   const left = winPercent(a.win_probability);
   const right = winPercent(b.win_probability);
@@ -93,8 +87,8 @@ function WinBar({ a, b, state }: { a: TeamLineup; b: TeamLineup; state: WeekStat
         points.
       </span>
       <div className="win-bar-track" aria-hidden="true">
-        <span className="win-bar-a" style={{ width: `${left}%` }} />
-        <span className="win-bar-b" style={{ width: `${100 - left}%` }} />
+        <span className={`win-bar-a ${tone(left, right)}`} style={{ width: `${left}%` }} />
+        <span className={`win-bar-b ${tone(right, left)}`} style={{ width: `${100 - left}%` }} />
       </div>
       <div className="win-bar-labels" aria-hidden="true">
         <span>
@@ -141,7 +135,6 @@ function TeamScore({
         state={state}
         label="Projected"
       />
-      <WinChance team={team} state={state} />
       {isWinner && <span className="win-tag">Winner</span>}
     </div>
   );

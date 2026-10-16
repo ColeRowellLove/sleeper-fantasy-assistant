@@ -356,15 +356,6 @@ table.h2h {
   margin: 0 0 0.75rem;
 }
 
-/* Chance to win, under the projected total in the matchup scoreboard */
-.win-chance {
-  color: var(--muted);
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-top: 0.15rem;
-}
-
 /* Win chance bar: one segment per team, in proportion to the chances */
 .win-bar {
   margin-top: 0.9rem;
@@ -378,14 +369,22 @@ table.h2h {
   overflow: hidden;
 }
 
-.win-bar-a {
-  background: var(--accent);
+.win-bar-a,
+.win-bar-b {
   display: block;
 }
 
-.win-bar-b {
+/* the team ahead is green, the team behind red, an even matchup neutral */
+.win-lead {
+  background: var(--game-live);
+}
+
+.win-trail {
+  background: var(--injury-out);
+}
+
+.win-even {
   background: var(--muted);
-  display: block;
 }
 
 .win-bar-labels {

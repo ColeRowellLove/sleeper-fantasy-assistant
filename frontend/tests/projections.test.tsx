@@ -215,11 +215,13 @@ describe("win chance in the matchup", () => {
         myRosterId={1}
       />,
     );
-    expect(screen.getByText("Win chance 62%")).toBeInTheDocument();
-    expect(screen.getByText("Win chance 38%")).toBeInTheDocument();
+    expect(screen.getByText("Cole 62%")).toBeInTheDocument();
+    expect(screen.getByText("38% Dad")).toBeInTheDocument();
+    expect(screen.queryByText(/Win chance/)).not.toBeInTheDocument(); // not repeated under the scores
+    expect(screen.getAllByText(/62/)).toHaveLength(2); // the bar end and the one spoken sentence
     expect(
       screen.getByText(
-        "Cole has a 62 percent chance to win, from projected points",
+        "Cole has a 62 percent chance to win and Dad has 38 percent, from projected points.",
       ),
     ).toBeInTheDocument();
   });
@@ -250,6 +252,47 @@ describe("win chance in the matchup", () => {
         "Cole has a 62 percent chance to win and Dad has 38 percent, from projected points.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("colours the team ahead green and the team behind red, and an even matchup neutral", () => {
+    const ahead = render(
+      <MatchupCard
+        matchup={withChance(0.62, 0.38)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    expect(ahead.container.querySelector(".win-bar-a")).toHaveClass("win-lead");
+    expect(ahead.container.querySelector(".win-bar-b")).toHaveClass(
+      "win-trail",
+    );
+    ahead.unmount();
+    const behind = render(
+      <MatchupCard
+        matchup={withChance(0.3, 0.7)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    expect(behind.container.querySelector(".win-bar-a")).toHaveClass(
+      "win-trail",
+    );
+    expect(behind.container.querySelector(".win-bar-b")).toHaveClass(
+      "win-lead",
+    );
+    behind.unmount();
+    const even = render(
+      <MatchupCard
+        matchup={withChance(0.5, 0.5)}
+        state="upcoming"
+        week={7}
+        myRosterId={1}
+      />,
+    );
+    expect(even.container.querySelector(".win-bar-a")).toHaveClass("win-even");
+    expect(even.container.querySelector(".win-bar-b")).toHaveClass("win-even");
   });
 
   it("never draws a bar that is all one colour, and fills the track for any chances", () => {
@@ -300,7 +343,7 @@ describe("win chance in the matchup", () => {
         myRosterId={1}
       />,
     );
-    expect(screen.getByText("Win chance 80%")).toBeInTheDocument();
+    expect(screen.getByText("Cole 80%")).toBeInTheDocument();
   });
 
   it("is not shown once the matchup is played, or when there is no chance to show", () => {
