@@ -462,3 +462,14 @@ dialog.team-dialog {
   max-width: 70rem;
   width: min(70rem, calc(100% - 2rem));
 }
+
+/* A team name that links to that team's roster reads as text until hovered or focused */
+.member-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.member-link:hover,
+.member-link:focus-visible {
+  text-decoration: underline;
+}
