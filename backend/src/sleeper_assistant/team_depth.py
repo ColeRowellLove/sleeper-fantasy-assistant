@@ -67,7 +67,8 @@ def team_record(session: Session, season: str, team: str) -> TeamRecord | None:
     """The team's record from its finished games, or None when it cannot be stated exactly.
 
     Every finished game must have a stored score, otherwise the record could be wrong and is left
-    out; a team with no finished game yet has no record either.
+    out; a team with no finished game yet has no record either. The schedule holds the regular
+    season only, so playoff games never count.
     """
     games = list(
         session.scalars(
@@ -78,21 +79,18 @@ def team_record(session: Session, season: str, team: str) -> TeamRecord | None:
             )
         )
     )
-    if not games or any(g.home_score is None or g.away_score is None for g in games):
-        return None
-    wins = losses = ties = 0
+    results: list[tuple[int, int]] = []  # (the team's points, the opponent's points)
     for g in games:
-        mine, theirs = (
+        if g.home_score is None or g.away_score is None:
+            return None  # a finished game with no stored score could make the record wrong
+        results.append(
             (g.home_score, g.away_score) if g.home == team else (g.away_score, g.home_score)
         )
-        if mine is None or theirs is None:  # unreachable: checked above, kept for the type checker
-            return None
-        if mine == theirs:
-            ties += 1
-        elif mine > theirs:
-            wins += 1
-        else:
-            losses += 1
+    if not results:
+        return None
+    wins = sum(1 for mine, theirs in results if mine > theirs)
+    losses = sum(1 for mine, theirs in results if mine < theirs)
+    ties = len(results) - wins - losses
     return TeamRecord(wins=wins, losses=losses, ties=ties)
 
 

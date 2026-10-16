@@ -104,5 +104,5 @@ export function recordText(record: TeamRecord): { short: string; spoken: string 
   ];
   if (ties > 0) parts.push(`${ties} ${ties === 1 ? "tie" : "ties"}`);
   const last = parts.pop();
-  return { short, spoken: `record ${parts.join(", ")} and ${last}` };
+  return { short, spoken: `Record: ${parts.join(", ")} and ${last}` };
 }

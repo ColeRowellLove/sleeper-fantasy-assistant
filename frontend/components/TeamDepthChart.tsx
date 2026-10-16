@@ -116,7 +116,7 @@ export default function TeamDepthChart({
         {data.record && (
           <span className="depth-record">
             <span aria-hidden="true">{recordText(data.record).short}</span>
-            <span className="visually-hidden">, {recordText(data.record).spoken}</span>
+            <span className="visually-hidden">{recordText(data.record).spoken}</span>
           </span>
         )}
       </div>

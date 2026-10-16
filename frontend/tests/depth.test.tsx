@@ -6,6 +6,7 @@ import PlayersTable from "../components/PlayersTable";
 import TeamDepthChart from "../components/TeamDepthChart";
 import TeamDialog from "../components/TeamDialog";
 import TeamLink from "../components/TeamLink";
+import TeamLogo from "../components/TeamLogo";
 import TeamPicker from "../components/TeamPicker";
 import type { DepthPlayer, DepthSlot, TeamDepth, TeamStat } from "../lib/api";
 import {
@@ -400,14 +401,14 @@ describe("team logo and record", () => {
   it("writes the record, with ties only when there are some", () => {
     expect(recordText({ wins: 3, losses: 2, ties: 0 })).toEqual({
       short: "3-2",
-      spoken: "record 3 wins and 2 losses",
+      spoken: "Record: 3 wins and 2 losses",
     });
     expect(recordText({ wins: 1, losses: 1, ties: 1 })).toEqual({
       short: "1-1-1",
-      spoken: "record 1 win, 1 loss and 1 tie",
+      spoken: "Record: 1 win, 1 loss and 1 tie",
     });
     expect(recordText({ wins: 0, losses: 1, ties: 2 }).spoken).toBe(
-      "record 0 wins, 1 loss and 2 ties",
+      "Record: 0 wins, 1 loss and 2 ties",
     );
   });
 
@@ -424,7 +425,7 @@ describe("team logo and record", () => {
     expect(logo).toHaveAttribute("alt", "");
     expect(logo?.getAttribute("src")).toContain("/team_logos/nfl/sea.png");
     expect(within(title).getByText("3-2")).toBeInTheDocument();
-    expect(title).toHaveTextContent(", record 3 wins and 2 losses"); // for screen readers
+    expect(title).toHaveTextContent("Record: 3 wins and 2 losses"); // for screen readers
     expect(container.querySelectorAll(".depth-record")).toHaveLength(1);
     await expectNoA11yViolations(
       <TeamDepthChart
@@ -432,6 +433,14 @@ describe("team logo and record", () => {
         myRosterId={null}
       />,
     );
+  });
+
+  it("shows another team's logo even after one logo failed to load", () => {
+    const { rerender } = render(<TeamLogo team="SEA" />);
+    fireEvent.error(document.querySelector("img") as HTMLImageElement);
+    expect(document.querySelector("img")).toBeNull();
+    rerender(<TeamLogo team="DEN" />);
+    expect(document.querySelector("img")?.getAttribute("src")).toContain("/den.png");
   });
 
   it("leaves the record out when it is not known, and drops a logo that will not load", () => {

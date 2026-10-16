@@ -9,8 +9,9 @@ import { teamLogoUrl } from "../lib/images";
  * team's name is always written next to it, and it disappears if the image cannot load.
  */
 export default function TeamLogo({ team, size = 40 }: { team: string; size?: number }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return null;
+  // remember which team's logo failed, so a different team still shows its own
+  const [failedTeam, setFailedTeam] = useState<string | null>(null);
+  if (failedTeam === team) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- small CDN logo, as in PlayerAvatar
     <img
@@ -20,7 +21,7 @@ export default function TeamLogo({ team, size = 40 }: { team: string; size?: num
       height={size}
       decoding="async"
       className="team-logo"
-      onError={() => setFailed(true)}
+      onError={() => setFailedTeam(team)}
     />
   );
 }
