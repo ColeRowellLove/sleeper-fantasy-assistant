@@ -377,3 +377,44 @@ export interface Rankings {
   signals: Record<string, string>;
   players: RankedPlayer[];
 }
+
+/** A player in the Start/Sit tool, with the numbers the recommendation used. */
+export interface StartSitCandidate {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  injury?: InjuryInfo | null;
+  game?: GameInfo | null;
+  matchup?: MatchupRank | null;
+  projected?: number | null;
+  form?: number | null;
+  started_pct?: number | null;
+  rank?: number | null;
+  score?: number | null;
+  sources: number;
+  /** Why he cannot be recommended (an injury, a bye, no projection); null when he can. */
+  out?: string | null;
+}
+
+export interface StartSitComparison {
+  league_id: string;
+  week: number | null;
+  /** Best first. */
+  candidates: StartSitCandidate[];
+  /** The recommended player's id; null when nobody can be started. */
+  start: string | null;
+  close_call: boolean;
+  why: string;
+}
+
+export interface BestLineup {
+  league_id: string;
+  roster_id: number;
+  week: number | null;
+  lineup: { slot: string; player: StartSitCandidate | null }[];
+  projected: number;
+  current_projected: number;
+  changes: { start: StartSitCandidate; sit: StartSitCandidate; gain: number }[];
+  why: string;
+}

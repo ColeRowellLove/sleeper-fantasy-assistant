@@ -1,0 +1,241 @@
+import type { BestLineup, Dashboard, StartSitCandidate, StartSitComparison } from "../lib/api";
+import { leaguePath } from "../lib/league";
+import GameBadge from "./GameBadge";
+import InjuryBadge from "./InjuryBadge";
+import PlayerLink from "./PlayerLink";
+import PositionChip from "./PositionChip";
+
+const number = (n: number | null | undefined) =>
+  n === null || n === undefined ? "–" : n.toFixed(1);
+
+function PlayerCell({ c }: { c: StartSitCandidate }) {
+  return (
+    <>
+      <span className="player-name">
+        <PlayerLink playerId={c.player_id}>{c.name}</PlayerLink>
+      </span>
+      <span className="player-meta">
+        <PositionChip position={c.position} />
+        <span className="muted">{c.team ?? "FA"}</span>
+        <InjuryBadge injury={c.injury} />
+      </span>
+    </>
+  );
+}
+
+/**
+ * Start/Sit: the best lineup the roster allows and a side-by-side comparison for one spot. Both
+ * are plain GET forms, so they work without JavaScript and every result has its own link.
+ */
+export default function StartSitTool({
+  leagueId,
+  rosters,
+  rosterId,
+  picks,
+  week,
+  best,
+  comparison,
+}: {
+  leagueId: string;
+  rosters: Dashboard["rosters"];
+  rosterId: number;
+  picks: string[];
+  week: number | null;
+  best: BestLineup | null;
+  comparison: StartSitComparison | null;
+}) {
+  const roster = rosters.find((r) => r.roster_id === rosterId) ?? rosters[0];
+  const action = leaguePath(leagueId);
+  const weekField = week ? <input type="hidden" name="week" value={week} /> : null;
+  const choices = (roster?.players ?? []).filter((p) => p.status !== "ir" && p.status !== "taxi");
+
+  return (
+    <section aria-labelledby="startsit-heading">
+      <h2 id="startsit-heading">Start/Sit</h2>
+      <p className="note">
+        Compare players for a lineup spot or see the best lineup for the week. Projections use this
+        league&apos;s scoring.
+      </p>
+
+      <form method="get" action={action} className="players-controls">
+        <input type="hidden" name="tab" value="startsit" />
+        {weekField}
+        <label>
+          Team{" "}
+          <select name="roster" defaultValue={String(roster?.roster_id ?? "")}>
+            {rosters.map((r) => (
+              <option key={r.roster_id} value={r.roster_id}>
+                {r.team}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" className="btn">
+          Show team
+        </button>
+      </form>
+
+      {best && (
+        <section aria-labelledby="best-heading" className="card flush">
+          <h3 id="best-heading" className="depth-section-title">
+            Best lineup{best.week ? `, week ${best.week}` : ""}
+          </h3>
+          <p className="note">
+            {best.why} Projected {best.projected.toFixed(1)} against{" "}
+            {best.current_projected.toFixed(1)} for the current lineup.
+          </p>
+          <div className="players-scroll">
+            <table className="players pd-table">
+              <caption className="visually-hidden">Best projected lineup by slot</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Slot</th>
+                  <th scope="col">Player</th>
+                  <th scope="col">Opponent</th>
+                  <th scope="col" className="num">
+                    Proj
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {best.lineup.map((spot, i) => (
+                  <tr key={`${spot.slot}-${i}`}>
+                    <th scope="row">{spot.slot}</th>
+                    {spot.player ? (
+                      <>
+                        <td>
+                          <PlayerCell c={spot.player} />
+                        </td>
+                        <td>
+                          <GameBadge
+                            game={spot.player.game}
+                            matchup={spot.player.matchup}
+                            position={spot.player.position}
+                          />
+                        </td>
+                        <td className="num">{number(spot.player.projected)}</td>
+                      </>
+                    ) : (
+                      <td colSpan={3} className="muted">
+                        No one on this roster can fill this slot.
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {best.changes.length > 0 && (
+            <>
+              <h4 className="depth-section-title">Swaps to make</h4>
+              <ul className="startsit-changes">
+                {best.changes.map((c) => (
+                  <li key={`${c.start.player_id}-${c.sit.player_id}`}>
+                    Start <PlayerLink playerId={c.start.player_id}>{c.start.name}</PlayerLink> (
+                    {number(c.start.projected)}) over{" "}
+                    <PlayerLink playerId={c.sit.player_id}>{c.sit.name}</PlayerLink> (
+                    {number(c.sit.projected)}): +{c.gain.toFixed(1)} projected points
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
+      <form method="get" action={action} className="card startsit-compare">
+        <input type="hidden" name="tab" value="startsit" />
+        <input type="hidden" name="roster" value={roster?.roster_id} />
+        {weekField}
+        <fieldset>
+          <legend>Players to compare (pick two to six)</legend>
+          <ul className="startsit-picks">
+            {choices.map((p) => (
+              <li key={p.player_id}>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="pick"
+                    value={p.player_id}
+                    defaultChecked={picks.includes(p.player_id)}
+                  />{" "}
+                  {p.name} <span className="muted">{p.position ?? ""}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+        <button type="submit" className="btn">
+          Compare
+        </button>
+      </form>
+
+      {picks.length > 0 && picks.length < 2 && (
+        <p className="note" role="status">
+          Pick at least two players to compare.
+        </p>
+      )}
+
+      {comparison && (
+        <section aria-labelledby="compare-heading" className="card flush">
+          <h3 id="compare-heading" className="depth-section-title">
+            Recommendation
+          </h3>
+          <p className="startsit-why" role="status">
+            {comparison.why}
+          </p>
+          <div className="players-scroll">
+            <table className="players pd-table">
+              <caption className="visually-hidden">Players compared, best first</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Player</th>
+                  <th scope="col">Opponent</th>
+                  <th scope="col" className="num">
+                    Proj
+                  </th>
+                  <th scope="col" className="num">
+                    Last 3 avg
+                  </th>
+                  <th scope="col" className="num">
+                    Consensus rank
+                  </th>
+                  <th scope="col">Verdict</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.candidates.map((c) => (
+                  <tr key={c.player_id}>
+                    <th scope="row" className="player-cell">
+                      <PlayerCell c={c} />
+                    </th>
+                    <td>
+                      <GameBadge
+                        game={c.game}
+                        matchup={c.matchup}
+                        position={c.position}
+                        conditions="compact"
+                      />
+                    </td>
+                    <td className="num">{number(c.projected)}</td>
+                    <td className="num">{number(c.form)}</td>
+                    <td className="num">{c.rank ?? "–"}</td>
+                    <td>
+                      {c.player_id === comparison.start
+                        ? comparison.close_call
+                          ? "Start (close call)"
+                          : "Start"
+                        : c.out
+                          ? `Can't start: ${c.out}`
+                          : "Sit"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </section>
+  );
+}
