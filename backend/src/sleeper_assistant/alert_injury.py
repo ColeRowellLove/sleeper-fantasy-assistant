@@ -156,7 +156,7 @@ def _where_is_next_up(nu: NextUp, team: str, roster: RosterRow) -> str:
     return f"Next on the {team} depth chart: {nu.name} ({owner})."
 
 
-def _suggested_switch(
+def suggested_switch(
     session: Session, spot: Spot, nu: NextUp | None, projections: dict[str, float]
 ) -> tuple[str | None, bool]:
     """The switch to make, and whether it names the next man up (so he is not said twice).
@@ -182,7 +182,7 @@ def _suggested_switch(
                 True,
             )
     if not options:
-        return "Nobody on your bench fits that slot.", False
+        return "Nobody on your bench can play that slot this week.", False
     if best is None:
         return None, False  # candidates exist but none has a projection: say nothing, not a guess
     return (
@@ -210,7 +210,6 @@ def _advice(  # noqa: PLR0913, PLR0917
     options = [
         alert_advice.option(p, "bench", projections.get(p.player_id))
         for p in _bench_options(session, spot)
-        if p.team not in byes
     ]
     positions = eligible_positions(spot.slot, spot.out.position or "")
     options += alert_advice.free_agents(session, league, week, taken, set(positions), byes)
@@ -286,8 +285,8 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                 mine = projections.get(player.player_id)
                 where = f"He starts at {slot} for you" + (f" in week {week}" if week else "")
                 sentences.append(where + (f" (projected {mine:.1f})." if mine is not None else "."))
-                switch, said_next_up = _suggested_switch(
-                    session, Spot(roster, slot, player), nu, projections
+                switch, said_next_up = suggested_switch(
+                    session, Spot(roster, slot, player, frozenset(byes)), nu, projections
                 )
                 if switch:
                     sentences.append(switch)
@@ -310,8 +309,8 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                 and needs_advice(session, league.league_id, roster.roster_id, key, now)
             ):
                 advice = _advice(
-                    session, league, Spot(roster, slot, player), nu, projections, week, slots,
-                    byes, taken,
+                    session, league, Spot(roster, slot, player, frozenset(byes)), nu, projections,
+                    week, slots, byes, taken,
                 )  # fmt: skip
             raised.append(
                 NewAlert(

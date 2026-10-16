@@ -8,16 +8,25 @@ cannot tell a bye from missing data.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.alert_injury import Spot, _suggested_switch
+from sleeper_assistant.alert_injury import Spot, suggested_switch
 from sleeper_assistant.alerts import NewAlert, register
 from sleeper_assistant.dashboard import current_week, games_for_week, starter_slots
-from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow
+from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow
 from sleeper_assistant.projections import projected_points
+
+TELL_BEFORE = timedelta(days=3)  # said this long before the week's first game, not the week before
+
+
+def _first_game(session: Session, season: str, week: int) -> date | None:
+    days = session.scalars(
+        select(NflGameRow.game_date).where(NflGameRow.season == season, NflGameRow.week == week)
+    ).all()
+    return min((date.fromisoformat(d[:10]) for d in days if d), default=None)
 
 
 @register("bye_week")
@@ -25,6 +34,9 @@ def detect_bye_week(session: Session, league: LeagueRow, now: datetime) -> list[
     week = current_week(session, league.season)
     if not week:
         return []
+    first = _first_game(session, league.season, week)
+    if first is None or now.date() < first - TELL_BEFORE:
+        return []  # too early to be useful: the lineup is not being set yet
     byes = frozenset(
         team for team, game in games_for_week(session, league.season, week).items()
         if game.state == "bye"
@@ -56,7 +68,7 @@ def detect_bye_week(session: Session, league: LeagueRow, now: datetime) -> list[
             sentences = [f"{name} ({player.team}) is on a bye in week {week}."]
             if slot:
                 sentences.append(f"He is in your {slot} spot and will score nothing.")
-                switch, _ = _suggested_switch(
+                switch, _ = suggested_switch(
                     session, Spot(roster, slot, player, byes), None, projections
                 )
                 if switch:

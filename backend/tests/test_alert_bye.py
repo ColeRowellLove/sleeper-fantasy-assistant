@@ -16,6 +16,7 @@ from sleeper_assistant.db import (
     utcnow,
 )
 
+SOON = (utcnow() + timedelta(days=2)).date().isoformat()
 DETECTORS = {"bye_week": alert_bye.detect_bye_week}
 
 
@@ -39,7 +40,7 @@ def _setup(session: Session, games: bool = True) -> LeagueRow:
     if games:  # SF and DAL play; SEA and DEN are on a bye
         session.add(
             NflGameRow(game_id="g", season="2026", week=7, home="SF", away="DAL",
-                       game_date="2026-10-25", status="pre_game")
+                       game_date=SOON, status="pre_game")
         )  # fmt: skip
         session.add(
             NflGameRow(game_id="h", season="2026", week=8, home="SEA", away="DEN",
@@ -79,6 +80,29 @@ def test_a_starter_on_a_bye_is_told_once_with_a_replacement(session: Session) ->
 def test_nobody_is_told_without_a_schedule_or_without_a_starter_on_a_bye(session: Session) -> None:
     _setup(session, games=False)
     assert _run(session) == 0  # no games: cannot tell a bye from missing data
+
+
+def test_nothing_is_said_more_than_three_days_before_the_first_game(session: Session) -> None:
+    _setup(session)
+    game = session.get(NflGameRow, "g")
+    assert game is not None
+    game.game_date = (utcnow() + timedelta(days=6)).date().isoformat()
+    session.commit()
+    assert _run(session) == 0
+    game.game_date = (utcnow() + timedelta(days=3)).date().isoformat()
+    session.commit()
+    assert _run(session) == 1
+
+
+def test_when_nobody_on_the_bench_can_play_the_alert_says_so(session: Session) -> None:
+    _setup(session)
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    roster.players = ["rb_bye", "wr", "rb_bye2"]  # the only other back is also on a bye
+    session.commit()
+    assert _run(session) == 1
+    why = session.query(AlertRow).one().why
+    assert "Nobody on your bench can play that slot this week." in why
 
 
 def test_a_bench_player_on_a_bye_is_not_news(session: Session) -> None:
