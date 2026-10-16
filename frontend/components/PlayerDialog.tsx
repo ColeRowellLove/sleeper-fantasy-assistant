@@ -176,13 +176,8 @@ export default function PlayerDialog({
   );
   const allProjected =
     detail.weeks.length > 0 &&
-    detail.weeks.every(
-      (w) => w.projected !== null && w.projected !== undefined,
-    );
-  const projectedTotal = detail.weeks.reduce(
-    (sum, w) => sum + (w.projected ?? 0),
-    0,
-  );
+    detail.weeks.every((w) => w.projected !== null && w.projected !== undefined);
+  const projectedTotal = detail.weeks.reduce((sum, w) => sum + (w.projected ?? 0), 0);
 
   return (
     <dialog
@@ -214,13 +209,11 @@ export default function PlayerDialog({
                 <span className="muted">Free agent</span>
               )}
               <InjuryBadge injury={detail.injury} />
-              <GameBadge game={detail.game} />
+              <GameBadge game={detail.game} matchup={detail.matchup} position={detail.position} />
             </p>
             <p className="player-dialog-owner">
               {detail.owner_team === null || detail.owner_team === undefined ? (
-                <span className="status-available">
-                  Available in this league
-                </span>
+                <span className="status-available">Available in this league</span>
               ) : (
                 <span className="status-owned">On {detail.owner_team}</span>
               )}
@@ -268,8 +261,7 @@ export default function PlayerDialog({
             <div className="setting-row">
               <dt>Points per game</dt>
               <dd>
-                {detail.season.average === null ||
-                detail.season.average === undefined
+                {detail.season.average === null || detail.season.average === undefined
                   ? "–"
                   : detail.season.average.toFixed(1)}
               </dd>
@@ -283,9 +275,7 @@ export default function PlayerDialog({
               <dd>{count(detail.drops)}</dd>
             </div>
           </dl>
-          <p className="note">
-            Points use this league&apos;s scoring, and every stat counts.
-          </p>
+          <p className="note">Points use this league&apos;s scoring, and every stat counts.</p>
         </section>
 
         {detail.projected && (
@@ -294,9 +284,7 @@ export default function PlayerDialog({
             <p className="pd-projected">
               <strong>{detail.projected.points.toFixed(1)}</strong> points
             </p>
-            <p className="note">
-              {describeStats(detail.projected.stats, detail.position)}
-            </p>
+            <p className="note">{describeStats(detail.projected.stats, detail.position)}</p>
           </section>
         )}
 
@@ -339,13 +327,9 @@ export default function PlayerDialog({
                   {detail.weeks.map((w) => (
                     <tr key={w.week}>
                       <th scope="row">{w.week}</th>
+                      <td>{w.team ? <TeamLink team={w.team}>{w.team}</TeamLink> : "–"}</td>
                       <td>
-                        {w.team ? <TeamLink team={w.team}>{w.team}</TeamLink> : "–"}
-                      </td>
-                      <td>
-                        {w.opponent
-                          ? `${w.home === false ? "at" : "vs"} ${w.opponent}`
-                          : "–"}
+                        {w.opponent ? `${w.home === false ? "at" : "vs"} ${w.opponent}` : "–"}
                       </td>
                       <td className="num num-col">{w.points.toFixed(1)}</td>
                       {showProjections && (
@@ -377,9 +361,7 @@ export default function PlayerDialog({
                     <th scope="row" colSpan={3}>
                       Season total
                     </th>
-                    <td className="num num-col">
-                      {detail.season.points.toFixed(1)}
-                    </td>
+                    <td className="num num-col">{detail.season.points.toFixed(1)}</td>
                     {showProjections && (
                       <>
                         <td className="num num-col">
@@ -387,11 +369,7 @@ export default function PlayerDialog({
                         </td>
                         <td className="num num-col">
                           {allProjected && detail.weeks.every((w) => w.final)
-                            ? projectionDelta(
-                                detail.season.points,
-                                projectedTotal,
-                                "played",
-                              )
+                            ? projectionDelta(detail.season.points, projectedTotal, "played")
                             : "–"}
                         </td>
                       </>
@@ -407,9 +385,7 @@ export default function PlayerDialog({
                       <th scope="row" colSpan={3}>
                         Projected, week {detail.projected.week}
                       </th>
-                      <td className="num num-col">
-                        {detail.projected.points.toFixed(1)}
-                      </td>
+                      <td className="num num-col">{detail.projected.points.toFixed(1)}</td>
                       {showProjections && (
                         <>
                           <td className="num num-col">–</td>

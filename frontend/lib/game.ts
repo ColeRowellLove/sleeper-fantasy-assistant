@@ -1,4 +1,4 @@
-import type { GameInfo } from "./api";
+import type { GameInfo, MatchupRank } from "./api";
 
 /** "Sun, Sep 20" from an ISO date. Always UTC so server and browser render the same text. */
 export function formatGameDate(date: string | null): string | null {
@@ -58,7 +58,11 @@ export function gameLabel(
   const versus = game.opponent ? `${game.home === false ? "at" : "vs"} ${game.opponent}` : null;
   const date = kickoffText ?? formatGameDate(game.date);
   if (game.state === "upcoming") {
-    return { state: "upcoming", text: "Upcoming", detail: [date, versus].filter(Boolean).join(" ") };
+    return {
+      state: "upcoming",
+      text: "Upcoming",
+      detail: [date, versus].filter(Boolean).join(" "),
+    };
   }
   const score = scoreText(game);
   if (game.state === "live") {
@@ -67,4 +71,49 @@ export function gameLabel(
     return { state: "live", text: "Live", detail: where || versus };
   }
   return { state: "final", text: "Played", detail: score ? `Final, ${score}` : versus };
+}
+
+/** 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 11 -> "11th", 22 -> "22nd". */
+export function ordinal(n: number): string {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  const suffix = { 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th";
+  return `${n}${suffix}`;
+}
+
+export interface MatchupText {
+  /** Short visible text: "3rd". */
+  text: string;
+  /** The full sentence for a tooltip. */
+  description: string;
+  /** A short phrase for screen readers: "JAX ranks 3rd against RBs". */
+  spoken: string;
+}
+
+/**
+ * How hard the opponent is for a position, e.g. "3rd" for JAX against RBs. Rank 1 is the best
+ * matchup: the defense that allows the most fantasy points to the position, or, for a team
+ * defense (DEF), the offense that scores the fewest.
+ */
+export function matchupText(
+  matchup: MatchupRank | null | undefined,
+  position: string | null | undefined,
+): MatchupText | null {
+  if (!matchup) return null;
+  const rank = ordinal(matchup.rank);
+  const games = matchup.games === 1 ? "1 game" : `${matchup.games} games`;
+  const numbers = `of ${matchup.teams} teams (${matchup.points} per game over ${games})`;
+  if (matchup.side === "offense") {
+    return {
+      text: rank,
+      spoken: `${matchup.opponent} offense ranks ${rank} easiest for a defense`,
+      description: `${matchup.opponent} scores the ${rank} fewest fantasy points ${numbers}`,
+    };
+  }
+  const spot = position ? ` to ${position}s` : "";
+  return {
+    text: rank,
+    spoken: `${matchup.opponent} ranks ${rank} against ${position ? `${position}s` : "the position"}`,
+    description: `${matchup.opponent} allows the ${rank} most fantasy points${spot} ${numbers}`,
+  };
 }

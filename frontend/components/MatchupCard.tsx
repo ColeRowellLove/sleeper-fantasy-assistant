@@ -202,7 +202,7 @@ function Cell({
                 <TeamLink team={player.team}>{player.team}</TeamLink>
               </span>
             )}
-            <GameBadge game={player.game} />
+            <GameBadge game={player.game} matchup={player.matchup} position={player.position} />
           </span>
         </span>
       </div>
@@ -254,13 +254,23 @@ export default function MatchupCard({
           {a.team} versus {b.team}
         </h3>
         <div className="score-row">
-          <TeamScore team={a} state={state} isWinner={winner === a.roster_id} isMe={a.roster_id === myRosterId}
-            leagueId={leagueId} />
+          <TeamScore
+            team={a}
+            state={state}
+            isWinner={winner === a.roster_id}
+            isMe={a.roster_id === myRosterId}
+            leagueId={leagueId}
+          />
           <span className="vs" aria-hidden="true">
             vs
           </span>
-          <TeamScore team={b} state={state} isWinner={winner === b.roster_id} isMe={b.roster_id === myRosterId}
-            leagueId={leagueId} />
+          <TeamScore
+            team={b}
+            state={state}
+            isWinner={winner === b.roster_id}
+            isMe={b.roster_id === myRosterId}
+            leagueId={leagueId}
+          />
         </div>
         <WinBar a={a} b={b} state={state} />
       </header>

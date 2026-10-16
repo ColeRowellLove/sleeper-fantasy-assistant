@@ -68,6 +68,8 @@ export interface PlayerDetail {
   team: string | null;
   injury?: InjuryInfo | null;
   game?: GameInfo | null;
+  /** This week's opponent against his position. */
+  matchup?: MatchupRank | null;
   bio?: Record<string, unknown> | null;
   owner_roster_id?: number | null;
   owner_team?: string | null;
@@ -203,6 +205,19 @@ export interface GameInfo {
   home: boolean | null;
 }
 
+/** How the opponent's defense ranks against a player's position: 1 = allows the most points. */
+export interface MatchupRank {
+  opponent: string;
+  rank: number;
+  teams: number;
+  /** Fantasy points per game: allowed to the position, or scored by the offense a defense faces. */
+  points: number;
+  /** "offense" for a team defense: ranked by the points the opposing offense scores. */
+  side?: "defense" | "offense";
+  /** Completed games counted. */
+  games: number;
+}
+
 export interface InjuryInfo {
   status: string;
   body_part: string | null;
@@ -225,6 +240,8 @@ export interface RosterPlayer {
   points?: number | null;
   /** The projection frozen before kickoff (`projected` is live: the score once the game is over). */
   projected_pregame?: number | null;
+  /** The opponent's defense rank against his position; null/absent on a bye or without data. */
+  matchup?: MatchupRank | null;
 }
 
 export interface LineupPlayer {
@@ -242,6 +259,8 @@ export interface LineupPlayer {
   projection_missing?: boolean;
   /** The projection frozen before kickoff (`projected` is live: the score once the game is over). */
   projected_pregame?: number | null;
+  /** The opponent's defense rank against his position; null/absent on a bye or without data. */
+  matchup?: MatchupRank | null;
 }
 
 export interface TeamLineup {
@@ -276,7 +295,7 @@ export interface Dashboard {
     roster_id: number;
     team: string;
     owner_id: string | null;
-      players: RosterPlayer[];
+    players: RosterPlayer[];
   }[];
   rules: ConnectedLeague["rules"];
 }
