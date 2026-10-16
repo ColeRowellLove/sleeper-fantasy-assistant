@@ -207,6 +207,18 @@ export interface StandingsRow {
   streak?: string | null;
 }
 
+/** Who has the ball and where, for a game in progress (ESPN's live scoreboard). */
+export interface GameSituation {
+  /** The team code with the ball. */
+  possession?: string | null;
+  /** "1st & 10" */
+  down_distance?: string | null;
+  /** "DEN 35": the yard line and the side of the field. */
+  ball_on?: string | null;
+  /** The offense is inside the opponent's 20. */
+  red_zone?: boolean;
+}
+
 /** The setting of a game, from the player's team's side. Any part can be missing. */
 export interface GameConditions {
   roof?: string | null;
@@ -238,6 +250,8 @@ export interface GameInfo {
   opponent: string | null;
   home: boolean | null;
   conditions?: GameConditions | null;
+  /** Only while the game is live and ESPN reports it. */
+  situation?: GameSituation | null;
 }
 
 /** How the opponent's defense ranks against a player's position: 1 = allows the most points. */

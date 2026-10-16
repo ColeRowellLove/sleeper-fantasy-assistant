@@ -1,5 +1,6 @@
 import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
 import { depthRows, groupSlots, recordText, SLIDE_FROM, TEAM_NAMES } from "../lib/depth";
+import { unitOnField, type Unit } from "../lib/game";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import TeamLogo from "./TeamLogo";
@@ -106,6 +107,12 @@ export default function TeamDepthChart({
   const Wrapper = landmark ? "section" : "div";
   const sections = groupSlots(data.groups);
   const name = TEAM_NAMES[data.team] ?? data.team;
+  // while the game is live, the unit on the field is marked in words on its sections
+  const onField = unitOnField(data.game, data.team);
+  const marker = (unit: Unit | null) =>
+    unit !== null && unit === onField ? <span className="unit-on">On the field now</span> : null;
+  // fantasy positions are the offense's; the other sections are named by the chart's own keys
+  const SECTION_UNITS: Record<string, Unit> = { "offense-line": "offense", defense: "defense" };
   const updated = data.updated_at ? new Date(data.updated_at) : null;
 
   return (
@@ -136,13 +143,19 @@ export default function TeamDepthChart({
         <>
           {sections.skill.length > 0 && (
             <div className="card flush">
-              <h3 className="depth-section-title">Fantasy positions</h3>
+              <h3 className="depth-section-title">
+                Fantasy positions
+                {marker("offense")}
+              </h3>
               <SlotTable slots={sections.skill} myRosterId={myRosterId} title="Fantasy positions" />
             </div>
           )}
           {sections.more.map((section) => (
             <details key={section.key} className="card flush depth-details">
-              <summary>{section.title}</summary>
+              <summary>
+                {section.title}
+                {marker(SECTION_UNITS[section.key] ?? null)}
+              </summary>
               <SlotTable slots={section.slots} myRosterId={myRosterId} title={section.title} />
             </details>
           ))}

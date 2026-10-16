@@ -37,6 +37,15 @@ _STATES: dict[str, Literal["upcoming", "live", "final"]] = {
 }
 
 
+class Situation(BaseModel):
+    """Who has the ball and where, for a game in progress."""
+
+    possession: str | None = None  # the team code with the ball
+    down_distance: str | None = None  # "1st & 10"
+    ball_on: str | None = None  # "DEN 35": the yard line and the side of the field
+    red_zone: bool = False  # the offense is inside the opponent's 20
+
+
 class LiveGame(BaseModel):
     week: int | None
     home: str
@@ -47,6 +56,7 @@ class LiveGame(BaseModel):
     detail: str | None = None  # ESPN's short text: "2:24 - 2nd", "Halftime", "Final", "Final/OT"
     home_score: int | None = None
     away_score: int | None = None
+    situation: Situation | None = None  # only while the game is live and ESPN reports it
 
 
 def _code(value: Any) -> str | None:
@@ -60,6 +70,51 @@ def _score(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _text(value: Any) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _between_plays(detail: Any) -> bool:
+    """Halftime and the end of a quarter: ESPN may leave the last possession in place."""
+    return isinstance(detail, str) and any(word in detail.lower() for word in ("half", "end"))
+
+
+def parse_situation(competition: dict[str, Any], sides: dict[str, Any]) -> Situation | None:
+    """The ball, down and red zone from a live competition's ``situation`` block.
+
+    The key names are ESPN's (``possession`` is a team id, ``shortDownDistanceText``,
+    ``possessionText``, ``isRedZone``) but the block is undocumented and was not checked against a
+    live game when this was written, so every part is read defensively: a missing or oddly typed key
+    is simply left out, and a block with nothing usable gives None.
+    """
+    block = competition.get("situation")
+    if not isinstance(block, dict):
+        return None
+    by_id: dict[str, str] = {}  # ESPN team id -> team code
+    for side in sides.values():
+        team = side.get("team") if isinstance(side, dict) else None
+        code = _code(team.get("abbreviation")) if isinstance(team, dict) else None
+        if code and isinstance(team, dict) and team.get("id") is not None:
+            by_id[str(team["id"])] = code
+    codes = set(by_id.values())
+    ball_on = _text(block.get("possessionText"))
+    possession = by_id.get(str(block.get("possession")))
+    if ball_on:
+        side, _, rest = ball_on.partition(" ")
+        ball_code = _code(side)
+        if ball_code in codes:  # "WSH 35" is written with the codes the rest of the app uses
+            ball_on = f"{ball_code} {rest}".strip()
+    down = _text(block.get("shortDownDistanceText")) or _text(block.get("downDistanceText"))
+    red_zone = block.get("isRedZone") is True
+    if possession is None and down is None and ball_on is None and not red_zone:
+        if (
+            block
+        ):  # ESPN sent a situation but nothing in it was readable: the shape may have changed
+            log.warning("could not read the ESPN situation block: keys %s", sorted(block))
+        return None
+    return Situation(possession=possession, down_distance=down, ball_on=ball_on, red_zone=red_zone)
 
 
 def parse_scoreboard(payload: Any) -> list[LiveGame]:
@@ -99,6 +154,9 @@ def parse_scoreboard(payload: Any) -> list[LiveGame]:
                 detail=detail if isinstance(detail, str) else None,
                 home_score=_score(sides["home"].get("score")),
                 away_score=_score(sides["away"].get("score")),
+                situation=parse_situation(competition, sides)
+                if state == "live" and not _between_plays(detail)
+                else None,
             )
         )
     return games

@@ -14,7 +14,14 @@ from sleeper_assistant import live
 from sleeper_assistant.dashboard import games_for_week
 from sleeper_assistant.db import NflGameRow
 from sleeper_assistant.kickoffs import parse_scores, sync_kickoffs
-from sleeper_assistant.live import LiveGame, current_games, describe, parse_scoreboard, window_open
+from sleeper_assistant.live import (
+    LiveGame,
+    Situation,
+    current_games,
+    describe,
+    parse_scoreboard,
+    window_open,
+)
 
 
 def _event(  # noqa: PLR0913
@@ -230,3 +237,116 @@ def test_scoreboard_fetch_asks_espn_once(monkeypatch: pytest.MonkeyPatch) -> Non
     )
     assert len(live.fetch_scoreboard()) == 3
     assert seen == [live.SCOREBOARD_URL]
+
+
+def _live_event(situation: Any, state: str = "in") -> dict[str, Any]:
+    event = _event("DEN", "SEA", state, period=2, clock="2:24", detail="2:24 - 2nd")
+    competition = event["competitions"][0]
+    competition["competitors"][0]["team"]["id"] = "7"  # DEN
+    competition["competitors"][1]["team"]["id"] = "26"  # SEA
+    if situation is not None:
+        competition["situation"] = situation
+    return {"events": [event]}
+
+
+def _situation(block: Any, state: str = "in") -> Situation | None:
+    return parse_scoreboard(_live_event(block, state))[0].situation
+
+
+def test_the_ball_down_and_distance_and_red_zone_are_read_from_a_live_game() -> None:
+    got = _situation(
+        {
+            "possession": "26", "shortDownDistanceText": "3rd & 4", "possessionText": "DEN 18",
+            "downDistanceText": "3rd & 4 at DEN 18", "isRedZone": True,
+        }
+    )  # fmt: skip
+    assert got == Situation(
+        possession="SEA", down_distance="3rd & 4", ball_on="DEN 18", red_zone=True
+    )
+
+
+def test_each_part_is_optional_and_the_long_down_text_is_the_fallback() -> None:
+    assert _situation({"possession": "7", "downDistanceText": "1st & 10 at DEN 35"}) == Situation(
+        possession="DEN", down_distance="1st & 10 at DEN 35", ball_on=None, red_zone=False
+    )
+    assert _situation({"isRedZone": False, "possessionText": "SEA 40"}) == Situation(
+        possession=None, down_distance=None, ball_on="SEA 40", red_zone=False
+    )
+
+
+def test_espn_codes_in_the_yard_line_are_written_the_way_the_app_does() -> None:
+    event = _live_event({"possession": "28", "possessionText": "WSH 35"})
+    competition = event["events"][0]["competitions"][0]
+    competition["competitors"][0]["team"].update({"abbreviation": "WSH", "id": "28"})
+    got = parse_scoreboard(event)[0].situation
+    assert got is not None and got.ball_on == "WAS 35" and got.possession == "WAS"
+
+
+def test_junk_empty_or_missing_situations_give_none_and_never_break_the_parse() -> None:
+    for block in (
+        None,
+        "text",
+        5,
+        [],
+        {},
+        {"possession": None},
+        {"isRedZone": "yes"},
+        {"possession": "999"},
+    ):
+        assert _situation(block) is None, block
+    assert len(parse_scoreboard(_live_event({"down": object()}))) == 1
+
+
+def test_a_game_that_is_not_live_has_no_situation() -> None:
+    for state in ("pre", "post"):
+        assert _situation({"possession": "7", "isRedZone": True}, state) is None
+
+
+def test_the_situation_reaches_both_teams_only_while_the_game_is_live(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session.add(_row(status="in_game"))
+    session.commit()
+    board = parse_scoreboard(
+        _live_event({"possession": "7", "possessionText": "SEA 35", "isRedZone": False})
+    )
+    out = _games(session, monkeypatch, board)
+    for team in ("DEN", "SEA"):
+        assert out[team].situation == Situation(
+            possession="DEN", down_distance=None, ball_on="SEA 35", red_zone=False
+        )
+    live.reset_cache()
+    quiet = _games(session, monkeypatch, [])  # ESPN has nothing: no situation is made up
+    assert quiet["DEN"].state == "live" and quiet["DEN"].situation is None
+
+
+def test_a_full_realistic_situation_block_is_read_and_extra_keys_are_ignored() -> None:
+    block = {
+        "down": 1, "yardLine": 82, "distance": 10, "isRedZone": True, "homeTimeouts": 3,
+        "awayTimeouts": 2, "possession": "7", "downDistanceText": "1st & 10 at SEA 18",
+        "shortDownDistanceText": "1st & 10", "possessionText": "SEA 18",
+        "lastPlay": {"id": "401", "type": {"id": "24", "text": "Rush"}, "text": "R.Smith up the middle"},
+    }  # fmt: skip
+    assert _situation(block) == Situation(
+        possession="DEN", down_distance="1st & 10", ball_on="SEA 18", red_zone=True
+    )
+
+
+@pytest.mark.parametrize("detail", ["Halftime", "End of 2nd Quarter", "End of 1st"])
+def test_between_plays_no_situation_is_shown_even_if_espn_leaves_the_last_one(detail: str) -> None:
+    event = _live_event({"possession": "7", "possessionText": "SEA 35", "isRedZone": True})
+    event["events"][0]["status"]["type"]["shortDetail"] = detail
+    assert parse_scoreboard(event)[0].situation is None
+
+
+def test_an_unreadable_situation_block_is_logged_not_silently_dropped(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("WARNING", logger="sleeper_assistant.live"):
+        assert _situation({"somethingNew": {"yard": 5}}) is None
+    assert "could not read the ESPN situation block" in caplog.text
+    assert "somethingNew" in caplog.text
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="sleeper_assistant.live"):
+        assert _situation({}) is None  # an empty block is just "nothing to say"
+    assert caplog.text == ""

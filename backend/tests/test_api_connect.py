@@ -199,6 +199,7 @@ def test_dashboard_after_connect(client: TestClient) -> None:
         "opponent": "CHI",
         "home": True,
         "conditions": None,  # nflverse has not been synced in this test
+        "situation": None,  # not live: no ball to place
     }
     bye = next(p for p in body["rosters"][0]["players"] if p["name"] == "Justin Jefferson")
     assert bye["game"]["state"] == "bye"  # MIN has no game in week 2

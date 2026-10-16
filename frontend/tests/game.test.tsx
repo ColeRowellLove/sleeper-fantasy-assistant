@@ -11,8 +11,11 @@ import {
   gameLabel,
   matchupText,
   ordinal,
+  playerUnitLabel,
   scoreText,
+  situationLabel,
   spreadText,
+  unitOnField,
 } from "../lib/game";
 import { expectNoA11yViolations } from "./a11y";
 
@@ -368,5 +371,101 @@ describe("game conditions", () => {
   it("shows nothing unless asked", () => {
     render(<GameBadge game={outdoors} />);
     expect(screen.queryByText(/freezing/)).not.toBeInTheDocument();
+  });
+});
+
+describe("live game situation", () => {
+  const live = (over: Partial<GameInfo> = {}): GameInfo => ({
+    state: "live",
+    date: "2026-10-18",
+    opponent: "SEA",
+    home: true,
+    team: "DEN",
+    situation: { possession: "DEN", down_distance: "3rd & 4", ball_on: "SEA 18", red_zone: true },
+    ...over,
+  });
+
+  it("says who has the ball, the down and where, in words", () => {
+    expect(situationLabel(live())).toEqual({
+      text: "DEN have the ball · 3rd & 4 · at SEA 18",
+      spot: "Ball on SEA 18",
+      redZone: true,
+    });
+    expect(situationLabel(live({ situation: { ball_on: "SEA 40" } }))).toEqual({
+      text: "Ball on SEA 40",
+      spot: "Ball on SEA 40",
+      redZone: false,
+    });
+    expect(situationLabel(live({ situation: { red_zone: true } }))).toEqual({
+      text: null,
+      spot: null,
+      redZone: true,
+    });
+  });
+
+  it("shows nothing at halftime or the end of a quarter, whatever ESPN last reported", () => {
+    expect(situationLabel(live({ period_text: "Halftime" }))).toBeNull();
+    expect(situationLabel(live({ period_text: "End of 2nd" }))).toBeNull();
+    expect(unitOnField(live({ period_text: "Halftime" }), "DEN")).toBeNull();
+    expect(playerUnitLabel(live({ period_text: "Halftime" }), "QB")).toBeNull();
+    expect(situationLabel(live({ period_text: "Q3 4:12" }))?.redZone).toBe(true);
+  });
+
+  it("says nothing unless the game is live and ESPN reported something", () => {
+    expect(situationLabel(live({ state: "final" }))).toBeNull();
+    expect(situationLabel(live({ state: "upcoming" }))).toBeNull();
+    expect(situationLabel(live({ situation: null }))).toBeNull();
+    expect(situationLabel(live({ situation: {} }))).toBeNull();
+    expect(situationLabel(live({ situation: { red_zone: false } }))).toBeNull();
+    expect(situationLabel(null)).toBeNull();
+  });
+
+  it("knows which unit is on the field: the offense with the ball, the defense without it", () => {
+    expect(unitOnField(live(), "DEN")).toBe("offense");
+    expect(unitOnField(live(), "SEA")).toBe("defense");
+    expect(unitOnField(live({ situation: { ball_on: "SEA 40" } }), "DEN")).toBeNull(); // ball unknown
+    expect(unitOnField(live({ state: "final" }), "DEN")).toBeNull();
+    expect(unitOnField(live(), null)).toBeNull();
+  });
+
+  it("labels a player whose unit is on the field and no one else", () => {
+    expect(playerUnitLabel(live(), "QB")).toBe("Offense on field");
+    expect(playerUnitLabel(live(), "WR")).toBe("Offense on field");
+    expect(playerUnitLabel(live(), "DEF")).toBeNull(); // his defense is on the bench
+    expect(playerUnitLabel(live(), "K")).toBeNull();
+    const defending = live({ team: "SEA" });
+    expect(playerUnitLabel(defending, "DEF")).toBe("Defense on field");
+    expect(playerUnitLabel(defending, "RB")).toBeNull(); // his offense is on the bench
+    expect(playerUnitLabel(defending, "LB")).toBe("Defense on field"); // individual defenders
+    expect(playerUnitLabel(live({ state: "upcoming" }), "QB")).toBeNull();
+  });
+
+  it("puts the full line on the game and only the unit, red zone and spot on a player's row", async () => {
+    const { rerender } = render(<GameBadge game={live()} position="RB" conditions="full" />);
+    expect(screen.getByText("Offense on field")).toBeInTheDocument();
+    expect(screen.getByText("Red zone")).toBeInTheDocument();
+    expect(screen.getByText("DEN have the ball · 3rd & 4 · at SEA 18")).toBeInTheDocument();
+    rerender(<GameBadge game={live()} position="RB" conditions="compact" />);
+    expect(screen.getByText("Ball on SEA 18")).toBeInTheDocument();
+    expect(screen.queryByText(/have the ball/)).not.toBeInTheDocument();
+    rerender(<GameBadge game={live()} position="RB" />);
+    expect(screen.getByText("Offense on field")).toBeInTheDocument();
+    expect(screen.getByText("Red zone")).toBeInTheDocument();
+    expect(screen.queryByText(/Ball on|have the ball/)).not.toBeInTheDocument();
+    await expectNoA11yViolations(<GameBadge game={live()} position="RB" conditions="full" />);
+  });
+
+  it("shows no red zone badge outside the red zone, and nothing for a game that is not live", () => {
+    const { rerender } = render(
+      <GameBadge
+        game={live({ situation: { possession: "DEN", red_zone: false } })}
+        position="QB"
+      />,
+    );
+    expect(screen.queryByText("Red zone")).not.toBeInTheDocument();
+    expect(screen.getByText("Offense on field")).toBeInTheDocument();
+    rerender(<GameBadge game={live({ state: "final" })} position="QB" />);
+    expect(screen.queryByText("Offense on field")).not.toBeInTheDocument();
+    expect(screen.queryByText(/have the ball/)).not.toBeInTheDocument();
   });
 });

@@ -18,7 +18,7 @@ from sleeper_assistant.db import (
     SleeperUserRow,
     UserLeagueRow,
 )
-from sleeper_assistant.live import LiveGame, current_games, describe, fraction_elapsed
+from sleeper_assistant.live import LiveGame, Situation, current_games, describe, fraction_elapsed
 from sleeper_assistant.live import window_open as live_window_open
 from sleeper_assistant.live_projection import live_projection
 from sleeper_assistant.matchup_rank import (
@@ -81,6 +81,7 @@ class GameInfo(BaseModel):
     opponent: str | None = None
     home: bool | None = None
     conditions: GameConditions | None = None
+    situation: Situation | None = None  # who has the ball and where, while the game is live
 
 
 class StandingsRow(BaseModel):
@@ -310,15 +311,16 @@ def games_for_week(session: Session, season: str, week: int) -> dict[str, GameIn
         if live is not None and game_state == "live":
             played = fraction_elapsed(live)
         home_cond, away_cond = _conditions(g)
+        situation = live.situation if live and game_state == "live" else None
         out[g.home] = GameInfo(
             state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.away, home=True,
             team=g.home, team_score=home_score, opponent_score=away_score, period_text=words,
-            elapsed=played, conditions=home_cond,
+            elapsed=played, conditions=home_cond, situation=situation,
         )  # fmt: skip
         out[g.away] = GameInfo(
             state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.home, home=False,
             team=g.away, team_score=away_score, opponent_score=home_score, period_text=words,
-            elapsed=played, conditions=away_cond,
+            elapsed=played, conditions=away_cond, situation=situation,
         )  # fmt: skip
     if week_games:  # without any games in the week we cannot tell a bye from missing data
         for team in all_teams - playing:
