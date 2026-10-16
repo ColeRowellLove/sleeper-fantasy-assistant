@@ -9,6 +9,7 @@ export const TABS = [
   { key: "games", label: "Games" },
   { key: "rankings", label: "Rankings" },
   { key: "alerts", label: "Alerts" },
+  { key: "waiver", label: "Waiver wire" },
   { key: "startsit", label: "Start/Sit" },
   { key: "accuracy", label: "Accuracy" },
   { key: "players", label: "Players" },

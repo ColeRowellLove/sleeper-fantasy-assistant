@@ -19,6 +19,7 @@ are skipped, and the first run before 9 am Eastern waits so the overnight syncs 
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -172,104 +173,152 @@ def _advice(  # noqa: PLR0913, PLR0917
     return alert_advice.advise("waiver.v1", facts, options, droppable)
 
 
+@dataclass(frozen=True)
+class Pickup:
+    """An available player and what he would add to one team."""
+
+    player: PlayerRow
+    projected: float
+    gain: float  # projected points over the player (or empty slot) he would replace
+    slot: str
+    over: str  # "over Second Receiver at WR" or "at an open RB spot"
+    adds: int | None  # Sleeper leagues that added him in the last day
+    out_starter: str | None  # the out starter ahead of him on his NFL depth chart
+
+
+class WaiverBoard:
+    """The week's available players with projections, ready to rank for any team of the league.
+
+    Built once per league and week; the waiver alert and the waiver wire page both rank through
+    ``pickups`` so they agree.
+    """
+
+    def __init__(self, session: Session, league: LeagueRow, week: int) -> None:
+        self.session, self.league, self.week = session, league, week
+        self.rosters = list(
+            session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
+        )
+        taken = {pid for r in self.rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+        projected_ids = set(
+            session.scalars(
+                select(PlayerProjectionRow.player_id).where(
+                    PlayerProjectionRow.season == league.season,
+                    PlayerProjectionRow.week == week,
+                )
+            )
+        )
+        self.has_projections = bool(projected_ids)
+        self.projections = projected_points(
+            session, league.season, week, league.scoring_settings, projected_ids
+        )
+        self.byes = {
+            t for t, g in games_for_week(session, league.season, week).items() if g.state == "bye"
+        }
+        self.players = {
+            p.player_id: p
+            for p in session.scalars(
+                select(PlayerRow).where(
+                    PlayerRow.player_id.in_(projected_ids | taken),
+                    PlayerRow.position.in_(POSITIONS),
+                )
+            )
+        }
+        self.free = [
+            p
+            for pid, p in self.players.items()
+            if pid not in taken
+            and pid in projected_ids
+            and self.playable(p)
+            and self.projections.get(pid, 0.0) > 0
+        ]
+        self.trends = {
+            t.player_id: t
+            for t in session.scalars(
+                select(PlayerTrendRow).where(
+                    PlayerTrendRow.player_id.in_([p.player_id for p in self.free])
+                )
+            )
+        }
+        self.slots = starter_slots(league)
+        self._depth: dict[str, dict[str, str]] = {}
+
+    def playable(self, p: PlayerRow) -> bool:
+        return (
+            p.team is not None
+            and p.team not in self.byes
+            and (p.injury_status or "") not in NOT_PLAYABLE
+        )
+
+    def lineup(self, roster: RosterRow) -> list[tuple[str, str]]:
+        """The team's best lineup from the players who could actually play this week."""
+        healthy = [
+            (pid, self.players[pid].position or "", self.projections.get(pid, 0.0))
+            for pid in roster.players
+            if pid in self.players
+            and pid not in roster.reserve
+            and pid not in roster.taxi
+            and self.playable(self.players[pid])
+        ]
+        return assign_lineup(self.slots, healthy)
+
+    def pickups(self, roster: RosterRow, lineup: list[tuple[str, str]]) -> list[Pickup]:
+        """Every available player who would help this team by ``MIN_GAIN`` or more, best first."""
+        found: list[Pickup] = []
+        for p in self.free:
+            slot, base, holder = replaced_by(self.slots, lineup, self.projections, p.position or "")
+            gain = self.projections[p.player_id] - base
+            if gain < MIN_GAIN:
+                continue
+            if holder is None:
+                over = f"at an open {slot} spot"
+            else:
+                over = f"over {self.players[holder].full_name or holder} at {slot}"
+            trend = self.trends.get(p.player_id)
+            found.append(
+                Pickup(
+                    p,
+                    self.projections[p.player_id],
+                    gain,
+                    slot,
+                    over,
+                    trend.adds if trend else None,
+                    _opening(self.session, self.league, p.team or "", self._depth).get(p.player_id),
+                )
+            )
+        found.sort(key=lambda x: (-x.gain, -x.projected, x.player.player_id))
+        return found
+
+
 @register("waiver_targets")
 def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) -> list[NewAlert]:
     waiver = waiver_date_if_tomorrow(league, now)
     week = coming_week(session, league.season, waiver) if waiver else None
     if waiver is None or week is None:
         return []
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
-    taken = {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
-    projected_ids = set(
-        session.scalars(
-            select(PlayerProjectionRow.player_id).where(
-                PlayerProjectionRow.season == league.season, PlayerProjectionRow.week == week
-            )
-        )
-    )
-    if not projected_ids:
+    board = WaiverBoard(session, league, week)
+    if not board.has_projections:
         return []  # nothing is projected yet: say nothing now, the next run tries again
-    projections = projected_points(
-        session, league.season, week, league.scoring_settings, projected_ids
-    )
-    byes = {t for t, g in games_for_week(session, league.season, week).items() if g.state == "bye"}
-    players = {
-        p.player_id: p
-        for p in session.scalars(
-            select(PlayerRow).where(
-                PlayerRow.player_id.in_(projected_ids | taken), PlayerRow.position.in_(POSITIONS)
-            )
-        )
-    }
-
-    def playable(p: PlayerRow) -> bool:
-        return (
-            p.team is not None
-            and p.team not in byes
-            and (p.injury_status or "") not in NOT_PLAYABLE
-        )
-
-    free = [
-        p
-        for pid, p in players.items()
-        if pid not in taken
-        and pid in projected_ids
-        and playable(p)
-        and projections.get(pid, 0.0) > 0
-    ]
-    trends = {
-        t.player_id: t
-        for t in session.scalars(
-            select(PlayerTrendRow).where(PlayerTrendRow.player_id.in_([p.player_id for p in free]))
-        )
-    }
-    slots = starter_slots(league)
-    depth_cache: dict[str, dict[str, str]] = {}
     when = f"{day_name(waiver)}, {waiver.strftime('%b')} {waiver.day}"
 
     raised: list[NewAlert] = []
-    for roster in rosters:
-        # the team's best lineup from the players who could actually play this week
-        healthy = [
-            (pid, players[pid].position or "", projections.get(pid, 0.0))
-            for pid in roster.players
-            if pid in players
-            and pid not in roster.reserve
-            and pid not in roster.taxi
-            and playable(players[pid])
-        ]
-        lineup = assign_lineup(slots, healthy)
-        scored: list[tuple[float, PlayerRow, str]] = []
-        for p in free:
-            slot, base, holder = replaced_by(slots, lineup, projections, p.position or "")
-            gain = projections[p.player_id] - base
-            if gain < MIN_GAIN:
-                continue
-            if holder is None:
-                over = f"at an open {slot} spot"
-            else:
-                over = f"over {players[holder].full_name or holder} at {slot}"
-            scored.append((gain, p, over))
-        scored.sort(key=lambda item: (-item[0], -projections[item[1].player_id], item[1].player_id))
-        top = scored[:TARGETS]
+    for roster in board.rosters:
+        lineup = board.lineup(roster)
+        top = board.pickups(roster, lineup)[:TARGETS]
         if not top:
             continue  # nothing useful for this team: no alert, nothing padded
         lines: list[str] = []
         targets: list[dict[str, object]] = []
-        for gain, p, over in top:
-            pid = p.player_id
+        for pick in top:
+            p, pid = pick.player, pick.player.player_id
             name = p.full_name or pid
             detail = (
-                f"({p.position}, {p.team}): projected {projections[pid]:.1f}, +{gain:.1f} {over}."
+                f"({p.position}, {p.team}): projected {pick.projected:.1f}, "
+                f"+{pick.gain:.1f} {pick.over}."
             )
-            adds = trends[pid].adds if pid in trends else None
-            if adds:
-                detail += f" Added in {adds:,} leagues in the last day."
-            out_starter = _opening(session, league, p.team or "", depth_cache).get(pid)
-            if out_starter:
-                detail += f" {out_starter} is out ahead of him."
+            if pick.adds:
+                detail += f" Added in {pick.adds:,} leagues in the last day."
+            if pick.out_starter:
+                detail += f" {pick.out_starter} is out ahead of him."
             lines.append(f"{name} {detail}")
             targets.append(
                 {
@@ -277,15 +326,25 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
                     "name": name,
                     "position": p.position,
                     "team": p.team,
-                    "projected": round(projections[pid], 1),
-                    "gain": round(gain, 1),
+                    "projected": round(pick.projected, 1),
+                    "gain": round(pick.gain, 1),
                     "detail": detail,
                     "line": f"{name} {detail}",
                 }
             )
         key = f"waiver_targets:{league.league_id}:{waiver.isoformat()}"
         advice = _advice(
-            session, league, roster, top, projections, slots, week, key, now, lineup, players
+            session,
+            league,
+            roster,
+            [(x.gain, x.player, x.over) for x in top],
+            board.projections,
+            board.slots,
+            week,
+            key,
+            now,
+            lineup,
+            board.players,
         )
         raised.append(
             NewAlert(

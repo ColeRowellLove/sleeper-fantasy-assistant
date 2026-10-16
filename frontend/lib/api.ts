@@ -513,6 +513,42 @@ export interface AlertItem {
   data?: Record<string, unknown>;
 }
 
+export interface WireSignal {
+  source: string;
+  /** Whether this source points to adding him. */
+  backs: boolean;
+  detail: string;
+}
+
+export interface WireEntry {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  projected: number;
+  gain: number;
+  slot: string;
+  over: string;
+  /** One line with the numbers behind it. */
+  reason: string;
+  /** ESPN-wide percent of leagues that roster him. */
+  owned: number | null;
+  /** How many of the signals back him. */
+  backing: number;
+  signals: WireSignal[];
+}
+
+export interface WaiverWireData {
+  league_id: string;
+  roster_id: number;
+  waiver_date: string;
+  waiver_day: string;
+  week: number | null;
+  entries: WireEntry[];
+  /** Why the list is empty, when it is. */
+  note: string | null;
+}
+
 export interface AlertsData {
   league_id: string;
   roster_id: number;
