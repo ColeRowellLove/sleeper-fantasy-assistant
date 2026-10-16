@@ -114,7 +114,7 @@ export default function PlayersTable({
 
       <div className="card flush">
         <div className="players-scroll">
-          <table className="players">
+          <table className="players players-list">
             <caption className="visually-hidden">
               Players in this league. Use the column buttons to sort.
             </caption>
@@ -167,6 +167,8 @@ export default function PlayersTable({
                             <PositionChip position={p.position} />
                             <span className="muted">{p.team ?? "FA"}</span>
                             <InjuryBadge injury={p.injury} />
+                          </span>
+                          <span className="player-meta player-game">
                             <GameBadge game={p.game} />
                           </span>
                         </span>
@@ -176,8 +178,8 @@ export default function PlayersTable({
                       {p.owner_team === null ? (
                         <span className="status-available">Available</span>
                       ) : (
-                        <span className="status-owned">
-                          {p.owner_team}
+                        <span className="status-owned" title={p.owner_team}>
+                          <span className="status-team">{p.owner_team}</span>
                           {mine && <span className="you">You</span>}
                         </span>
                       )}

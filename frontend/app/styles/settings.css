@@ -159,9 +159,22 @@ table.players {
 .player-meta {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
   font-size: 0.8rem;
   gap: 0.35rem;
+  /* every row has the same lines, so rows are one height however much a player has to show */
+  min-height: 1.6rem;
+  white-space: nowrap;
+}
+
+/* badges inside a player row stay on one line (their own rules let them wrap, which made rows uneven) */
+.player-meta .game,
+.player-meta .injury {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.players .player-cell {
+  min-width: 27rem;
 }
 
 .status-available {
@@ -170,7 +183,21 @@ table.players {
 }
 
 .status-owned {
+  align-items: center;
   color: var(--muted);
+  display: flex;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.status-team {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.players-list tbody tr {
+  height: 5.5rem; /* the pop-up's tables share .players but are not fixed-height lists */
 }
 
 .players-empty {
