@@ -33,10 +33,10 @@ from sleeper_assistant.db import (
     RosterRow,
 )
 from sleeper_assistant.players_view import _name
-from sleeper_assistant.projections import score_stats
+from sleeper_assistant.projections import score_projection, score_stats
 
 # volume numbers worth showing even when the league does not score them directly
-_VOLUME_KEYS = ("pass_att", "pass_cmp", "rush_att", "rec_tgt", "fga")
+_VOLUME_KEYS = ("pass_att", "pass_cmp", "rush_att", "rec_tgt", "fga", "pts_allow")
 
 
 class WeekLine(BaseModel):
@@ -168,7 +168,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         if row is not None:
             projected = ProjectedLine(
                 week=week_now,
-                points=score_stats(row.stats, scoring),
+                points=score_projection(row.stats, scoring),
                 stats=display_stats(row.stats, scoring),
             )
 

@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import NflGameRow, PlayerProjectionRow, utcnow
+from sleeper_assistant.defense import parse_tier, points_allowed_score
 from sleeper_assistant.sleeper import SleeperClient
 
 # a game in any other state has kicked off (or finished), so its projections are frozen
@@ -23,6 +24,20 @@ _OPEN_STATUS = "pre_game"
 def score_stats(stats: Mapping[str, float], scoring: Mapping[str, float]) -> float:
     """Fantasy points for a stat line under a league's scoring (stats the league ignores add 0)."""
     return round(sum(value * scoring[key] for key, value in stats.items() if key in scoring), 2)
+
+
+def score_projection(stats: Mapping[str, float], scoring: Mapping[str, float]) -> float:
+    """Projected fantasy points. A defense's points-allowed tiers are probability-weighted.
+
+    A defense's projection carries ``pts_allow`` (its projected points allowed) and flags the one
+    tier that figure lands in. That all-or-nothing flag is dropped and replaced by the expected
+    value over every tier (see ``defense``). Every other stat is scored as usual.
+    """
+    mean = stats.get("pts_allow")
+    if mean is None:
+        return score_stats(stats, scoring)
+    rest = {key: value for key, value in stats.items() if parse_tier(key) is None}
+    return round(score_stats(rest, scoring) + points_allowed_score(mean, scoring), 2)
 
 
 def sync_projections(session: Session, client: SleeperClient, season: str, week: int) -> int:
@@ -90,4 +105,4 @@ def projected_points(
             PlayerProjectionRow.player_id.in_(ids),
         )
     )
-    return {row.player_id: score_stats(row.stats, scoring) for row in rows}
+    return {row.player_id: score_projection(row.stats, scoring) for row in rows}

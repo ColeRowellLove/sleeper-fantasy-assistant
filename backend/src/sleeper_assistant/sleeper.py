@@ -94,10 +94,9 @@ class SleeperStatLine(BaseModel):
 SleeperProjection = SleeperStatLine
 
 
-# team defenses are left out of projections on purpose: no points-allowed projection (see #217)
-PROJECTION_POSITIONS = ("QB", "RB", "WR", "TE", "K")
-# actual results do include a defense's points allowed, so they are fetched for every position
-STATS_POSITIONS = (*PROJECTION_POSITIONS, "DEF")
+# a defense's row carries its projected points allowed (the betting line's implied opponent total)
+PROJECTION_POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
+STATS_POSITIONS = PROJECTION_POSITIONS
 
 
 class SleeperPlayer(BaseModel):
