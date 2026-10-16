@@ -192,31 +192,27 @@ describe("AlertsPanel", () => {
       />,
     );
     expect(screen.getByText(/No alerts yet for your team/)).toBeInTheDocument();
-    expect(screen.getByText(/comes the day before your league/)).toBeInTheDocument();
   });
 
-  it("says what alerts are sent, in words, and does not promise texts yet", () => {
-    render(
-      <AlertsPanel
-        data={{ ...data, alerts: [] }}
-        rosters={rosters}
-        leagueId="1"
-        myRosterId={1}
-        seen={null}
-      />,
+  it("says what alerts are sent: open when there are none, folded away when there are some", () => {
+    const empty = { ...data, alerts: [] };
+    const { rerender } = render(
+      <AlertsPanel data={empty} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />,
     );
-    const region = screen.getByRole("region", { name: "What alerts are sent" });
-    const items = within(region).getAllByRole("listitem");
+    const summary = screen.getByText("What alerts are sent");
+    const details = summary.closest("details") as HTMLElement;
+    expect(details).toHaveAttribute("open");
+    const items = within(details).getAllByRole("listitem");
     expect(items.map((li) => li.querySelector("strong")?.textContent)).toEqual([
       "A player on your team is ruled out.",
       "Waiver targets.",
+      "AI suggestion.",
       "Text messages.",
     ]);
-    expect(within(region).getByText(/Not on yet/)).toBeInTheDocument();
-    // the team picker and its button share one compact row
-    expect(screen.getByRole("button", { name: "Show alerts" }).closest("form")).toHaveClass(
-      "inline-form",
-    );
+    expect(within(details).getByText(/Not on yet/)).toBeInTheDocument();
+    expect(within(details).getByText(/9 am Eastern the day before/)).toBeInTheDocument();
+    rerender(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
+    expect(screen.getByText("What alerts are sent").closest("details")).not.toHaveAttribute("open");
   });
 
   it("has no accessibility violations", async () => {
@@ -348,6 +344,7 @@ describe("keyboard", () => {
         seen={null}
       />,
     );
+    await user.tab(); // the folded "What alerts are sent" disclosure
     await user.tab(); // the team picker
     await user.tab(); // its button
     await user.tab(); // the first alert's player link

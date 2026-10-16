@@ -18,11 +18,15 @@ import PlayerLink from "./PlayerLink";
 const ALERT_KINDS = [
   {
     title: "A player on your team is ruled out",
-    text: "We say where he starts and who to start instead: a healthy bench player, the next man up on his depth chart (even if you own him), or the best free agent.",
+    text: "We say where they start and who to start instead: a healthy bench player, the next player up on their depth chart (even if you own them), or the best free agent. It arrives soon after the app next checks for news.",
   },
   {
     title: "Waiver targets",
-    text: "The day before your league's waiver day, the best available pickups for your lineup, each with its projected points and how much it adds over the player it would replace.",
+    text: "From 9 am Eastern the day before your league's waiver day: the best available pickups for your lineup, each with its projected points and what it adds over the player it would replace.",
+  },
+  {
+    title: "AI suggestion",
+    text: "When an AI model is connected, a ruled-out or waiver alert also carries a suggested move, labelled as AI.",
   },
   {
     title: "Text messages",
@@ -120,10 +124,8 @@ export default function AlertsPanel({
         Things worth knowing about {mine ? "your team" : team}, from the last 14 days.
       </p>
 
-      <section aria-labelledby="alert-kinds-heading" className="alert-kinds">
-        <p id="alert-kinds-heading" className="alert-kinds-title">
-          What alerts are sent
-        </p>
+      <details className="alert-kinds" open={data.alerts.length === 0}>
+        <summary>What alerts are sent</summary>
         <ul>
           {ALERT_KINDS.map((k) => (
             <li key={k.title}>
@@ -131,7 +133,7 @@ export default function AlertsPanel({
             </li>
           ))}
         </ul>
-      </section>
+      </details>
 
       <form method="get" action={leaguePath(leagueId)} className="inline-form">
         <input type="hidden" name="tab" value="alerts" />
@@ -163,8 +165,7 @@ export default function AlertsPanel({
       {data.alerts.length === 0 ? (
         <p className="note">
           No alerts yet for {mine ? "your team" : team}. When one is raised it appears here, and the
-          last 14 days are kept. A waiver alert comes the day before your league&apos;s waiver day;
-          a ruled-out alert comes within minutes of a player being ruled out.
+          last 14 days are kept.
         </p>
       ) : (
         <ul className="alert-list">
