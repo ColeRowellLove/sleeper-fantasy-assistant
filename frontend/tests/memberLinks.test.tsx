@@ -172,17 +172,17 @@ describe("rosters opened from a link", () => {
   ];
 
   it("starts on the linked team instead of your own", () => {
-    render(<RostersPanel rosters={rosters} myRosterId={1} initialRosterId={3} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} initialRosterId={3} />);
     expect(screen.getByRole("combobox", { name: "Team" })).toHaveValue("3");
     expect(screen.getByText("Dad Player")).toBeInTheDocument();
     expect(screen.queryByText("Cole Player")).not.toBeInTheDocument();
   });
 
   it("starts on your team when there is no link, or the link is not one of the league's teams", () => {
-    const { unmount } = render(<RostersPanel rosters={rosters} myRosterId={1} />);
+    const { unmount } = render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
     expect(screen.getByRole("combobox", { name: "Team" })).toHaveValue("1");
     unmount();
-    render(<RostersPanel rosters={rosters} myRosterId={1} initialRosterId={99} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} initialRosterId={99} />);
     expect(screen.getByRole("combobox", { name: "Team" })).toHaveValue("1");
   });
 });

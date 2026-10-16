@@ -95,7 +95,8 @@ export default async function LeaguePage({
   ].filter(Boolean);
   const rankingsQuery = rankingParts.length > 0 ? `?${rankingParts.join("&")}` : "";
 
-  // the header needs the dashboard on every tab; lineups are only fetched for their own tab
+  // the header needs the dashboard on every tab; the other data is only fetched for the tab that
+  // shows it (the Rosters tab also takes the current week's lineups, for its team's matchup)
   const [
     dashboard,
     lineups,
@@ -109,9 +110,12 @@ export default async function LeaguePage({
     depthDialog,
   ] = await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
-    tab === "lineups" || tab === "rosters"
-      ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${tab === "rosters" ? "" : weekQuery}`)
-      : Promise.resolve(null),
+    tab === "lineups"
+      ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
+      : tab === "rosters"
+        ? // the matchup card is extra: if it cannot load, the roster still shows
+          getJson<Lineups>(`/api/leagues/${leagueId}/lineups`).catch(() => null)
+        : Promise.resolve(null),
     tab === "games"
       ? getJson<Games>(`/api/leagues/${leagueId}/games${weekQuery}`)
       : Promise.resolve(null),

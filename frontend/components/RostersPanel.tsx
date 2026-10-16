@@ -36,7 +36,7 @@ export default function RostersPanel({
   initialRosterId?: number | null;
   /** This week's lineups: the selected team's matchup and win chance come from here. */
   lineups?: Lineups | null;
-  leagueId?: string;
+  leagueId: string;
 }) {
   const ordered = [
     ...rosters.filter((r) => r.roster_id === myRosterId),
@@ -69,9 +69,7 @@ export default function RostersPanel({
         </select>
       </div>
 
-      {leagueId && (
-        <RosterMatchup lineups={lineups} rosterId={selected.roster_id} leagueId={leagueId} />
-      )}
+      <RosterMatchup lineups={lineups} rosterId={selected.roster_id} leagueId={leagueId} />
 
       {week !== null && (
         <p className="note">Game status is for NFL week {week}: upcoming, live, played, or bye.</p>

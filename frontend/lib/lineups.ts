@@ -32,14 +32,14 @@ export function matchupFor(
   lineups: Lineups | null | undefined,
   rosterId: number,
 ): { team: TeamLineup; opponent: TeamLineup | null; state: WeekState; week: number | null } | null {
-  if (!lineups) return null;
+  if (!lineups || lineups.week === null || lineups.current_week == null) return null; // no season yet
   const matchup = lineups.matchups.find((m) => m.teams.some((t) => t.roster_id === rosterId));
   const team = matchup?.teams.find((t) => t.roster_id === rosterId);
   if (!matchup || !team) return null;
   return {
     team,
     opponent: matchup.teams.find((t) => t.roster_id !== rosterId) ?? null,
-    state: lineups.week === null ? "played" : weekState(lineups.week, lineups.current_week),
+    state: weekState(lineups.week, lineups.current_week),
     week: lineups.week,
   };
 }

@@ -73,7 +73,7 @@ describe("RosterMatchup", () => {
       ],
     });
     render(<RosterMatchup lineups={none} rosterId={1} leagueId="9" />);
-    expect(screen.getByText(/too few projections/)).toBeInTheDocument();
+    expect(screen.getByText("No win chance to show yet.")).toBeInTheDocument();
     expect(screen.queryByText(/percent chance/)).not.toBeInTheDocument();
   });
 
@@ -90,6 +90,18 @@ describe("RosterMatchup", () => {
     expect(screen.queryByText(/to 41.25/)).not.toBeInTheDocument();
     rerender(<RosterMatchup lineups={lineups()} rosterId={3} leagueId="9" />);
     expect(screen.getByText("No opponent this week.")).toBeInTheDocument();
+  });
+
+  it("shows nothing before the season has a week, instead of a made-up result", () => {
+    const offseason = lineups({ week: null, current_week: null });
+    const { container } = render(<RosterMatchup lineups={offseason} rosterId={1} leagueId="9" />);
+    expect(container).toBeEmptyDOMElement();
+    expect(matchupFor(offseason, 1)).toBeNull();
+  });
+
+  it("does not label a team as winning or behind before the games are over", () => {
+    render(<RosterMatchup lineups={lineups()} rosterId={1} leagueId="9" />);
+    expect(screen.queryByText(/Winning|Behind/)).not.toBeInTheDocument();
   });
 
   it("renders nothing without lineups", () => {

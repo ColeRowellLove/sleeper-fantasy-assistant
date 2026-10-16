@@ -1,9 +1,22 @@
 import Link from "next/link";
+import { useId } from "react";
 
 import type { Lineups } from "../lib/api";
 import { rosterPath } from "../lib/league";
-import { formatPoints, matchupFor, winPercent, winnerId } from "../lib/lineups";
+import { formatPoints, matchupFor, winPercent, winnerId, type WeekState } from "../lib/lineups";
 import WinBar from "./WinBar";
+
+function resultText(
+  state: WeekState,
+  winner: number | null,
+  mine: string,
+  theirs: string,
+  mineId?: number,
+): string {
+  if (state !== "played") return "No win chance to show yet.";
+  if (winner === null) return "Finished level.";
+  return `${winner === mineId ? mine : theirs} won this week.`;
+}
 
 /**
  * The selected team's matchup this week above its roster: the opponent and the win chance as the
@@ -20,14 +33,15 @@ export default function RosterMatchup({
   rosterId: number;
   leagueId: string;
 }) {
+  const headingId = useId();
   const found = matchupFor(lineups, rosterId);
   if (!found) return null;
   const { team, opponent, state, week } = found;
   const heading = week !== null ? `Week ${week} matchup` : "Matchup";
   if (!opponent) {
     return (
-      <section aria-labelledby="roster-matchup" className="card roster-matchup">
-        <h3 id="roster-matchup">{heading}</h3>
+      <section aria-labelledby={headingId} className="card roster-matchup">
+        <h3 id={headingId}>{heading}</h3>
         <p className="note">No opponent this week.</p>
       </section>
     );
@@ -36,8 +50,8 @@ export default function RosterMatchup({
     winPercent(team.win_probability) !== null && winPercent(opponent.win_probability) !== null;
   const winner = state === "played" ? winnerId(team, opponent) : null;
   return (
-    <section aria-labelledby="roster-matchup" className="card roster-matchup">
-      <h3 id="roster-matchup">{heading}</h3>
+    <section aria-labelledby={headingId} className="card roster-matchup">
+      <h3 id={headingId}>{heading}</h3>
       <p className="roster-matchup-line">
         {team.team} vs{" "}
         <Link href={rosterPath(leagueId, opponent.roster_id)} className="member-link">
@@ -46,9 +60,6 @@ export default function RosterMatchup({
         {state !== "upcoming" && (
           <>
             : {formatPoints(team.points)} to {formatPoints(opponent.points)}
-            {winner !== null && (
-              <span className="win-tag">{winner === team.roster_id ? " Winning" : " Behind"}</span>
-            )}
           </>
         )}
       </p>
@@ -56,11 +67,7 @@ export default function RosterMatchup({
         <WinBar a={team} b={opponent} state={state} />
       ) : (
         <p className="note">
-          {state === "played"
-            ? winner === null
-              ? "Finished level."
-              : `${winner === team.roster_id ? team.team : opponent.team} won this week.`
-            : "No win chance yet: there are too few projections to say."}
+          {resultText(state, winner, team.team, opponent.team, team.roster_id)}
         </p>
       )}
     </section>
