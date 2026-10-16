@@ -4,7 +4,14 @@ import { Archivo, Instrument_Sans } from "next/font/google";
 
 import ThemeToggle from "../components/ThemeToggle";
 import { THEME_INIT } from "../lib/theme";
-import "./globals.css";
+import "./styles/tokens.css";
+import "./styles/shell.css";
+import "./styles/forms.css";
+import "./styles/league.css";
+import "./styles/rosters.css";
+import "./styles/lineups.css";
+import "./styles/widgets.css";
+import "./styles/settings.css";
 
 const display = Archivo({
   subsets: ["latin"],

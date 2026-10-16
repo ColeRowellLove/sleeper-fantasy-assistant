@@ -1,0 +1,58 @@
+/* League settings tab */
+.settings-grid {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  margin-top: 1.5rem;
+}
+
+.settings-scoring-heading {
+  font-size: 1.3rem;
+  margin: 2.5rem 0 0;
+}
+
+.setting-group {
+  padding: 1rem 1.25rem 0.5rem;
+}
+
+.setting-group h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.setting-rows {
+  display: block; /* the global dl rule makes a two-column grid, which breaks each row apart */
+  margin: 0;
+}
+
+.setting-row {
+  align-items: baseline;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.55rem 0;
+}
+
+.setting-row dt {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.setting-row dd {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  margin: 0;
+  text-align: right;
+}
+
+.setting-group.unused {
+  margin-top: 1rem;
+}
+
+.setting-group.unused summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
