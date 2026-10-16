@@ -8,7 +8,7 @@ import TeamDialog from "../components/TeamDialog";
 import TeamLink from "../components/TeamLink";
 import TeamPicker from "../components/TeamPicker";
 import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
-import { depthRows, groupSlots, isTeamCode, TEAM_CODES } from "../lib/depth";
+import { depthLabel, depthRows, groupSlots, isTeamCode, TEAM_CODES } from "../lib/depth";
 import { parseTab } from "../lib/league";
 import { expectNoA11yViolations } from "./a11y";
 
@@ -96,7 +96,21 @@ describe("depth helpers", () => {
     expect(isTeamCode(undefined)).toBe(false);
   });
 
-  it("makes a column for each depth level in use, at most four", () => {
+  it("labels any depth level", () => {
+    expect([1, 2, 3, 4, 11, 12, 21, 22, 23].map(depthLabel)).toEqual([
+      "Starter",
+      "2nd string",
+      "3rd string",
+      "4th string",
+      "11th string",
+      "12th string",
+      "21st string",
+      "22nd string",
+      "23rd string",
+    ]);
+  });
+
+  it("makes a column for each depth level in use, however deep", () => {
     const wide = [
       slot(
         "a",
@@ -109,6 +123,8 @@ describe("depth helpers", () => {
       "2nd string",
       "3rd string",
       "4th string",
+      "5th string",
+      "6th string",
     ]);
     const { rows } = depthRows([
       slot("a", "A", [p("Only", 1)]),
@@ -291,5 +307,44 @@ describe("team codes in rows open the pop-up", () => {
       "href",
       expect.stringContaining("depth=LAR"),
     );
+  });
+});
+
+describe("deep charts slide sideways", () => {
+  const deep: TeamDepth = {
+    ...data,
+    groups: [
+      {
+        group: "offense",
+        title: "Offense",
+        slots: [
+          slot(
+            "rb",
+            "Running back",
+            [1, 2, 3, 4, 5].map((d) => p(`Back ${d}`, d)),
+            {
+              skill: true,
+            },
+          ),
+        ],
+      },
+    ],
+  };
+
+  it("shows every level in a focusable, labelled scroll area with a hint", async () => {
+    render(<TeamDepthChart data={deep} myRosterId={null} />);
+    const area = screen.getByRole("group", {
+      name: "Fantasy positions depth, 5 levels, scrolls sideways",
+    });
+    expect(area).toHaveAttribute("tabindex", "0");
+    expect(within(area).getByRole("columnheader", { name: "5th string" })).toBeInTheDocument();
+    expect(within(area).getByText("Back 5")).toBeInTheDocument();
+    expect(screen.getByText("Slide sideways to see all 5 depth levels.")).toBeInTheDocument();
+    await expectNoA11yViolations(<TeamDepthChart data={deep} myRosterId={null} />);
+  });
+
+  it("does not suggest sliding for a short chart", () => {
+    render(<TeamDepthChart data={data} myRosterId={null} />);
+    expect(screen.queryByText(/Slide sideways/)).not.toBeInTheDocument();
   });
 });

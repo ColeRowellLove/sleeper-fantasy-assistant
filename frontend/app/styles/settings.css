@@ -400,6 +400,30 @@ table.depth-table {
   vertical-align: top;
 }
 
+/* deeper charts slide sideways; the position column stays put and every level keeps its width */
+.depth-scroll:focus-visible {
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: -2px;
+}
+
+.depth-table td {
+  min-width: 11rem;
+}
+
+.depth-table tbody th {
+  background: var(--surface);
+  left: 0;
+  position: sticky;
+  z-index: 1;
+}
+
+.depth-slide-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 0.5rem 1.25rem 0;
+}
+
 .depth-table thead th {
   color: var(--muted);
   font-size: 0.8rem;
