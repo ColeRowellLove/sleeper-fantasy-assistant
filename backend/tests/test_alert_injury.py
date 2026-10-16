@@ -286,3 +286,110 @@ def test_a_depth_chart_next_man_on_a_team_with_no_name_is_called_rostered(
     _run(session, league, now)
     why = next(a.why for a in session.scalars(select(AlertRow)) if a.roster_id == 1)
     assert "(on " in why and "None" not in why
+
+
+def _with_depth_chart(session: Session, next_id: str = "next") -> None:
+    chart = {"offense": {"rb": [
+        {"name": "Hurt Back", "sleeper_id": "hurt", "espn_id": "1", "injury": "Out"},
+        {"name": "Backup Back", "sleeper_id": next_id, "espn_id": "2", "injury": None},
+    ]}, "defense": {}, "special": {}}  # fmt: skip
+    session.add(TeamDepthChartRow(team="SF", source="ESPN", chart=chart, fetched_at=utcnow()))
+
+
+def _alert_text(session: Session, roster_id: int) -> str:
+    return next(a.why for a in session.scalars(select(AlertRow)) if a.roster_id == roster_id)
+
+
+def test_an_owned_next_man_up_on_the_bench_is_the_suggested_switch(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("next", "RB", "Backup Back"))
+    session.add(_proj("next", 60.0))
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    roster.players = ["hurt", "bench", "wr", "next"]  # the handcuff is on this team's bench
+    _with_depth_chart(session)
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = _alert_text(session, 1)
+    assert (
+        "Suggested switch: Backup Back (RB, next up on the SF depth chart and already on your "
+        "bench, projected 6.0)."
+    ) in why
+    assert "Best replacement" not in why  # the owned next man up wins over a higher-projected back
+    assert "Next on the SF depth chart" not in why  # said once, in the suggestion
+
+
+def test_a_next_man_up_on_another_team_or_available_is_named_and_the_best_bench_player_is_used(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    session.add(_player("next", "RB", "Backup Back"))
+    other = session.get(RosterRow, ("L1", 2))
+    assert other is not None
+    other.players = ["hurt", "star", "next"]  # the next man up belongs to Dad's team
+    _with_depth_chart(session)
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = _alert_text(session, 1)
+    assert "Best replacement on your bench: Bench Back (RB, projected 8.0)." in why
+    assert "Next on the SF depth chart: Backup Back (on Team 2)." in why
+
+
+def test_a_next_man_up_on_your_injured_reserve_cannot_be_the_switch(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("next", "RB", "Backup Back"))
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    roster.players = ["hurt", "bench", "wr", "next"]
+    roster.reserve = ["next"]
+    _with_depth_chart(session)
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = _alert_text(session, 1)
+    assert "Backup Back, who is on your injured reserve and cannot start yet." in why
+    assert "Best replacement on your bench: Bench Back" in why
+
+
+def test_an_unhealthy_or_misfitting_owned_next_man_up_falls_back_to_the_best_bench_player(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    session.add(_player("next", "RB", "Backup Back", status="Doubtful"))
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    roster.players = ["hurt", "bench", "wr", "next"]
+    _with_depth_chart(session)
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = _alert_text(session, 1)
+    assert "Suggested switch" not in why
+    assert "Best replacement on your bench: Bench Back" in why
+    assert "Next on the SF depth chart: Backup Back (already on your bench)." in why
+
+
+def test_a_bench_owner_is_told_when_the_next_man_up_is_also_on_their_bench(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    session.add(_player("next", "RB", "Backup Back"))
+    roster = session.get(RosterRow, ("L1", 2))
+    assert roster is not None
+    roster.players = [
+        "hurt",
+        "star",
+        "next",
+    ]  # Hurt Back is on the bench of team 2, so is the backup
+    _with_depth_chart(session)
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    assert "Backup Back (already on your bench)" in _alert_text(session, 2)

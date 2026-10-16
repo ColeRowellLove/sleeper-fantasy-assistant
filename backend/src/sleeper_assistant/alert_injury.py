@@ -14,6 +14,7 @@ are other events.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -96,8 +97,18 @@ def _replacement(
     )
 
 
-def _next_up(session: Session, league: LeagueRow, out: PlayerRow) -> str | None:
-    """Who is first in line behind him on the NFL depth chart, and whether he is free to add."""
+@dataclass(frozen=True)
+class NextUp:
+    """The man first in line on the NFL depth chart behind a player who is out."""
+
+    player_id: str | None
+    name: str
+    owner_roster_id: int | None  # the fantasy team in this league that has him; None = available
+    owner_team: str | None
+
+
+def _next_up(session: Session, league: LeagueRow, out: PlayerRow) -> NextUp | None:
+    """Who is first in line behind him on the NFL depth chart, and who owns him in this league."""
     if out.team is None:
         return None
     chart = build_team_depth(session, league, out.team)
@@ -107,12 +118,60 @@ def _next_up(session: Session, league: LeagueRow, out: PlayerRow) -> str | None:
                 continue
             for player in slot.players:
                 if player.next_up:
-                    if player.owner_roster_id is None:
-                        owner = "available"
-                    else:
-                        owner = f"on {player.owner_team}" if player.owner_team else "rostered"
-                    return f"Next on the {out.team} depth chart: {player.name} ({owner})."
+                    return NextUp(
+                        player.player_id, player.name, player.owner_roster_id, player.owner_team
+                    )
     return None
+
+
+def _where_is_next_up(nu: NextUp, team: str, roster: RosterRow) -> str:
+    """The depth chart sentence, aware of whose roster the next man up is on."""
+    if nu.owner_roster_id is None:
+        owner = "available"
+    elif nu.owner_roster_id == roster.roster_id:
+        if nu.player_id in roster.reserve:
+            return (
+                f"Next on the {team} depth chart is {nu.name}, who is on your injured reserve "
+                "and cannot start yet."
+            )
+        if nu.player_id in roster.taxi:
+            return (
+                f"Next on the {team} depth chart is {nu.name}, who is on your taxi squad "
+                "and cannot start yet."
+            )
+        owner = "already on your bench"
+    else:
+        owner = f"on {nu.owner_team}" if nu.owner_team else "rostered"
+    return f"Next on the {team} depth chart: {nu.name} ({owner})."
+
+
+def _suggested_switch(  # noqa: PLR0913, PLR0917
+    session: Session,
+    roster: RosterRow,
+    slot: str,
+    out: PlayerRow,
+    nu: NextUp | None,
+    projections: dict[str, float],
+) -> str | None:
+    """The switch to make: the owned next man up when he fits, otherwise the best bench player."""
+    if nu and nu.player_id and nu.owner_roster_id == roster.roster_id:
+        mine = session.get(PlayerRow, nu.player_id)
+        on_bench = nu.player_id not in set(roster.reserve) | set(roster.taxi) | set(roster.starters)
+        if (
+            mine is not None
+            and on_bench
+            and mine.team is not None
+            and mine.position in eligible_positions(slot, out.position or "")
+            and (mine.injury_status or "") not in OUT_STATUSES
+            and mine.injury_status != "Doubtful"
+        ):
+            projected = projections.get(nu.player_id)
+            number = f", projected {projected:.1f}" if projected is not None else ""
+            return (
+                f"Suggested switch: {nu.name} ({mine.position}, next up on the {out.team} depth "
+                f"chart and already on your bench{number})."
+            )
+    return _replacement(session, roster, slot, out, projections)
 
 
 @register("injury_out")
@@ -125,8 +184,10 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    # one projection lookup for everyone who matters, and one depth chart sentence per player
+    next_ups = {player.player_id: _next_up(session, league, player) for _, player in news}
+    # one projection lookup for everyone who matters (the team's players and each next man up)
     wanted = {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    wanted |= {nu.player_id for nu in next_ups.values() if nu and nu.player_id}
     projections = (
         projected_points(session, league.season, week, league.scoring_settings, wanted)
         if week
@@ -141,7 +202,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
         part = (
             f" with a {player.injury_body_part.lower()} injury" if player.injury_body_part else ""
         )
-        depth = _next_up(session, league, player)
+        nu = next_ups[player.player_id]
         ruled_at = as_utc(injury.changed_at).isoformat() if injury.changed_at else ""
         for roster in owners:
             starts = player.player_id in roster.starters
@@ -152,9 +213,9 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                 mine = projections.get(player.player_id)
                 where = f"He starts at {slot} for you" + (f" in week {week}" if week else "")
                 sentences.append(where + (f" (projected {mine:.1f})." if mine is not None else "."))
-                replacement = _replacement(session, roster, slot, player, projections)
-                if replacement:
-                    sentences.append(replacement)
+                switch = _suggested_switch(session, roster, slot, player, nu, projections)
+                if switch:
+                    sentences.append(switch)
             elif starts:
                 sentences.append("He is in your starting lineup.")
             elif player.player_id in roster.reserve:
@@ -163,8 +224,8 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                 sentences.append("He is on your taxi squad.")
             else:
                 sentences.append("He is on your bench.")
-            if depth:
-                sentences.append(depth)
+            if nu and player.team and not sentences[-1].startswith("Suggested switch"):
+                sentences.append(_where_is_next_up(nu, player.team, roster))
             raised.append(
                 NewAlert(
                     roster_id=roster.roster_id,
@@ -178,6 +239,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                         "slot": slot,
                         "starter": starts,
                         "previous": injury.previous,
+                        "next_up": nu.player_id if nu else None,
                     },
                 )
             )
