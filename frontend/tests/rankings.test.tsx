@@ -135,6 +135,12 @@ describe("RankingsPanel", () => {
     expect(screen.getByText("No players match these filters.")).toBeInTheDocument();
   });
 
+  it("says projections have not loaded when there are no players at all", () => {
+    render(<RankingsPanel data={{ ...data, players: [] }} leagueId="1" myRosterId={1} />);
+    expect(screen.getByText(/projections have not loaded for this week yet/i)).toBeInTheDocument();
+    expect(screen.queryByText("No players match these filters.")).not.toBeInTheDocument();
+  });
+
   it("links the week chips back to the rankings tab", () => {
     render(<RankingsPanel data={data} leagueId="1" myRosterId={null} />);
     const nav = screen.getByRole("navigation", { name: "Week" });
@@ -190,7 +196,14 @@ describe("choosing which sources the ranks use", () => {
 
   it("says which sources are not connected instead of faking them", () => {
     render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
-    expect(screen.getByText(/Not connected yet: FantasyPros/)).toBeInTheDocument();
+    expect(screen.getByText(/Not included yet: FantasyPros/)).toBeInTheDocument();
+  });
+
+  it("shows source checkboxes as small controls beside their labels", () => {
+    render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+    const boxes = screen.getAllByRole("checkbox");
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const box of boxes) expect(box.closest("label")).not.toBeNull();
   });
 
   it("says which sources the ranks come from, and keeps them on the week links", () => {
