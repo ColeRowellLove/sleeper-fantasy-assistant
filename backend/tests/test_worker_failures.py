@@ -86,3 +86,19 @@ def test_a_crashed_live_cycle_is_a_failure_too(
         make_session_factory(engine), {}, sleep=sleep, clock=lambda: clock["t"], failures=failures
     )
     assert failures and set(failures) == {"(a whole worker cycle)"}
+
+
+def test_forgetting_failures_ends_the_cooldown_so_a_sync_is_retried(engine: Engine) -> None:
+    factory = make_session_factory(engine)
+    with factory() as session:
+        assert worker.enqueue_projection_sync_if_due(session) is True
+    assert run_once(factory, {"sync_projections": _boom}) is True
+    # retried until it fails for good (max attempts), then it sits in its failure cooldown
+    with factory() as session:
+        for job in session.query(worker.JobRow).all():
+            job.status, job.attempts, job.finished_at = "failed", job.max_attempts, worker.utcnow()
+        session.commit()
+        assert worker.enqueue_projection_sync_if_due(session) is False  # cooling down
+        assert jobs.forget_failed(session) == 1
+        assert jobs.forget_failed(session) == 0
+        assert worker.enqueue_projection_sync_if_due(session) is True  # retried now
