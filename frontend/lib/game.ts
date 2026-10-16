@@ -40,6 +40,14 @@ export interface GameLabel {
 }
 
 /** `kickoffText` is the localized kickoff when known; the date alone is the fallback. */
+/** "SEA 3 - DEN 14": the player's team first, so it reads from his side. Null without both numbers. */
+export function scoreText(game: GameInfo): string | null {
+  const { team, opponent, team_score: mine, opponent_score: theirs } = game;
+  if (!team || !opponent || mine === null || mine === undefined) return null;
+  if (theirs === null || theirs === undefined) return null;
+  return `${team} ${mine} - ${opponent} ${theirs}`;
+}
+
 export function gameLabel(
   game: GameInfo | null | undefined,
   kickoffText: string | null = null,
@@ -52,6 +60,11 @@ export function gameLabel(
   if (game.state === "upcoming") {
     return { state: "upcoming", text: "Upcoming", detail: [date, versus].filter(Boolean).join(" ") };
   }
-  if (game.state === "live") return { state: "live", text: "Live", detail: versus };
-  return { state: "final", text: "Played", detail: versus };
+  const score = scoreText(game);
+  if (game.state === "live") {
+    // the clock and the score when we have them, otherwise just the opponent
+    const where = [game.period_text, score].filter(Boolean).join(", ");
+    return { state: "live", text: "Live", detail: where || versus };
+  }
+  return { state: "final", text: "Played", detail: score ? `Final, ${score}` : versus };
 }

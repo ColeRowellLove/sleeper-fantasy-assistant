@@ -22,6 +22,7 @@ EASTERN = ZoneInfo("America/New_York")
 _TEAM_CODES = {"LA": "LAR"}
 
 GameKey = tuple[int, str, str]  # (week, home, away)
+Score = tuple[int, int]  # (home points, away points)
 
 
 def _team(code: str) -> str:
@@ -49,6 +50,21 @@ def parse_kickoffs(csv_text: str, season: str) -> dict[GameKey, datetime]:
     return out
 
 
+def parse_scores(csv_text: str, season: str) -> dict[GameKey, Score]:
+    """Final scores of the season's finished regular-season games, keyed by (week, home, away)."""
+    out: dict[GameKey, Score] = {}
+    for row in csv.DictReader(io.StringIO(csv_text)):
+        if row.get("season") != season or row.get("game_type") != "REG":
+            continue
+        try:
+            home, away = int(row["home_score"]), int(row["away_score"])
+            week = int(row["week"])
+        except (ValueError, KeyError):
+            continue  # a game not played yet has empty scores
+        out[(week, _team(row["home_team"]), _team(row["away_team"]))] = (home, away)
+    return out
+
+
 def fetch_schedule_csv(http: httpx.Client) -> str:
     response = http.get(SCHEDULE_URL, follow_redirects=True)
     response.raise_for_status()
@@ -57,10 +73,16 @@ def fetch_schedule_csv(http: httpx.Client) -> str:
 
 def sync_kickoffs(session: Session, http: httpx.Client, season: str) -> int:
     """Store each game's kickoff time. Returns how many games were matched."""
-    kickoffs = parse_kickoffs(fetch_schedule_csv(http), season)
+    text = fetch_schedule_csv(http)
+    kickoffs = parse_kickoffs(text, season)
+    scores = parse_scores(text, season)
     matched = 0
     for row in session.scalars(select(NflGameRow).where(NflGameRow.season == season)):
-        kickoff = kickoffs.get((row.week, row.home, row.away))
+        key = (row.week, row.home, row.away)
+        score = scores.get(key)
+        if score is not None and (row.home_score, row.away_score) != score:
+            row.home_score, row.away_score = score
+        kickoff = kickoffs.get(key)
         if kickoff is None:
             continue
         matched += 1

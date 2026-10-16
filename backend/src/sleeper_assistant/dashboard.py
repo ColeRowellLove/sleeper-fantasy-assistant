@@ -18,6 +18,8 @@ from sleeper_assistant.db import (
     SleeperUserRow,
     UserLeagueRow,
 )
+from sleeper_assistant.live import LiveGame, current_games, describe
+from sleeper_assistant.live import window_open as live_window_open
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.win_probability import StarterState, matchup_chances
 
@@ -51,6 +53,10 @@ class GameInfo(BaseModel):
     state: GameState
     date: str | None = None  # ISO date
     kickoff: str | None = None  # ISO UTC timestamp, once the schedule publishes a time
+    team: str | None = None  # the NFL team this game is for
+    team_score: int | None = None  # live or final score, from this team's side
+    opponent_score: int | None = None
+    period_text: str | None = None  # where a live game is: "Q2 2:24", "Halftime"; "Final" when over
     opponent: str | None = None
     home: bool | None = None
 
@@ -219,24 +225,43 @@ def _utc_iso(moment: datetime | None) -> str | None:
     return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
+def _live_games(week_games: list[NflGameRow], week: int) -> dict[tuple[str, str], LiveGame]:
+    """ESPN's live status for this week's games, only while a game could be on (else empty)."""
+    in_progress = any(g.status == "in_game" for g in week_games)
+    if not live_window_open([g.kickoff for g in week_games], in_progress):
+        return {}
+    return {(g.home, g.away): g for g in current_games() if g.week in (None, week)}
+
+
 def games_for_week(session: Session, season: str, week: int) -> dict[str, GameInfo]:
     """NFL team -> that team's game in the week; teams with no game in the week are on a bye."""
     games = list(session.scalars(select(NflGameRow).where(NflGameRow.season == season)))
     all_teams = {g.home for g in games} | {g.away for g in games}
     week_games = [g for g in games if g.week == week]
     playing = {g.home for g in week_games} | {g.away for g in week_games}
+    live_by_game = _live_games(week_games, week)
     out: dict[str, GameInfo] = {}
     for g in week_games:
         state = _STATUS_STATE.get(g.status)
         if state is None:
             continue
         kickoff = _utc_iso(g.kickoff)
+        live = live_by_game.get((g.home, g.away))
+        game_state = live.state if live else state  # ESPN is fresher than Sleeper's schedule
+        home_score, away_score = (
+            (live.home_score, live.away_score) if live else (g.home_score, g.away_score)
+        )
+        if game_state == "upcoming":
+            home_score = away_score = None
+        words = describe(live) if live else ("Final" if game_state == "final" else None)
         out[g.home] = GameInfo(
-            state=state, date=g.game_date, kickoff=kickoff, opponent=g.away, home=True
-        )
+            state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.away, home=True,
+            team=g.home, team_score=home_score, opponent_score=away_score, period_text=words,
+        )  # fmt: skip
         out[g.away] = GameInfo(
-            state=state, date=g.game_date, kickoff=kickoff, opponent=g.home, home=False
-        )
+            state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.home, home=False,
+            team=g.away, team_score=away_score, opponent_score=home_score, period_text=words,
+        )  # fmt: skip
     if week_games:  # without any games in the week we cannot tell a bye from missing data
         for team in all_teams - playing:
             out[team] = GameInfo(state="bye")

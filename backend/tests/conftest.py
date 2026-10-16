@@ -5,7 +5,17 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from sleeper_assistant import live
 from sleeper_assistant.db import Base, make_engine, make_session_factory
+
+
+@pytest.fixture(autouse=True)
+def _no_live_scoreboard(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Tests never call ESPN: the live scoreboard is empty unless a test sets its own."""
+    monkeypatch.setattr(live, "FETCHER", lambda: [])
+    live.reset_cache()
+    yield
+    live.reset_cache()
 
 
 @pytest.fixture
