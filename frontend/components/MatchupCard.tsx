@@ -35,18 +35,21 @@ interface Props {
 /** "Projected 127.27 (+3.2)": the delta only once there is something to compare. */
 function Projection({
   projected,
+  compareWith,
   actual,
   state,
   label,
 }: {
   projected: number | null | undefined;
+  /** The projection frozen before kickoff: a finished week's score is compared with this one. */
+  compareWith?: number | null;
   actual: number | null;
   state: WeekState;
   label: string;
 }) {
   const text = formatProjection(projected);
   if (text === null) return null;
-  const delta = projectionDelta(actual, projected, state);
+  const delta = projectionDelta(actual, compareWith ?? projected, state);
   return (
     <span className="proj">
       {label} {text}
@@ -131,7 +134,13 @@ function TeamScore({
         {isMe && <span className="you">You</span>}
       </span>
       <span className="score num">{state === "upcoming" ? "–" : team.points.toFixed(2)}</span>
-      <Projection projected={team.projected} actual={team.points} state={state} label="Projected" />
+      <Projection
+        projected={team.projected}
+        compareWith={team.projected_pregame}
+        actual={team.points}
+        state={state}
+        label="Projected"
+      />
       <WinChance team={team} state={state} />
       {isWinner && <span className="win-tag">Winner</span>}
     </div>
@@ -160,7 +169,13 @@ function Cell({
   const points = (
     <td className={`pts-cell pts-${side} num`}>
       {state === "upcoming" ? "–" : formatPoints(player.points)}
-      <Projection projected={player.projected} actual={player.points} state={state} label="Proj" />
+      <Projection
+        projected={player.projected}
+        compareWith={player.projected_pregame}
+        actual={player.points}
+        state={state}
+        label="Proj"
+      />
     </td>
   );
   const info = (

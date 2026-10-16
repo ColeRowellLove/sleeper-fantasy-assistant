@@ -186,6 +186,8 @@ export interface GameInfo {
   opponent_score?: number | null;
   /** Where a live game is ("Q2 2:24", "Halftime"), or "Final". */
   period_text?: string | null;
+  /** Share of the game played, 0 to 1; null/absent when the clock is unknown. */
+  elapsed?: number | null;
   opponent: string | null;
   home: boolean | null;
 }
@@ -210,6 +212,8 @@ export interface RosterPlayer {
   projected?: number | null;
   /** Actual points this week once the game has started; null/absent before then. */
   points?: number | null;
+  /** The projection frozen before kickoff (`projected` is live: the score once the game is over). */
+  projected_pregame?: number | null;
 }
 
 export interface LineupPlayer {
@@ -225,6 +229,8 @@ export interface LineupPlayer {
   projected?: number | null;
   /** No projection was stored, so the 0 above is an assumption. */
   projection_missing?: boolean;
+  /** The projection frozen before kickoff (`projected` is live: the score once the game is over). */
+  projected_pregame?: number | null;
 }
 
 export interface TeamLineup {
@@ -234,6 +240,8 @@ export interface TeamLineup {
   points: number;
   /** Sum of the starters' projections; null/absent when none has one. */
   projected?: number | null;
+  /** The sum of the starters' projections frozen before kickoff. */
+  projected_pregame?: number | null;
   /** Chance to win from projected points, 0 to 1; null/absent when there is nothing fair to say. */
   win_probability?: number | null;
   starters: LineupPlayer[];
