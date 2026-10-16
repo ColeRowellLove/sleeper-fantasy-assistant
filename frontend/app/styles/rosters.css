@@ -228,11 +228,31 @@
   color: var(--muted);
 }
 
-/* the opponent's defense rank against the player's position: "(3rd)" */
+/* matchup difficulty: green easy, amber average, red tough; the chip always says the word too */
 .game-rank {
-  color: var(--muted);
+  border: 1px solid var(--line);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.05rem 0.5rem;
+}
+
+.rank-easy {
+  background: color-mix(in srgb, var(--game-live) 18%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--game-live) 55%, var(--line));
+}
+
+.rank-average {
+  background: color-mix(in srgb, var(--game-bye) 14%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--game-bye) 50%, var(--line));
+}
+
+.rank-tough {
+  background: color-mix(in srgb, var(--injury-out) 18%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--injury-out) 55%, var(--line));
 }
 
 .game-bye .game-state {
