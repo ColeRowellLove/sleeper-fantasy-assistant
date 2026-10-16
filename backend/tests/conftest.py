@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import live
+from sleeper_assistant import live, matchup_rank
 from sleeper_assistant.db import Base, make_engine, make_session_factory
 
 
@@ -16,6 +16,14 @@ def _no_live_scoreboard(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     live.reset_cache()
     yield
     live.reset_cache()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_defense_table() -> Iterator[None]:
+    """Each test builds its own database, so a table cached by an earlier test must not leak."""
+    matchup_rank.reset_cache()
+    yield
+    matchup_rank.reset_cache()
 
 
 @pytest.fixture

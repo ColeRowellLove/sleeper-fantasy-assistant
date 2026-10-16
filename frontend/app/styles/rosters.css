@@ -213,6 +213,13 @@
   color: var(--muted);
 }
 
+/* the opponent's defense rank against the player's position: "(3rd)" */
+.game-rank {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
 .game-bye .game-state {
   background: color-mix(in srgb, var(--game-bye) 16%, var(--surface));
   color: var(--game-bye);

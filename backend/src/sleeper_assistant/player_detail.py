@@ -32,6 +32,7 @@ from sleeper_assistant.db import (
     PlayerWeekStatsRow,
     RosterRow,
 )
+from sleeper_assistant.matchup_rank import MatchupRank, build_defense_table, matchup_rank
 from sleeper_assistant.players_view import _name
 from sleeper_assistant.projections import score_projection, score_stats
 
@@ -81,6 +82,7 @@ class PlayerDetail(BaseModel):
     team: str | None
     injury: InjuryInfo | None = None
     game: GameInfo | None = None
+    matchup: MatchupRank | None = None  # this week's opponent against his position
     bio: dict[str, Any] | None = None
     owner_roster_id: int | None = None
     owner_team: str | None = None
@@ -230,6 +232,11 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         team=player.team,
         injury=_injury({player_id: player}, player_id),
         game=game,
+        matchup=matchup_rank(
+            build_defense_table(session, season, scoring),
+            player.position,
+            game.opponent if game else None,
+        ),
         bio=player.bio,
         owner_roster_id=owner,
         owner_team=team_name.get(owner) if owner is not None else None,

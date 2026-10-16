@@ -64,9 +64,7 @@ export default function RostersPanel({
       </div>
 
       {week !== null && (
-        <p className="note">
-          Game status is for NFL week {week}: upcoming, live, played, or bye.
-        </p>
+        <p className="note">Game status is for NFL week {week}: upcoming, live, played, or bye.</p>
       )}
 
       <p role="status" className="visually-hidden">
@@ -79,7 +77,11 @@ export default function RostersPanel({
           const players = selected.players.filter((p) => p.status === status);
           if (players.length === 0) return null;
           return (
-            <section key={status} className={`roster-group role-${status}`} aria-labelledby={`g-${status}`}>
+            <section
+              key={status}
+              className={`roster-group role-${status}`}
+              aria-labelledby={`g-${status}`}
+            >
               <header>
                 <h3 id={`g-${status}`}>
                   {title} <span className="count">{players.length}</span>
@@ -117,7 +119,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
           <InjuryBadge injury={player.injury} />
         </span>
         <span className="player-tags">
-          <GameBadge game={player.game} />
+          <GameBadge game={player.game} matchup={player.matchup} position={player.position} />
         </span>
       </span>
       {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with
