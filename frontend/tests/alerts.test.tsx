@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -191,8 +191,28 @@ describe("AlertsPanel", () => {
         seen={null}
       />,
     );
-    expect(screen.getByText(/No alerts yet/)).toBeInTheDocument();
-    expect(screen.queryByText(/ruled out|waiver/i)).not.toBeInTheDocument(); // promises nothing yet
+    expect(screen.getByText(/No alerts yet for your team/)).toBeInTheDocument();
+  });
+
+  it("says what alerts are sent: open when there are none, folded away when there are some", () => {
+    const empty = { ...data, alerts: [] };
+    const { rerender } = render(
+      <AlertsPanel data={empty} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />,
+    );
+    const summary = screen.getByText("What alerts are sent");
+    const details = summary.closest("details") as HTMLElement;
+    expect(details).toHaveAttribute("open");
+    const items = within(details).getAllByRole("listitem");
+    expect(items.map((li) => li.querySelector("strong")?.textContent)).toEqual([
+      "A player on your team is ruled out.",
+      "Waiver targets.",
+      "AI suggestion.",
+      "Text messages.",
+    ]);
+    expect(within(details).getByText(/Not on yet/)).toBeInTheDocument();
+    expect(within(details).getByText(/9 am Eastern the day before/)).toBeInTheDocument();
+    rerender(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
+    expect(screen.getByText("What alerts are sent").closest("details")).not.toHaveAttribute("open");
   });
 
   it("has no accessibility violations", async () => {
@@ -324,6 +344,7 @@ describe("keyboard", () => {
         seen={null}
       />,
     );
+    await user.tab(); // the folded "What alerts are sent" disclosure
     await user.tab(); // the team picker
     await user.tab(); // its button
     await user.tab(); // the first alert's player link

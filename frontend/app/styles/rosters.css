@@ -631,3 +631,42 @@
 .owner-other {
   font-weight: 600;
 }
+/* a team picker and its button on one compact row */
+.inline-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.inline-form label {
+  margin: 0;
+}
+
+.inline-form select {
+  max-width: 100%;
+  min-width: min(14rem, 100%);
+  width: auto;
+}
+
+.alert-kinds {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin: 1rem 0;
+  max-width: 48rem;
+  padding: 0.85rem 1.25rem;
+}
+
+.alert-kinds summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.alert-kinds ul {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
