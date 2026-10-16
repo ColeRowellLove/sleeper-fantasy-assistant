@@ -11,7 +11,7 @@ from typing import Annotated, Any
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, StringConstraints, ValidationError
 from sqlalchemy import func, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -36,6 +36,13 @@ from sleeper_assistant.players_view import PlayersResponse, build_players
 from sleeper_assistant.rankings import Rankings, build_rankings
 from sleeper_assistant.rules import LeagueRules, derive_rules
 from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFoundError
+from sleeper_assistant.start_sit import (
+    MAX_COMPARE,
+    BestLineup,
+    Comparison,
+    best_lineup,
+    compare_players,
+)
 from sleeper_assistant.team_depth import TeamDepth, build_team_depth
 
 log = logging.getLogger(__name__)
@@ -312,6 +319,7 @@ def get_player_detail(
     return detail
 
 
+PlayerIdParam = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9]{1,12}$")]
 TeamCode = Annotated[str, Path(pattern=r"^[A-Z]{2,3}$")]
 
 
@@ -342,6 +350,41 @@ def get_league_lineups(
         raise HTTPException(status_code=404, detail="League not connected yet")
     response.headers["Cache-Control"] = READ_CACHE
     return build_lineups(session, row, week)
+
+
+@app.get("/api/leagues/{league_id}/start-sit")
+def get_start_sit(
+    league_id: LeagueId,
+    session: SessionDep,
+    response: Response,
+    player: Annotated[list[PlayerIdParam], Query(min_length=2, max_length=MAX_COMPARE)],
+    week: Annotated[int | None, Query(ge=1, le=18)] = None,
+) -> Comparison:
+    """Compare two or more players for one lineup spot and say which to start."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = READ_CACHE
+    return compare_players(session, row, player, week)
+
+
+@app.get("/api/leagues/{league_id}/start-sit/lineup")
+def get_best_lineup(
+    league_id: LeagueId,
+    session: SessionDep,
+    response: Response,
+    roster: Annotated[int, Query(ge=1, le=64)],
+    week: Annotated[int | None, Query(ge=1, le=18)] = None,
+) -> BestLineup:
+    """The projected-best lineup for one roster and how it differs from today's starters."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    result = best_lineup(session, row, roster, week)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Team not found")
+    response.headers["Cache-Control"] = READ_CACHE
+    return result
 
 
 @app.get("/api/leagues/{league_id}/rankings")

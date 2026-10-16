@@ -12,11 +12,14 @@ import TeamDialog from "../../../components/TeamDialog";
 import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
+import StartSitTool from "../../../components/StartSitTool";
 import RankingsPanel from "../../../components/RankingsPanel";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
   Dashboard,
   LeagueSettings,
+  BestLineup,
+  StartSitComparison,
   Rankings,
   Lineups,
   PlayerDetail,
@@ -53,10 +56,11 @@ export default async function LeaguePage({
     player?: string;
     team?: string;
     depth?: string;
+    pick?: string | string[];
   }>;
 }) {
   const { leagueId } = await params;
-  const { tab: tabParam, week, player, team, depth: depthParam, roster } = await searchParams;
+  const { tab: tabParam, week, player, team, depth: depthParam, roster, pick } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
   const weekNumber = Number(week);
@@ -114,6 +118,35 @@ export default async function LeaguePage({
     ? Number(roster)
     : null;
 
+  // Start/Sit works on one team's roster: the linked team, else yours, else the first. It needs
+  // the dashboard (to know the teams), so it is fetched after it.
+  let startSit: {
+    rosterId: number;
+    picks: string[];
+    best: BestLineup | null;
+    comparison: StartSitComparison | null;
+  } | null = null;
+  if (tab === "startsit") {
+    const rosterId = linkedRosterId ?? myRosterId ?? dashboard.rosters[0]?.roster_id ?? 0;
+    const weekPart = weekQuery ? `&week=${weekNumber}` : "";
+    const picks = [...new Set([pick ?? []].flat())]
+      .filter((id) => /^[A-Za-z0-9]{1,12}$/.test(id))
+      .slice(0, 6);
+    const [best, comparison] = await Promise.all([
+      rosterId
+        ? getJson<BestLineup>(
+            `/api/leagues/${leagueId}/start-sit/lineup?roster=${rosterId}${weekPart}`,
+          ).catch(() => null)
+        : Promise.resolve(null),
+      picks.length >= 2
+        ? getJson<StartSitComparison>(
+            `/api/leagues/${leagueId}/start-sit?${picks.map((id) => `player=${id}`).join("&")}${weekPart}`,
+          ).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    startSit = { rosterId, picks, best, comparison };
+  }
+
   return (
     <main id="main" className="container">
       <LeagueHeader data={dashboard} myRosterId={myRosterId} />
@@ -140,6 +173,17 @@ export default async function LeaguePage({
       )}
       {tab === "rankings" && rankings && (
         <RankingsPanel data={rankings} leagueId={leagueId} myRosterId={myRosterId} />
+      )}
+      {tab === "startsit" && startSit && (
+        <StartSitTool
+          leagueId={leagueId}
+          rosters={dashboard.rosters}
+          rosterId={startSit.rosterId}
+          picks={startSit.picks}
+          week={weekQuery ? weekNumber : null}
+          best={startSit.best}
+          comparison={startSit.comparison}
+        />
       )}
       {tab === "players" && players && (
         <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />

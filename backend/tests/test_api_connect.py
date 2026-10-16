@@ -338,6 +338,18 @@ def test_player_detail_endpoint(client: TestClient) -> None:
     )  # rejected, not looked up
 
 
+def test_start_sit_endpoints(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/start-sit?player=1&player=2").status_code == 404
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/start-sit?player=4034&player=4035").json()
+    assert body["league_id"] == "1" and len(body["candidates"]) == 2
+    assert client.get("/api/leagues/1/start-sit?player=4034").status_code == 422  # needs two
+    assert client.get("/api/leagues/1/start-sit?player=bad id&player=2").status_code == 422
+    lineup = client.get("/api/leagues/1/start-sit/lineup?roster=1").json()
+    assert lineup["roster_id"] == 1 and isinstance(lineup["lineup"], list)
+    assert client.get("/api/leagues/1/start-sit/lineup?roster=40").status_code == 404
+
+
 def test_rankings_endpoint(client: TestClient) -> None:
     assert client.get("/api/leagues/1/rankings").status_code == 404  # league not connected
     assert client.post("/api/leagues/1/connect").status_code == 200
