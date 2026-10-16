@@ -6,11 +6,13 @@ export interface StatColumn {
   get: (stats: Record<string, number>) => string | null;
 }
 
+// A stat that is present is shown even when it is 0 (a shutout, no interceptions); only a stat the
+// player has no line for is empty. The server sends the keys below (games_view.STAT_KEYS).
 const num = (key: string) => (stats: Record<string, number>) =>
-  stats[key] ? String(Math.round(stats[key])) : null;
+  key in stats ? String(Math.round(stats[key])) : null;
 
 const pair = (made: string, tried: string) => (stats: Record<string, number>) =>
-  stats[made] || stats[tried]
+  made in stats || tried in stats
     ? `${Math.round(stats[made] ?? 0)}/${Math.round(stats[tried] ?? 0)}`
     : null;
 
@@ -57,7 +59,7 @@ export const GROUPS: StatGroup[] = [
     positions: ["K"],
     columns: [
       { label: "FG", get: pair("fgm", "fga") },
-      { label: "XP", get: num("xpm") },
+      { label: "XP", get: pair("xpm", "xpa") },
     ],
   },
   {

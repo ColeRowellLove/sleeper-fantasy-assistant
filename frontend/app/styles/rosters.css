@@ -548,12 +548,6 @@
   margin: 0 0 0.5rem;
 }
 
-.game-teams {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.4rem;
-}
-
 .game-players {
   margin-bottom: 0.75rem;
 }

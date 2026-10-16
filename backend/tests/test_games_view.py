@@ -2,7 +2,6 @@
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import games_view
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -142,23 +141,52 @@ def test_before_a_line_exists_the_most_projected_players_show_with_their_project
     wr = by_id["proj_wr"]
     assert wr.projected is True
     assert wr.stats == {"rec_tgt": 8.0, "rec": 6.0, "rec_yd": 80.0}
-    assert wr.points == 14.0  # 6 rec + 8.0 yards points under the league's scoring
+    assert wr.points == 14.0  # 6 receptions + 8.0 for 80 yards under the league scoring
     assert by_id["owned"].owner_roster_id == 1
 
 
-def test_only_the_most_projected_of_a_team_are_added_besides_the_rostered(
+def test_a_few_best_projected_per_position_are_added_besides_the_rostered(
     session: Session,
 ) -> None:
     league = _setup(session)
-    for i in range(games_view.PROJECTED_PER_TEAM + 3):
-        pid = f"extra{i}"
+    for i in range(6):  # six receivers, only the best three show
+        pid = f"wr{i}"
         session.add(_player(pid, "WR", "DDD"))
         session.add(
             PlayerProjectionRow(season="2026", week=2, player_id=pid, team="DDD",
                                 stats={"rec_yd": 10.0 + i}, fetched_at=utcnow())
         )  # fmt: skip
+    session.add(_player("kick", "K", "DDD", "Kicker"))
+    session.add(
+        PlayerProjectionRow(season="2026", week=2, player_id="kick", team="DDD",
+                            stats={"fgm": 1.0}, fetched_at=utcnow())
+    )  # fmt: skip
     session.commit()
     late = next(g for g in build_games(session, league, 2).games if g.game_id == "late")
-    ddd = [p for p in late.players if p.team == "DDD"]
-    assert len(ddd) == games_view.PROJECTED_PER_TEAM
-    assert "extra0" not in {p.player_id for p in ddd}  # the least projected were left out
+    ids = {p.player_id for p in late.players if p.team == "DDD"}
+    assert ids == {"wr5", "wr4", "wr3", "kick"}  # the kicker is not crowded out by receivers
+
+
+def test_after_kickoff_a_player_without_a_line_is_not_given_a_projection(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    for pid in ("bench", "dnp"):
+        session.add(
+            PlayerProjectionRow(season="2026", week=2, player_id=pid, team="AAA",
+                                stats={"rec": 4.0}, fetched_at=utcnow())
+        )  # fmt: skip
+    session.commit()
+    early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
+    assert "bench" not in {p.player_id for p in early.players}  # a played game shows lines only
+    assert all(p.projected is False for p in early.players)
+
+
+def test_a_zero_in_a_stat_line_is_kept(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("shutout", "DEF", "AAA", "AAA Defense"))
+    session.add(_stats("shutout", "AAA", {"gp": 1, "sack": 3.0, "pts_allow": 0.0}))
+    session.commit()
+    early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
+    defense = next(p for p in early.players if p.player_id == "shutout")
+    assert defense.stats == {"sack": 3.0, "pts_allow": 0.0}
