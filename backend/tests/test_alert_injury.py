@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -393,3 +394,92 @@ def test_a_bench_owner_is_told_when_the_next_man_up_is_also_on_their_bench(
     _healthy_first_then_out(session, league, now)
     _run(session, league, now)
     assert "Backup Back (already on your bench)" in _alert_text(session, 2)
+
+
+def _owned_next_up(session: Session, **roster_fields: list[str]) -> LeagueRow:
+    league = _setup(session)
+    session.add(_player("next", "RB", "Backup Back"))
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    roster.players = ["hurt", "bench", "wr", "next"]
+    for field, value in roster_fields.items():
+        setattr(roster, field, value)
+    _with_depth_chart(session)
+    session.commit()
+    return league
+
+
+def test_a_clearly_better_bench_player_beats_the_owned_next_man_up(session: Session) -> None:
+    league = _owned_next_up(session)
+    session.add(_proj("next", 30.0))  # 3.0 against Bench Back's 8.0: more than the margin behind
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = _alert_text(session, 1)
+    assert "Best replacement on your bench: Bench Back (RB, projected 8.0)." in why
+    assert "Next on the SF depth chart: Backup Back (already on your bench)." in why
+
+
+def test_an_owned_next_man_up_without_a_projection_loses_to_a_projected_bench_player(
+    session: Session,
+) -> None:
+    league = _owned_next_up(session)
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = _alert_text(session, 1)
+    assert "Suggested switch" not in why
+    assert "Best replacement on your bench: Bench Back" in why
+
+
+def test_an_owned_next_man_up_who_is_already_starting_is_not_called_a_bench_player(
+    session: Session,
+) -> None:
+    league = _owned_next_up(session, starters=["hurt", "next"])
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = _alert_text(session, 1)
+    assert "Backup Back (already in your starting lineup)" in why
+    assert "bench" not in why.split("Next on the SF depth chart")[1]
+
+
+def test_an_owned_next_man_up_on_the_taxi_squad_cannot_start_yet(session: Session) -> None:
+    league = _owned_next_up(session, taxi=["next"])
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    assert "Backup Back, who is on your taxi squad and cannot start yet." in _alert_text(session, 1)
+
+
+def test_a_depth_chart_entry_that_cannot_be_matched_to_a_player_is_still_named(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    chart = {"offense": {"rb": [
+        {"name": "Hurt Back", "sleeper_id": "hurt", "espn_id": "1", "injury": "Out"},
+        {"name": "Mystery Back", "sleeper_id": None, "espn_id": "9", "injury": None},
+    ]}, "defense": {}, "special": {}}  # fmt: skip
+    session.add(TeamDepthChartRow(team="SF", source="ESPN", chart=chart, fetched_at=utcnow()))
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _run(session, league, now)
+    why = _alert_text(session, 1)
+    assert "Next on the SF depth chart: Mystery Back (available)." in why
+    assert "Best replacement on your bench: Bench Back" in why
+
+
+def test_players_nobody_owns_cost_no_depth_chart_work(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    league = _setup(session)
+    session.query(RosterRow).delete()
+    session.commit()
+    calls: list[str] = []
+    monkeypatch.setattr(alert_injury, "_next_up", lambda *a, **k: calls.append("x"))
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    assert _run(session, league, now) == 0
+    assert calls == []
