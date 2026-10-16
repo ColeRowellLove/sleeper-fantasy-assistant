@@ -81,7 +81,30 @@ export function ordinal(n: number): string {
   return `${n}${suffix}`;
 }
 
+/** The easiest quarter of teams are "easy" matchups, the hardest quarter "tough". */
+export const EASY_SHARE = 0.25;
+export const TOUGH_SHARE = 0.75;
+
+export type Difficulty = "easy" | "average" | "tough";
+
+/** How hard a matchup is: rank 1 is the best matchup for the player (see matchupText). */
+export function matchupDifficulty(matchup: MatchupRank): Difficulty {
+  if (matchup.rank <= matchup.teams * EASY_SHARE) return "easy";
+  if (matchup.rank > matchup.teams * TOUGH_SHARE) return "tough";
+  return "average";
+}
+
+const DIFFICULTY_WORD: Record<Difficulty, string> = {
+  easy: "Easy",
+  average: "Average",
+  tough: "Tough",
+};
+
 export interface MatchupText {
+  /** How hard it is, for the colour: green easy, amber average, red tough. */
+  difficulty: Difficulty;
+  /** The same in a word, so colour is never the only cue: "Easy". */
+  word: string;
   /** Short visible text: "3rd". */
   text: string;
   /** The full sentence for a tooltip. */
@@ -100,11 +123,15 @@ export function matchupText(
   position: string | null | undefined,
 ): MatchupText | null {
   if (!matchup) return null;
+  const difficulty = matchupDifficulty(matchup);
+  const word = DIFFICULTY_WORD[difficulty];
   const rank = ordinal(matchup.rank);
   const games = matchup.games === 1 ? "1 game" : `${matchup.games} games`;
   const numbers = `of ${matchup.teams} teams (${matchup.points} per game over ${games})`;
   if (matchup.side === "offense") {
     return {
+      difficulty,
+      word,
       text: rank,
       spoken: `${matchup.opponent} offense ranks ${rank} easiest for a defense`,
       description: `${matchup.opponent} scores the ${rank} fewest fantasy points ${numbers}`,
@@ -112,6 +139,8 @@ export function matchupText(
   }
   const spot = position ? ` to ${position}s` : "";
   return {
+    difficulty,
+    word,
     text: rank,
     spoken: `${matchup.opponent} ranks ${rank} against ${position ? `${position}s` : "the position"}`,
     description: `${matchup.opponent} allows the ${rank} most fantasy points${spot} ${numbers}`,

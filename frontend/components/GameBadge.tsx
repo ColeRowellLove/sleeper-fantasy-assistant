@@ -60,9 +60,13 @@ export default function GameBadge({
         </span>
       )}
       {rank && (
-        <span className="game-rank" title={rank.description}>
-          <span aria-hidden="true">({rank.text})</span>
-          <span className="visually-hidden">{rank.spoken}</span>
+        <span className={`game-rank rank-${rank.difficulty}`} title={rank.description}>
+          <span aria-hidden="true">
+            {rank.text} · {rank.word}
+          </span>
+          <span className="visually-hidden">
+            {rank.spoken}: {rank.word.toLowerCase()} matchup
+          </span>
         </span>
       )}
     </span>

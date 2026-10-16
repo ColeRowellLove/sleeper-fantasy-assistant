@@ -112,7 +112,7 @@ describe("RankingsPanel", () => {
     expect(within(row).getByText("15.0")).toBeInTheDocument();
     expect(within(row).getByText("12.5")).toBeInTheDocument();
     expect(within(row).getByText("90%")).toBeInTheDocument();
-    expect(within(row).getByText("(3rd)")).toBeInTheDocument(); // the opponent's rank vs RBs
+    expect(within(row).getByText("3rd · Easy")).toBeInTheDocument(); // the opponent's rank vs RBs
     expect(within(row).getByText("On your team")).toBeInTheDocument();
     expect(within(row).getByText("2 sources agree")).toBeInTheDocument();
     expect(within(table).getByText("3 sources, 2 places apart")).toBeInTheDocument();
