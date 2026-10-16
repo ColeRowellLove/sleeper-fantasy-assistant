@@ -107,7 +107,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
-      # ruff, mypy and gitleaks already run in the Backend and Secret scan jobs
+      # ruff, mypy and gitleaks already run in the Backend and Secret scan jobs, and prettier in the
+      # Frontend job (npm run format:check) with the version pinned in the lockfile
       - run: uvx pre-commit run --all-files --show-diff-on-failure
         env:
-          SKIP: ruff,ruff-format,mypy,gitleaks
+          SKIP: ruff,ruff-format,mypy,gitleaks,prettier
