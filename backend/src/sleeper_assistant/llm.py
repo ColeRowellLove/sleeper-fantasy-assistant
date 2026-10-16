@@ -3,8 +3,10 @@
 The code decides every fact (who is out, the roster, the candidates, the numbers). The model only
 writes advice *around* a fixed JSON of those facts, and must answer in the JSON shape of a pydantic
 schema. The answer is then checked: it must parse, fit the schema, and pass a caller-supplied check
-(see ``grounded_numbers``) that no number or player was made up. Anything else returns ``None`` so
-the caller falls back to its deterministic text. The app never depends on a model being available.
+(for example ``grounded_numbers`` for figures; the caller also checks any player ids against its
+own roster). Anything else returns ``None`` so the caller falls back to its deterministic text. The
+app never depends on a model being available. Names in the facts come from Sleeper (a team can be
+called anything), so callers must treat the facts as data and validate, never trust, the answer.
 
 Configure with environment variables (never commit keys):
 
@@ -24,13 +26,14 @@ import json
 import logging
 import os
 import re
+import threading
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +42,8 @@ DEFAULT_CAP = 50
 TIMEOUT = 60.0
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
-MAX_TOKENS = 1024
+MAX_TOKENS = 2048
+EPSILON = 1e-9
 
 
 class LlmClient(Protocol):
@@ -116,21 +120,21 @@ def client_from_env(env: Mapping[str, str] | None = None) -> LlmClient | None:
 
 
 def load_prompt(name: str) -> str:
-    """A versioned prompt file under ``prompts/`` (``<name>.md``)."""
+    """A prompt file under ``prompts/``: ``load_prompt("task.v1")`` reads ``task.v1.md``."""
     return (PROMPTS / f"{name}.md").read_text(encoding="utf-8")
 
 
-_JSON_FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
-
-
 def extract_json(text: str) -> object:
-    """The JSON object in a reply, tolerating a code fence or chatter around it."""
-    fenced = _JSON_FENCE.search(text)
-    candidate = fenced.group(1) if fenced else text
-    start, end = candidate.find("{"), candidate.rfind("}")
-    if start < 0 or end <= start:
-        raise ValueError("no JSON object in the reply")
-    return json.loads(candidate[start : end + 1])
+    """The first JSON object in a reply, tolerating code fences or chatter around it."""
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            value, _ = decoder.raw_decode(text, match.start())
+        except ValueError:
+            continue
+        if isinstance(value, dict):
+            return value
+    raise ValueError("no JSON object in the reply")
 
 
 _NUMBER = re.compile(r"(?<![\w.])-?\d+(?:\.\d+)?")
@@ -143,7 +147,7 @@ def _numbers_in(value: object) -> set[float]:
     if isinstance(value, int | float):
         found.add(float(value))
     elif isinstance(value, str):
-        found.update(float(m) for m in _NUMBER.findall(value))
+        found.update(float(m) for m in _NUMBER.findall(value))  # "WR12" holds 12
     elif isinstance(value, Mapping):
         for item in value.values():
             found |= _numbers_in(item)
@@ -153,31 +157,46 @@ def _numbers_in(value: object) -> set[float]:
     return found
 
 
-def grounded_numbers(texts: list[str], facts: object, tolerance: float = 0.05) -> bool:
-    """True when every number written in ``texts`` is one of the facts (to rounding).
+def _matches(written: str, known: float) -> bool:
+    places = len(written.split(".")[1]) if "." in written else 0
+    return abs(round(float(written), places) - round(known, places)) < EPSILON
 
-    A figure the model invented, or computed itself, fails. Numbers are compared as written, so the
-    facts should carry the figures the advice may quote (projections, gains, ranks).
+
+def grounded_numbers(texts: list[str], facts: object) -> bool:
+    """True when every number written in ``texts`` is one of the facts, allowing for rounding.
+
+    A figure the model invented, or computed itself, fails. A number matches a fact if it is that
+    fact rounded to as many decimals as the number is written with (14 or 14.2 for 14.23). Include
+    in the facts every figure the advice may quote (projections, gains, ranks).
     """
     allowed = _numbers_in(facts)
     return all(
-        any(abs(number - known) <= tolerance for known in allowed)
+        any(_matches(number, known) for known in allowed)
         for text in texts
-        for number in _numbers_in(text)
+        for number in _NUMBER.findall(text)
     )
 
 
 class Budget:
-    """Caps the calls one process makes, and remembers answers to identical questions."""
+    """Caps the calls one run makes and remembers good answers to identical questions.
+
+    Make one per worker run (or request). Only successful answers are remembered, so a failure is
+    retried next time; the memory is bounded by the cap.
+    """
 
     def __init__(self, cap: int | None = None) -> None:
         env_cap = os.environ.get("LLM_MAX_CALLS_PER_RUN", "")
         self.cap = cap if cap is not None else int(env_cap) if env_cap.isdigit() else DEFAULT_CAP
         self.used = 0
-        self.answers: dict[str, BaseModel | None] = {}
+        self.answers: dict[str, BaseModel] = {}
+        self._lock = threading.Lock()
 
-
-DEFAULT_BUDGET = Budget()
+    def take(self) -> bool:
+        with self._lock:
+            if self.used >= self.cap:
+                return False
+            self.used += 1
+            return True
 
 
 def ask[T: BaseModel](  # noqa: PLR0913
@@ -197,16 +216,15 @@ def ask[T: BaseModel](  # noqa: PLR0913
     """
     if client is None:
         return None
-    spent = budget or DEFAULT_BUDGET
+    spent = budget or Budget()
     facts_json = json.dumps(facts, sort_keys=True, default=str)
     key = hashlib.sha256(f"{prompt}\0{facts_json}\0{schema.__name__}".encode()).hexdigest()
-    if key in spent.answers:
-        return spent.answers[key]  # type: ignore[return-value]
-    if spent.used >= spent.cap:
+    cached = spent.answers.get(key)
+    if cached is not None:
+        return cached.model_copy(deep=True)  # type: ignore[return-value]
+    if not spent.take():
         log.warning("LLM call cap of %d reached; using the fallback", spent.cap)
         return None
-    spent.used += 1
-    answer: T | None = None
     system = (
         f"{prompt}\n\nReply with only a JSON object matching this schema:\n"
         f"{json.dumps(schema.model_json_schema())}"
@@ -216,9 +234,9 @@ def ask[T: BaseModel](  # noqa: PLR0913
         answer = schema.model_validate(extract_json(reply))
         if check is not None and not check(answer):
             log.warning("LLM answer failed the grounding check; using the fallback")
-            answer = None
-    except (httpx.HTTPError, ValueError, ValidationError, KeyError, IndexError, TypeError):
-        log.exception("LLM call failed; using the fallback")
-        answer = None
+            return None
+    except Exception as error:  # any failure means "use the deterministic text"
+        log.warning("LLM call failed (%s); using the fallback", type(error).__name__)
+        return None
     spent.answers[key] = answer
-    return answer
+    return answer.model_copy(deep=True)

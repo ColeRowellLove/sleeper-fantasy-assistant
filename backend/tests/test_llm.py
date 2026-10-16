@@ -1,5 +1,7 @@
 """The LLM layer: facts in, a validated JSON answer out, and a quiet None on any problem."""
 
+from pathlib import Path
+
 import httpx
 import pytest
 from pydantic import BaseModel
@@ -65,6 +67,8 @@ def test_numbers_must_come_from_the_facts() -> None:
     assert grounded_numbers(["He is WR12"], facts)
     assert not grounded_numbers(["Projected 19.9"], facts)
     assert grounded_numbers(["No figures here"], facts)
+    assert grounded_numbers(["about 14 points", "a 14.2 projection"], {"p": 14.23})
+    assert not grounded_numbers(["15"], {"p": 14.23})
 
 
 def test_a_good_answer_is_returned_and_sees_the_facts_and_schema() -> None:
@@ -86,6 +90,26 @@ def test_every_failure_returns_none_instead_of_raising() -> None:
     ]:
         assert ask(Fake(reply), "p", {}, Advice, budget=Budget(5)) is None
     assert ask(None, "p", {}, Advice) is None
+
+
+def test_a_failure_is_not_remembered_so_it_is_retried() -> None:
+    budget = Budget(5)
+    assert ask(Fake("garbage"), "p", {}, Advice, budget=budget) is None
+    assert ask(Fake('{"headline": "x", "gain": 1}'), "p", {}, Advice, budget=budget) is not None
+
+
+def test_a_remembered_answer_is_a_copy() -> None:
+    budget = Budget(5)
+    client = Fake('{"headline": "x", "gain": 1}')
+    first = ask(client, "p", {}, Advice, budget=budget)
+    assert first is not None
+    first.headline = "edited"
+    again = ask(client, "p", {}, Advice, budget=budget)
+    assert again is not None and again.headline == "x"
+
+
+def test_json_after_other_braces_is_still_found() -> None:
+    assert extract_json('{not json} then {"a": [1, {"b": 2}]} {"c": 3}') == {"a": [1, {"b": 2}]}
 
 
 def test_an_answer_the_check_rejects_is_dropped() -> None:
@@ -148,7 +172,12 @@ def test_the_openai_compatible_client_posts_chat_messages(
     assert seen["headers"] == {}
 
 
-def test_prompts_load_from_the_prompts_folder() -> None:
-    assert "Prompts" in (llm.PROMPTS / "README.md").read_text()
+def test_prompts_load_from_the_prompts_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folder = tmp_path
+    (folder / "task.v1.md").write_text("You are a coach.", encoding="utf-8")
+    monkeypatch.setattr(llm, "PROMPTS", folder)
+    assert load_prompt("task.v1") == "You are a coach."
     with pytest.raises(FileNotFoundError):
         load_prompt("missing.v1")
