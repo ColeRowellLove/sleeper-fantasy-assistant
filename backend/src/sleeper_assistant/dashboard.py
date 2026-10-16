@@ -18,6 +18,7 @@ from sleeper_assistant.db import (
     SleeperUserRow,
     UserLeagueRow,
 )
+from sleeper_assistant.projections import projected_points
 
 # Sleeper marks an empty starter slot with the player id "0".
 EMPTY_SLOT = "0"
@@ -76,6 +77,9 @@ class RosterPlayer(BaseModel):
     slot: str | None  # lineup slot for starters, e.g. QB, RB, FLEX
     game: GameInfo | None = None  # this week's game (or bye) for the player's NFL team
     injury: InjuryInfo | None = None
+    projected: float | None = (
+        None  # this week, scored with the league's rules; None = no projection
+    )
 
 
 class RosterView(BaseModel):
@@ -103,6 +107,7 @@ class LineupPlayer(BaseModel):
     points: float | None
     game: GameInfo | None = None
     injury: InjuryInfo | None = None
+    projected: float | None = None  # scored with the league's rules; None = no projection
 
 
 class TeamLineup(BaseModel):
@@ -110,6 +115,7 @@ class TeamLineup(BaseModel):
     team: str
     owner_id: str | None = None
     points: float
+    projected: float | None = None  # sum of the starters' projections; None when there are none
     starters: list[LineupPlayer]
     bench: list[LineupPlayer]
 
@@ -243,6 +249,17 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
     slots = starter_slots(league)
     week = current_week(session, league.season)
     games = games_for_week(session, league.season, week) if week else {}
+    projected = (
+        projected_points(
+            session,
+            league.season,
+            week,
+            league.scoring_settings,
+            {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]},
+        )
+        if week
+        else {}
+    )
 
     ordered = sorted(rosters, key=lambda r: (-r.wins, r.losses, -r.ties, -r.points_for))
     standings = [
@@ -267,7 +284,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
             roster_id=r.roster_id,
             team=team[r.roster_id],
             owner_id=owners[r.roster_id],
-            players=_roster_players(r, players, slots, games),
+            players=_roster_players(r, players, slots, games, projected),
         )
         for r in sorted(rosters, key=lambda r: r.roster_id)
     ]
@@ -286,6 +303,7 @@ def _roster_players(
     players: dict[str, PlayerRow],
     slots: list[str],
     games: dict[str, GameInfo],
+    projected: dict[str, float],
 ) -> list[RosterPlayer]:
     def make(pid: str, status: Status, slot: str | None = None) -> RosterPlayer:
         name, position, nfl_team = _display(players, pid)
@@ -298,6 +316,7 @@ def _roster_players(
             slot=slot,
             game=games.get(nfl_team) if nfl_team else None,
             injury=_injury(players, pid),
+            projected=projected.get(pid),
         )
 
     out: list[RosterPlayer] = []
@@ -342,6 +361,13 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
     players = _players(session, {pid for m in week_rows for pid in [*m.starters, *m.players]})
     slots = starter_slots(league)
     games = games_for_week(session, league.season, week)
+    projected = projected_points(
+        session,
+        league.season,
+        week,
+        league.scoring_settings,
+        {pid for m in week_rows for pid in [*m.starters, *m.players]},
+    )
     # IR and taxi come from the current roster (past weeks use today's IR list)
     parked = {
         r.roster_id: {**{pid: "IR" for pid in r.reserve}, **{pid: "TAXI" for pid in r.taxi}}
@@ -350,7 +376,9 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
 
     by_matchup: dict[int, list[TeamLineup]] = {}
     for m in sorted(week_rows, key=lambda m: m.roster_id):
-        lineup = _team_lineup(m, team, owners, players, slots, games, parked.get(m.roster_id, {}))
+        lineup = _team_lineup(
+            m, team, owners, players, slots, games, parked.get(m.roster_id, {}), projected
+        )
         # a missing matchup_id (bye/unscheduled) must not group unrelated teams together
         key = m.matchup_id if m.matchup_id is not None else -m.roster_id
         by_matchup.setdefault(key, []).append(lineup)
@@ -362,6 +390,12 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
     return Lineups(week=week, current_week=current, weeks=weeks, matchups=matchups)
 
 
+def _team_projection(starters: list[LineupPlayer]) -> float | None:
+    """Sum of the starters' projections, or None when no starter has one (never a misleading 0)."""
+    values = [p.projected for p in starters if p.projected is not None]
+    return round(sum(values), 2) if values else None
+
+
 def _team_lineup(  # noqa: PLR0913, PLR0917
     m: MatchupRow,
     team: dict[int, str],
@@ -370,6 +404,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
     slots: list[str],
     games: dict[str, GameInfo],
     parked: dict[str, str],
+    projected: dict[str, float],
 ) -> TeamLineup:
     points: dict[str, Any] = m.players_points
 
@@ -399,6 +434,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 points=None if value is None else float(value),
                 game=games.get(nfl_team) if nfl_team else None,
                 injury=_injury(players, pid),
+                projected=projected.get(pid),
             )
         )
 
@@ -417,6 +453,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 points=pts(pid),
                 game=games.get(nfl_team) if nfl_team else None,
                 injury=_injury(players, pid),
+                projected=projected.get(pid),
             )
         )
     bench.sort(key=lambda p: (_PARKED_ORDER.get(p.slot, 0), -(p.points or 0.0), p.name))
@@ -425,6 +462,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
         team=team.get(m.roster_id, f"Team {m.roster_id}"),
         owner_id=owners.get(m.roster_id),
         points=round(m.points, 2),
+        projected=_team_projection(starters),
         starters=starters,
         bench=bench,
     )

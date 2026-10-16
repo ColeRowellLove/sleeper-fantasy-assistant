@@ -109,6 +109,8 @@ export interface RosterPlayer {
   slot: string | null;
   game?: GameInfo | null;
   injury?: InjuryInfo | null;
+  /** Projected points this week under the league's scoring; null/absent = no projection. */
+  projected?: number | null;
 }
 
 export interface LineupPlayer {
@@ -120,6 +122,8 @@ export interface LineupPlayer {
   points: number | null;
   game?: GameInfo | null;
   injury?: InjuryInfo | null;
+  /** Projected points under the league's scoring; null/absent = no projection. */
+  projected?: number | null;
 }
 
 export interface TeamLineup {
@@ -127,6 +131,8 @@ export interface TeamLineup {
   team: string;
   owner_id: string | null;
   points: number;
+  /** Sum of the starters' projections; null/absent when none has one. */
+  projected?: number | null;
   starters: LineupPlayer[];
   bench: LineupPlayer[];
 }

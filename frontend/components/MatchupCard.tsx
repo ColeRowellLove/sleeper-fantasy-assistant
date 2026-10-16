@@ -1,5 +1,12 @@
 import type { LineupPlayer, Lineups, TeamLineup } from "../lib/api";
-import { formatPoints, pairRows, winnerId, type WeekState } from "../lib/lineups";
+import {
+  formatPoints,
+  formatProjection,
+  pairRows,
+  projectionDelta,
+  winnerId,
+  type WeekState,
+} from "../lib/lineups";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
@@ -15,6 +22,35 @@ interface Props {
   mine?: boolean;
   /** Eager-load avatars (use for the first card on the page). */
   priority?: boolean;
+}
+
+/** "Projected 127.27 (+3.2)": the delta only once there is something to compare. */
+function Projection({
+  projected,
+  actual,
+  state,
+  label,
+}: {
+  projected: number | null | undefined;
+  actual: number | null;
+  state: WeekState;
+  label: string;
+}) {
+  const text = formatProjection(projected);
+  if (text === null) return null;
+  const delta = projectionDelta(actual, projected, state);
+  return (
+    <span className="proj">
+      {label} {text}
+      {delta && (
+        <span className="proj-delta">
+          {" "}
+          ({delta}
+          <span className="visually-hidden"> against projection</span>)
+        </span>
+      )}
+    </span>
+  );
 }
 
 function TeamScore({
@@ -35,6 +71,7 @@ function TeamScore({
         {isMe && <span className="you">You</span>}
       </span>
       <span className="score num">{state === "upcoming" ? "–" : team.points.toFixed(2)}</span>
+      <Projection projected={team.projected} actual={team.points} state={state} label="Projected" />
       {isWinner && <span className="win-tag">Winner</span>}
     </div>
   );
@@ -62,6 +99,7 @@ function Cell({
   const points = (
     <td className={`pts-cell pts-${side} num`}>
       {state === "upcoming" ? "–" : formatPoints(player.points)}
+      <Projection projected={player.projected} actual={player.points} state={state} label="Proj" />
     </td>
   );
   const info = (

@@ -79,6 +79,22 @@ class SleeperGame(BaseModel):
     status: str
 
 
+class SleeperProjection(BaseModel):
+    """One player's projected stat line for a week from Sleeper's (unofficial) projections endpoint.
+
+    The stat names are the same keys as a league's ``scoring_settings`` (rec, rec_yd, rec_td, ...),
+    so a projection can be scored with any league's own rules.
+    """
+
+    player_id: str
+    team: str | None = None
+    stats: dict[str, float] = {}
+
+
+# team defenses are left out on purpose: their rows have no points-allowed projections
+PROJECTION_POSITIONS = ("QB", "RB", "WR", "TE", "K")
+
+
 class SleeperPlayer(BaseModel):
     player_id: str
     full_name: str | None = None
@@ -164,6 +180,26 @@ class SleeperClient:
         return [
             SleeperPlayer.model_validate({**item, "player_id": pid}) for pid, item in data.items()
         ]
+
+    def get_projections(self, season: str, week: int) -> list[SleeperProjection]:
+        """Projected stat lines for one week; players with no projection are left out."""
+        positions = "&".join(f"position%5B%5D={p}" for p in PROJECTION_POSITIONS)
+        data = self.get_json(
+            f"https://api.sleeper.com/projections/nfl/{season}/{week}?season_type=regular&{positions}"
+        )
+        out: list[SleeperProjection] = []
+        for item in data:
+            stats = item.get("stats") or {}
+            if not item.get("player_id") or "pts_ppr" not in stats:
+                continue  # a player with no projection at all
+            out.append(
+                SleeperProjection(
+                    player_id=str(item["player_id"]),
+                    team=item.get("team"),
+                    stats={k: float(v) for k, v in stats.items() if isinstance(v, int | float)},
+                )
+            )
+        return out
 
     def get_schedule(self, season: str) -> list[SleeperGame]:
         """Every regular-season game with its status. Cheap (about 27 KB); safe to refresh often."""
