@@ -132,3 +132,14 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     expect(ratio(rgb(t.danger), rgb(t.surface))).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+// the win chance bar is a graphic, so it needs 3:1 (WCAG non-text contrast) for each segment
+// against the card it sits on and against the other segment, in both themes
+describe.each(Object.entries(themes))("%s theme win chance bar", (_name, t) => {
+  it("keeps both segments visible against the card and against each other", () => {
+    const card = rgb(t.surface);
+    expect(ratio(rgb(t.accent), card)).toBeGreaterThanOrEqual(3);
+    expect(ratio(rgb(t.muted), card)).toBeGreaterThanOrEqual(3);
+    expect(ratio(rgb(t.accent), rgb(t.muted))).toBeGreaterThanOrEqual(1.5); // told apart by position too
+  });
+});

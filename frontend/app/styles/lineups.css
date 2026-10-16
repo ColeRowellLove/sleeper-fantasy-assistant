@@ -364,3 +364,42 @@ table.h2h {
   font-weight: 600;
   margin-top: 0.15rem;
 }
+
+/* Win chance bar: one segment per team, in proportion to the chances */
+.win-bar {
+  margin-top: 0.9rem;
+}
+
+.win-bar-track {
+  background: var(--line);
+  border-radius: 999px;
+  display: flex;
+  height: 0.6rem;
+  overflow: hidden;
+}
+
+.win-bar-a {
+  background: var(--accent);
+  display: block;
+}
+
+.win-bar-b {
+  background: var(--muted);
+  display: block;
+}
+
+.win-bar-labels {
+  color: var(--muted);
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 600;
+  justify-content: space-between;
+  margin-top: 0.3rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .win-bar-a,
+  .win-bar-b {
+    transition: width 0.4s ease;
+  }
+}
