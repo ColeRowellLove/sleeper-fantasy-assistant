@@ -65,7 +65,7 @@ describe("LeagueTabs", () => {
     render(<LeagueTabs leagueId="9" active="rosters" />);
     const nav = screen.getByRole("navigation", { name: "League sections" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Standings", "Rosters", "Lineups", "Settings"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Standings", "Rosters", "Lineups", "Players", "Settings"]);
     expect(links[1]).toHaveAttribute("aria-current", "page");
     expect(links[0]).not.toHaveAttribute("aria-current");
     expect(links[2]).toHaveAttribute("href", "/league/9?tab=lineups");

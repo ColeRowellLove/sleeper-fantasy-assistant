@@ -30,6 +30,7 @@ from sleeper_assistant.db import (
     utcnow,
 )
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
+from sleeper_assistant.players_view import PlayersResponse, build_players
 from sleeper_assistant.rules import LeagueRules, derive_rules
 from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFoundError
 
@@ -275,6 +276,18 @@ def get_league_settings(
         scoring_settings={k: float(v) for k, v in row.scoring_settings.items()},
         roster_positions=row.roster_positions,
     )
+
+
+@app.get("/api/leagues/{league_id}/players")
+def get_league_players(
+    league_id: LeagueId, session: SessionDep, response: Response
+) -> PlayersResponse:
+    """Every relevant NFL player as seen through this league (availability, trends, points)."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = READ_CACHE
+    return build_players(session, row)
 
 
 @app.get("/api/leagues/{league_id}/lineups")

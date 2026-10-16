@@ -182,6 +182,30 @@ class PlayerProjectionRow(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PlayerTrendRow(Base):
+    """How many Sleeper leagues added and dropped a player in the last 24 hours (top 100 only)."""
+
+    __tablename__ = "player_trends"
+
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    adds: Mapped[int | None]
+    drops: Mapped[int | None]
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PlayerWeekStatsRow(Base):
+    """A player's actual stat line for one week, scored per league when needed."""
+
+    __tablename__ = "player_week_stats"
+
+    season: Mapped[str] = mapped_column(String, primary_key=True)
+    week: Mapped[int] = mapped_column(primary_key=True)
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    team: Mapped[str | None] = mapped_column(String)
+    stats: Mapped[dict[str, float]] = mapped_column(JSON)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class JobRow(Base):
     """Postgres-backed job queue. Workers claim rows with FOR UPDATE SKIP LOCKED."""
 

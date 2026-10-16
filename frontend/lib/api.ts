@@ -31,6 +31,33 @@ export interface LeagueSettings {
   roster_positions: string[];
 }
 
+export interface PlayerListing {
+  player_id: string;
+  name: string;
+  position: string;
+  team: string | null;
+  injury?: InjuryInfo | null;
+  game?: GameInfo | null;
+  /** Roster that has the player in this league; null means available. */
+  owner_roster_id: number | null;
+  owner_team: string | null;
+  /** Sleeper's 24-hour adds and drops (top 100 only); null = not on that list. */
+  adds: number | null;
+  drops: number | null;
+  /** This season's points under the league's scoring. */
+  total_points: number;
+  /** Rank within position by total points; null until the player has points. */
+  rank: number | null;
+  projected: number | null;
+}
+
+export interface PlayersData {
+  league_id: string;
+  week: number | null;
+  trends_updated_at?: string | null;
+  players: PlayerListing[];
+}
+
 export class ApiError extends Error {}
 
 const USERNAME_RE = /^[A-Za-z0-9_.]{1,40}$/;
