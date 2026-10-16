@@ -73,17 +73,24 @@ function SlotTable({ slots, myRosterId }: { slots: DepthSlot[]; myRosterId: numb
 export default function TeamDepthChart({
   data,
   myRosterId,
+  headingId = "depth-heading",
+  landmark = true,
 }: {
   data: TeamDepth;
   myRosterId: number | null;
+  /** Differs when the chart is shown in a pop-up over a page that already has one. */
+  headingId?: string;
+  /** A page section is a landmark; inside a dialog it is just content (and would clash with the page's). */
+  landmark?: boolean;
 }) {
+  const Wrapper = landmark ? "section" : "div";
   const sections = groupSlots(data.groups);
   const name = TEAM_NAMES[data.team] ?? data.team;
   const updated = data.updated_at ? new Date(data.updated_at) : null;
 
   return (
-    <section aria-labelledby="depth-heading" className="depth-chart">
-      <h2 id="depth-heading">{name} depth chart</h2>
+    <Wrapper {...(landmark ? { "aria-labelledby": headingId } : {})} className="depth-chart">
+      <h2 id={headingId}>{name} depth chart</h2>
       <p className="depth-meta">
         <GameBadge game={data.game} />
         {data.source && (
@@ -116,6 +123,6 @@ export default function TeamDepthChart({
         Depth order is 1 for the starter. A &quot;Next up&quot; tag shows who is first in line when a
         starter is out. Charts change with injuries and news, so check close to kickoff.
       </p>
-    </section>
+    </Wrapper>
   );
 }

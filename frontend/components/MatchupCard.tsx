@@ -12,6 +12,7 @@ import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
+import TeamLink from "./TeamLink";
 import PositionChip from "./PositionChip";
 
 type Matchup = Lineups["matchups"][number];
@@ -145,7 +146,11 @@ function Cell({
             {state !== "played" && <InjuryBadge injury={player.injury} />}
           </span>
           <span className="cell-meta">
-            {player.team && <span className="cell-team">{player.team}</span>}
+            {player.team && (
+              <span className="cell-team">
+                <TeamLink team={player.team}>{player.team}</TeamLink>
+              </span>
+            )}
             <GameBadge game={player.game} />
           </span>
         </span>

@@ -21,6 +21,7 @@ import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
+import TeamLink from "./TeamLink";
 import PositionChip from "./PositionChip";
 
 const PAGE = 50;
@@ -165,7 +166,9 @@ export default function PlayersTable({
                           </span>
                           <span className="player-meta">
                             <PositionChip position={p.position} />
-                            <span className="muted">{p.team ?? "FA"}</span>
+                            <span className="muted">
+                              {p.team ? <TeamLink team={p.team}>{p.team}</TeamLink> : "FA"}
+                            </span>
                             <InjuryBadge injury={p.injury} />
                           </span>
                           <span className="player-meta player-game">

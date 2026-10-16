@@ -448,3 +448,17 @@ table.depth-table {
   color: var(--game-live);
   font-weight: 600;
 }
+
+.team-dialog-bar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.team-dialog .depth-chart h2 {
+  margin-top: 0;
+}
+
+dialog.team-dialog {
+  max-width: 70rem;
+  width: min(70rem, calc(100% - 2rem));
+}
