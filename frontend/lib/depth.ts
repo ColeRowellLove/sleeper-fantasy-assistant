@@ -1,0 +1,88 @@
+/** Layout helpers for the team depth chart page. Pure, so they are easy to test. */
+
+import type { DepthGroup, DepthPlayer, DepthSlot } from "./api";
+
+export const TEAM_NAMES: Record<string, string> = {
+  ARI: "Arizona Cardinals",
+  ATL: "Atlanta Falcons",
+  BAL: "Baltimore Ravens",
+  BUF: "Buffalo Bills",
+  CAR: "Carolina Panthers",
+  CHI: "Chicago Bears",
+  CIN: "Cincinnati Bengals",
+  CLE: "Cleveland Browns",
+  DAL: "Dallas Cowboys",
+  DEN: "Denver Broncos",
+  DET: "Detroit Lions",
+  GB: "Green Bay Packers",
+  HOU: "Houston Texans",
+  IND: "Indianapolis Colts",
+  JAX: "Jacksonville Jaguars",
+  KC: "Kansas City Chiefs",
+  LAC: "Los Angeles Chargers",
+  LAR: "Los Angeles Rams",
+  LV: "Las Vegas Raiders",
+  MIA: "Miami Dolphins",
+  MIN: "Minnesota Vikings",
+  NE: "New England Patriots",
+  NO: "New Orleans Saints",
+  NYG: "New York Giants",
+  NYJ: "New York Jets",
+  PHI: "Philadelphia Eagles",
+  PIT: "Pittsburgh Steelers",
+  SEA: "Seattle Seahawks",
+  SF: "San Francisco 49ers",
+  TB: "Tampa Bay Buccaneers",
+  TEN: "Tennessee Titans",
+  WAS: "Washington Commanders",
+};
+
+export const TEAM_CODES = Object.keys(TEAM_NAMES);
+
+export function isTeamCode(value: string | undefined): value is string {
+  return value !== undefined && value in TEAM_NAMES;
+}
+
+const COLUMN_LABELS = ["Starter", "2nd string", "3rd string", "4th string"];
+
+/** Most players shown per slot; anything deeper is not a chart a manager needs to read. */
+export const MAX_DEPTH = COLUMN_LABELS.length;
+
+export interface DepthRows {
+  columns: { depth: number; label: string }[];
+  rows: { slot: DepthSlot; cells: (DepthPlayer | null)[] }[];
+}
+
+/** A grid with one column per depth level the slots actually use (at most four). */
+export function depthRows(slots: DepthSlot[]): DepthRows {
+  const levels = Math.min(MAX_DEPTH, Math.max(1, ...slots.map((s) => s.players.length)));
+  return {
+    columns: Array.from({ length: levels }, (_, i) => ({ depth: i + 1, label: COLUMN_LABELS[i] })),
+    rows: slots.map((slot) => ({
+      slot,
+      cells: Array.from({ length: levels }, (_, i) => slot.players[i] ?? null),
+    })),
+  };
+}
+
+export interface DepthSections {
+  /** The fantasy-relevant slots (QB, RB, WR, TE), always open. */
+  skill: DepthSlot[];
+  /** The rest of the chart: offensive line, defense, special teams, each a section that opens. */
+  more: { key: string; title: string; slots: DepthSlot[] }[];
+}
+
+export function groupSlots(groups: DepthGroup[]): DepthSections {
+  const skill: DepthSlot[] = [];
+  const more: DepthSections["more"] = [];
+  for (const group of groups) {
+    if (group.group === "offense") {
+      skill.push(...group.slots.filter((s) => s.skill));
+      const line = group.slots.filter((s) => !s.skill);
+      if (line.length) more.push({ key: "offense-line", title: "Offensive line", slots: line });
+    } else if (group.slots.length) {
+      more.push({ key: group.group, title: group.title, slots: group.slots });
+    }
+  }
+  return { skill, more };
+}

@@ -330,3 +330,12 @@ def test_player_detail_endpoint(client: TestClient) -> None:
     assert (
         client.get("/api/leagues/1/players/bad id!").status_code == 422
     )  # rejected, not looked up
+
+
+def test_team_depth_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/teams/SF").status_code == 404  # league not connected yet
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/teams/SF").json()
+    assert body["team"] == "SF" and body["groups"] == []  # nothing stored yet: empty, not an error
+    assert client.get("/api/leagues/1/teams/ZZZ").status_code == 404  # not an NFL team
+    assert client.get("/api/leagues/1/teams/sf").status_code == 422  # rejected, not looked up

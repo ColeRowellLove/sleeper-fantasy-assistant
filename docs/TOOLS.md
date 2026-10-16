@@ -56,7 +56,7 @@ check each provider's pricing page before relying on a number.
 - **Why:** it is public, covers what the app needs, and never requires users' credentials.
 - **Trade-offs:** it has no projections or live game state; those come from other sources later (issues #109, #131).
 
-### ESPN fantasy API (ownership and start percentages)
+### ESPN fantasy API (ownership, start percentages and depth charts)
 
 - **What it is:** ESPN's public fantasy football API. It is undocumented, needs no key, and is the one free
   source we found for "what share of leagues roster and start this player".
@@ -65,6 +65,11 @@ check each provider's pricing page before relying on a number.
   Sleeper's. ESPN players are matched to Sleeper players by ESPN id where Sleeper has one, otherwise by
   name, team and position; a name that matches two players is left out rather than guessed (97% of players
   with points, and every rostered or high-scoring one, matched on real data).
+- **Depth charts:** the same family of free endpoints gives each team's full depth chart (offense
+  including the offensive line, defense by scheme, and special teams with the holder and returners), one
+  request per team. The worker refreshes all 32 every few hours (a few seconds in total) and matches the
+  players to Sleeper's by ESPN id or name within the team (99% matched on real data). Sleeper's own depth
+  chart fields are the fallback when ESPN has nothing, and a failed pull keeps the last good chart.
 - **Why:** Sleeper publishes no such numbers, and this is free.
 - **Trade-offs:** it can change without notice, so the parser is tested against a recorded shape and a
   failed or empty pull leaves the previous numbers in place. Personal, non-commercial use only; revisit if

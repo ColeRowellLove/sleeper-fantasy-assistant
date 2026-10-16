@@ -7,11 +7,14 @@ import LeagueTabs from "../../../components/LeagueTabs";
 import RostersPanel from "../../../components/RostersPanel";
 import SettingsPanel from "../../../components/SettingsPanel";
 import PlayerDialog from "../../../components/PlayerDialog";
+import TeamDepthChart from "../../../components/TeamDepthChart";
+import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
-import type { Dashboard, LeagueSettings, Lineups, PlayerDetail, PlayersData } from "../../../lib/api";
+import type { Dashboard, LeagueSettings, Lineups, PlayerDetail, PlayersData, TeamDepth } from "../../../lib/api";
 import { resolveApiUrl } from "../../../lib/apiUrl";
+import { isTeamCode } from "../../../lib/depth";
 import { leaguePath, parseTab } from "../../../lib/league";
 import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 
@@ -33,10 +36,10 @@ export default async function LeaguePage({
   searchParams,
 }: {
   params: Promise<{ leagueId: string }>;
-  searchParams: Promise<{ tab?: string; week?: string; player?: string }>;
+  searchParams: Promise<{ tab?: string; week?: string; player?: string; team?: string }>;
 }) {
   const { leagueId } = await params;
-  const { tab: tabParam, week, player } = await searchParams;
+  const { tab: tabParam, week, player, team } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
   const weekNumber = Number(week);
@@ -45,7 +48,7 @@ export default async function LeaguePage({
     Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18 ? `?week=${weekNumber}` : "";
 
   // the header needs the dashboard on every tab; lineups are only fetched for their own tab
-  const [dashboard, lineups, leagueSettings, players, playerDetail] = await Promise.all([
+  const [dashboard, lineups, leagueSettings, players, playerDetail, depth] = await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
     tab === "lineups"
       ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
@@ -59,6 +62,9 @@ export default async function LeaguePage({
     // an unknown or malformed ?player= simply opens nothing
     player && /^[A-Za-z0-9]{1,12}$/.test(player)
       ? getJson<PlayerDetail>(`/api/leagues/${leagueId}/players/${player}`).catch(() => null)
+      : Promise.resolve(null),
+    tab === "teams" && isTeamCode(team)
+      ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${team}`)
       : Promise.resolve(null),
   ]);
 
@@ -98,6 +104,16 @@ export default async function LeaguePage({
         <WeeklyLineups data={lineups} leagueId={leagueId} myRosterId={myRosterId} />
       )}
       {tab === "players" && players && <PlayersTable data={players} myRosterId={myRosterId} />}
+      {tab === "teams" && (
+        <>
+          <TeamPicker leagueId={leagueId} selected={isTeamCode(team) ? team : null} />
+          {depth ? (
+            <TeamDepthChart data={depth} myRosterId={myRosterId} />
+          ) : (
+            <p className="note">Pick a team to see its depth chart.</p>
+          )}
+        </>
+      )}
       {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
       {playerDetail && <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />}
       <p className="back">

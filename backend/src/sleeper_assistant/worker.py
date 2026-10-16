@@ -25,6 +25,7 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
+from sleeper_assistant.depth_sync import sync_depth_charts
 from sleeper_assistant.espn import fetch_ownership
 from sleeper_assistant.ingest import MAX_WEEKS, sync_league, sync_players, sync_schedule
 from sleeper_assistant.kickoffs import sync_kickoffs
@@ -62,6 +63,8 @@ HISTORY_FAILURE_COOLDOWN = timedelta(hours=12)
 HISTORY_SEASONS = 2  # how many finished seasons the player pop-up shows
 OWNERSHIP_SYNC_INTERVAL = timedelta(hours=3)  # ESPN's percentages move slowly
 OWNERSHIP_FAILURE_COOLDOWN = timedelta(hours=3)
+DEPTH_SYNC_INTERVAL = timedelta(hours=3)  # depth charts change with injuries and news
+DEPTH_FAILURE_COOLDOWN = timedelta(hours=3)
 KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
 KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
 CYCLE_MAX_JOBS = 50
@@ -117,12 +120,17 @@ def default_handlers(
         with http_factory() as http:
             sync_ownership(session, fetch_ownership(http, season))
 
+    def _sync_depth_charts(session: Session, _payload: dict[str, Any]) -> None:
+        with http_factory() as http:
+            sync_depth_charts(session, http)
+
     def _sync_kickoffs(session: Session, payload: dict[str, Any]) -> None:
         season = str(payload.get("season") or client.get_state().season)
         with http_factory() as http:
             sync_kickoffs(session, http, season)
 
     return {
+        "sync_depth_charts": _sync_depth_charts,
         "sync_history": _sync_history,
         "sync_kickoffs": _sync_kickoffs,
         "sync_projections": _sync_projections,
@@ -290,6 +298,13 @@ def enqueue_ownership_sync_if_due(session: Session, now: datetime | None = None)
     )
 
 
+def enqueue_depth_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh every team's depth chart every few hours."""
+    return _enqueue_periodic(
+        session, "sync_depth_charts", DEPTH_SYNC_INTERVAL, DEPTH_FAILURE_COOLDOWN, now
+    )
+
+
 def enqueue_kickoff_sync_if_due(session: Session, now: datetime | None = None) -> bool:
     """Refresh kickoff times from nflverse about daily."""
     return _enqueue_periodic(
@@ -324,6 +339,7 @@ def run_cycle(
             + int(enqueue_stats_sync_if_due(session))
             + int(enqueue_history_sync_if_due(session))
             + int(enqueue_ownership_sync_if_due(session))
+            + int(enqueue_depth_sync_if_due(session))
         )
     ran = 0
     while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):

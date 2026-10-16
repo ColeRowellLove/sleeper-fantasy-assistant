@@ -89,6 +89,39 @@ export interface PlayerDetail {
   past_seasons: { season: string; games: number; points: number; rank?: number | null }[];
 }
 
+export interface DepthPlayer {
+  name: string;
+  player_id?: string | null;
+  depth: number;
+  label: string;
+  injury?: InjuryInfo | null;
+  owner_roster_id?: number | null;
+  owner_team?: string | null;
+  next_up?: boolean;
+}
+
+export interface DepthSlot {
+  slot: string;
+  label: string;
+  skill?: boolean;
+  note?: string | null;
+  players: DepthPlayer[];
+}
+
+export interface DepthGroup {
+  group: "offense" | "defense" | "special";
+  title: string;
+  slots: DepthSlot[];
+}
+
+export interface TeamDepth {
+  team: string;
+  source?: string | null;
+  updated_at?: string | null;
+  game?: GameInfo | null;
+  groups: DepthGroup[];
+}
+
 export class ApiError extends Error {}
 
 const USERNAME_RE = /^[A-Za-z0-9_.]{1,40}$/;
