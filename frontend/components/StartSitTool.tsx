@@ -50,7 +50,7 @@ export default function StartSitTool({
   const weekField = week ? <input type="hidden" name="week" value={week} /> : null;
   const choices = (roster?.players ?? []).filter((p) => p.status !== "ir" && p.status !== "taxi");
   // the server's candidates carry projection, matchup and game; the plain roster is the fallback
-  const pickable: StartSitCandidate[] =
+  const base: StartSitCandidate[] =
     best?.roster && best.roster.length > 0
       ? best.roster
       : choices.map((p) => ({
@@ -60,6 +60,12 @@ export default function StartSitTool({
           team: p.team ?? null,
           sources: 0,
         }));
+  // a player picked in the link (or compared above) always keeps his checkbox
+  const known = new Set(base.map((p) => p.player_id));
+  const pickable = [
+    ...base,
+    ...(comparison?.candidates ?? []).filter((c) => !known.has(c.player_id)),
+  ];
 
   return (
     <section aria-labelledby="startsit-heading">
@@ -164,12 +170,14 @@ export default function StartSitTool({
           <ul className="pick-rows">
             {pickable.map((p) => (
               <li key={p.player_id}>
-                <label className="pick-row">
+                <div className="pick-row">
                   <input
+                    id={`pick-${p.player_id}`}
                     type="checkbox"
                     name="pick"
                     value={p.player_id}
                     defaultChecked={picks.includes(p.player_id)}
+                    aria-describedby={`pick-info-${p.player_id}`}
                   />
                   <PlayerAvatar
                     player_id={p.player_id}
@@ -178,8 +186,10 @@ export default function StartSitTool({
                     team={p.team}
                   />
                   <span className="pick-main">
-                    <span className="player-name">{p.name}</span>
-                    <span className="player-meta">
+                    <label htmlFor={`pick-${p.player_id}`} className="player-name pick-label">
+                      {p.name}
+                    </label>
+                    <span className="player-meta" id={`pick-info-${p.player_id}`}>
                       <PositionChip position={p.position} />
                       <span className="muted">{p.team ?? "FA"}</span>
                       <InjuryBadge injury={p.injury} />
@@ -189,11 +199,13 @@ export default function StartSitTool({
                     </span>
                   </span>
                   <span className="pick-proj num">
-                    {p.projected === null || p.projected === undefined
-                      ? "No projection yet"
-                      : `Proj ${p.projected.toFixed(1)}`}
+                    {p.projected === undefined
+                      ? ""
+                      : p.projected === null
+                        ? "No projection yet"
+                        : `Proj ${p.projected.toFixed(1)}`}
                   </span>
-                </label>
+                </div>
               </li>
             ))}
           </ul>

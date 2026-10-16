@@ -8,7 +8,7 @@ figures behind it, and says when it is a close call instead of pretending to be 
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -72,7 +72,9 @@ class BestLineup(BaseModel):
     current_projected: float
     changes: list[LineupChange]
     why: str
-    roster: list[Candidate] = []  # everyone who can be picked to compare, with the same numbers
+    roster: list[Candidate] = Field(
+        default_factory=list
+    )  # everyone who can be picked to compare, with the same numbers
 
 
 def _candidate(pid: str, ranked: dict[str, RankedPlayer], info: dict[str, PlayerRow]) -> Candidate:
@@ -232,6 +234,7 @@ def best_lineup(
             cands.values(),
             key=lambda c: (
                 _POSITION_ORDER.get(c.position or "", len(_POSITION_ORDER)),
+                c.projected is None,  # without a projection (or out) after those who have one
                 -(c.projected or 0.0),
                 c.name,
             ),

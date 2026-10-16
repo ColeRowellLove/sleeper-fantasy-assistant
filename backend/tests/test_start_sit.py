@@ -131,7 +131,8 @@ def test_the_roster_list_carries_every_pickable_player_with_his_numbers(session:
     assert "r3" in ids and "w2" in ids  # bench players are there to compare
     assert all(c.player_id not in {"parked"} for c in result.roster)  # nobody on IR or taxi
     positions = [c.position for c in result.roster]
-    assert positions == sorted(positions, key=["QB", "RB", "WR", "TE", "K", "DEF"].index)
+    order = ["QB", "RB", "WR", "TE", "K", "DEF"]
+    assert positions == sorted(positions, key=lambda p: order.index(p) if p in order else 99)
     rbs = [c.projected or 0.0 for c in result.roster if c.position == "RB"]
     assert rbs == sorted(rbs, reverse=True)  # best projection first within a position
 
