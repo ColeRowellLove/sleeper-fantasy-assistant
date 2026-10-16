@@ -15,7 +15,10 @@ import httpx
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from sleeper_assistant import jobs
+from sleeper_assistant import (
+    alert_detectors,  # noqa: F401  (registers the alert detectors)
+    jobs,
+)
 from sleeper_assistant.alerts import run_all_leagues
 from sleeper_assistant.crosswalk import build_crosswalk
 from sleeper_assistant.db import (

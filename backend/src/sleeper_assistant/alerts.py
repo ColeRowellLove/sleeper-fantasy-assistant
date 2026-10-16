@@ -47,7 +47,12 @@ class NewAlert(BaseModel):
 
 Detector = Callable[[Session, LeagueRow, datetime], list[NewAlert]]
 
+# global steps that run once per run, before any league's detectors (for example recording a change
+# that every league's detector then reads); they are not league-specific
+PreRun = Callable[[Session, datetime], None]
+
 DETECTORS: dict[str, Detector] = {}
+PRE_RUN: dict[str, PreRun] = {}
 
 
 def register(name: str) -> Callable[[Detector], Detector]:
@@ -58,6 +63,18 @@ def register(name: str) -> Callable[[Detector], Detector]:
             raise ValueError(f"alert detector {name!r} is already registered")
         DETECTORS[name] = detector
         return detector
+
+    return add
+
+
+def register_pre_run(name: str) -> Callable[[PreRun], PreRun]:
+    """Add a global step that runs once before the detectors of a whole run (a decorator)."""
+
+    def add(step: PreRun) -> PreRun:
+        if name in PRE_RUN:
+            raise ValueError(f"alert step {name!r} is already registered")
+        PRE_RUN[name] = step
+        return step
 
     return add
 
@@ -131,6 +148,13 @@ def run_all_leagues(
 ) -> int:
     """Run the engine for every league viewed since ``active_since`` (the ones the worker syncs)."""
     moment = now or utcnow()
+    for name, step in PRE_RUN.items():
+        try:
+            step(session, moment)
+            session.commit()
+        except Exception:  # a failed global step is logged; the detectors still run
+            session.rollback()
+            log.exception("alert step %s failed", name)
     leagues = list(
         session.scalars(select(LeagueRow).where(LeagueRow.last_viewed_at >= active_since))
     )
@@ -141,7 +165,11 @@ def run_all_leagues(
         except Exception:  # a database error on one league must not skip the others
             session.rollback()
             log.exception("alerts failed for league %s", league.league_id)
-    session.execute(delete(AlertRow).where(AlertRow.created_at < moment - KEEP))
+    session.execute(
+        delete(AlertRow)
+        .where(AlertRow.created_at < moment - KEEP)
+        .execution_options(synchronize_session=False)  # decided in SQL, not by comparing objects
+    )
     session.commit()
     return created
 
