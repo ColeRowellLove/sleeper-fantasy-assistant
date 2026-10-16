@@ -265,3 +265,8 @@
   font-size: 0.68rem;
   font-weight: 500;
 }
+
+/* This week's points sit beside the projection and read as the main number */
+.player-pts {
+  color: var(--text);
+}

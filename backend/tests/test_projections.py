@@ -219,3 +219,33 @@ def test_every_stat_category_counts_not_just_the_positions_main_stats() -> None:
     assert score_stats({"fgm_40_49": 2, "xpm": 3}, scoring) == 9.0
     defense = {"pts_allow_14_20": 1, "sack": 4, "int": 2, "def_td": 1}
     assert score_stats(defense, scoring) == 1.0 + 4.0 + 6.0 + 6.0
+
+
+def test_rosters_show_this_weeks_points_only_once_a_game_has_started(session: Session) -> None:
+    league = _league_with_projections(session)
+    for g in (NflGameRow(game_id="g2", season="2026", week=6, home="SF", away="DAL",
+                         game_date="2026-10-18", status="in_game"),):  # fmt: skip
+        session.add(g)
+    session.add_all(
+        [
+            PlayerRow(
+                player_id="3", full_name="Live Guy", position="WR", team="SF", external_ids={}
+            ),
+            PlayerRow(
+                player_id="4", full_name="Waiting Guy", position="WR", team="LAR", external_ids={}
+            ),
+        ]
+    )
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    roster.players = ["1", "2", "3", "4"]
+    mine = session.get(MatchupRow, ("L1", 6, 1))
+    assert mine is not None
+    mine.players_points = {"1": 0.0, "2": None, "3": 11.4, "4": 0.0}
+    # the shared setup has LAR's game as pre_game, so LAR players have not played
+    session.commit()
+    points = {p.name: p.points for p in build_dashboard(session, league).rosters[0].players}
+    assert points["Live Guy"] == 11.4  # his game is on: his points show
+    assert points["Nacua"] is None  # LAR has not played: a dash, not 0.0
+    assert points["Waiting Guy"] is None
+    assert points["Unknown"] is None  # no points recorded at all

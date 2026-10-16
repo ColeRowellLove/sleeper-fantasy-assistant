@@ -208,6 +208,8 @@ export interface RosterPlayer {
   injury?: InjuryInfo | null;
   /** Projected points this week under the league's scoring; null/absent = no projection. */
   projected?: number | null;
+  /** Actual points this week once the game has started; null/absent before then. */
+  points?: number | null;
 }
 
 export interface LineupPlayer {
