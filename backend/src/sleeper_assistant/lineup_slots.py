@@ -23,6 +23,11 @@ _ELIGIBLE: dict[str, frozenset[str]] = {
 }
 
 
+def eligible_positions(slot: str, position: str) -> frozenset[str]:
+    """The positions that can fill a slot; a slot we do not know takes just the player's own."""
+    return _ELIGIBLE.get(slot, frozenset({position}))
+
+
 def assign_lineup(
     slots: list[str], candidates: list[tuple[str, str, float]]
 ) -> list[tuple[str, str]]:

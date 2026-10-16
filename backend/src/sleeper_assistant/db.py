@@ -254,6 +254,22 @@ class PlayerWeekStatsRow(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PlayerInjuryRow(Base):
+    """The last injury status seen for a player, so a change (ruled out) is a real comparison."""
+
+    __tablename__ = "player_injury_status"
+
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    status: Mapped[str | None] = mapped_column(
+        String
+    )  # Out, Doubtful, Questionable, ...; None = healthy
+    previous: Mapped[str | None] = mapped_column(String)  # the status before the last change
+    changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )  # None = first sight
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class AlertRow(Base):
     """An alert for one team in one league. Created once per event (the dedupe key)."""
 

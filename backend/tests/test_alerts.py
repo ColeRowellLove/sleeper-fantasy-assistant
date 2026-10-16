@@ -197,3 +197,44 @@ def test_times_come_back_as_utc_even_when_the_database_drops_the_zone(session: S
     alert = build_alerts(session, "L1", 1).alerts[0]
     assert alert.created_at.tzinfo is not None
     assert alert.model_dump_json().count("Z") == 1 or "+00:00" in alert.model_dump_json()
+
+
+def test_a_global_step_runs_once_before_the_leagues_and_a_failing_one_does_not_stop_the_run(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    _league(session, "L1")
+    _league(session, "L2")
+    order: list[str] = []
+
+    def step(_s: Session, _n: object) -> None:
+        order.append("step")
+
+    def broken(_s: Session, _n: object) -> None:
+        raise RuntimeError("tracker down")
+
+    def detector(_s: Session, lg: LeagueRow, _n: object) -> list[NewAlert]:
+        order.append(lg.league_id)
+        return []
+
+    alerts.PRE_RUN.update({"t_step": step, "t_broken": broken})
+    try:
+        with caplog.at_level("ERROR", logger="sleeper_assistant.alerts"):
+            run_all_leagues(session, utcnow() - timedelta(days=1), {"d": detector})
+    finally:
+        alerts.PRE_RUN.pop("t_step", None)
+        alerts.PRE_RUN.pop("t_broken", None)
+    assert order.count("step") == 1 and order.index("step") < order.index("L1")
+    assert sorted(o for o in order if o != "step") == ["L1", "L2"]
+    assert "alert step t_broken failed" in caplog.text
+
+
+def test_registering_a_global_step_twice_is_refused() -> None:
+    @alerts.register_pre_run("unit_test_step")
+    def step(_s: Session, _n: object) -> None:
+        return None
+
+    try:
+        with pytest.raises(ValueError, match="already registered"):
+            alerts.register_pre_run("unit_test_step")(step)
+    finally:
+        alerts.PRE_RUN.pop("unit_test_step", None)
