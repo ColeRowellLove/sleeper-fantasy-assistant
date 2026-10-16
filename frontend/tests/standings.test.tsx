@@ -287,17 +287,26 @@ describe("sit vs start accuracy in the standings", () => {
     expect(screen.getByText(/potential points/)).toBeInTheDocument();
   });
 
-  it("leaves the table as it was when Sleeper reports nothing", () => {
+  it("leaves the table as it was when there is no accuracy data", () => {
     render(
       <StandingsTable standings={withAccuracy(standings, null)} playoffTeams={2} myRosterId={1} />,
     );
     expect(screen.queryByRole("columnheader", { name: /Accuracy/ })).not.toBeInTheDocument();
+  });
+
+  it("shows no accuracy columns when Sleeper reports no potential points", () => {
     const noPotential = withAccuracy(standings, {
       league_id: "1",
       teams: accuracy.teams.map((t) => ({ ...t, accuracy: null, left_on_bench: null })),
     });
     render(<StandingsTable standings={noPotential} playoffTeams={2} myRosterId={1} />);
     expect(screen.queryByRole("columnheader", { name: /Accuracy/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps a team missing from the accuracy response unchanged", () => {
+    const partial = withAccuracy(standings, { league_id: "1", teams: [accuracy.teams[0]] });
+    expect(partial.find((r) => r.roster_id === 1)?.accuracy).toBeUndefined();
+    expect(partial.find((r) => r.roster_id === 3)?.accuracy).toBe(0.875);
   });
 
   it("sorts by accuracy, best first, with unreported teams last", async () => {
@@ -309,6 +318,12 @@ describe("sit vs start accuracy in the standings", () => {
       .slice(1)
       .map((r) => within(r).getAllByRole("rowheader")[0].textContent);
     expect(names).toEqual(["Cole", "Dad", "Sis"]);
+    await user.click(screen.getByRole("button", { name: /Accuracy/ })); // low to high
+    const flipped = within(screen.getByRole("table", { name: /standings/i }))
+      .getAllByRole("row")
+      .slice(1)
+      .map((r) => within(r).getAllByRole("rowheader")[0].textContent);
+    expect(flipped).toEqual(["Dad", "Cole", "Sis"]); // the team with no figure is still last
     await expectNoA11yViolations(
       <StandingsTable standings={merged} playoffTeams={2} myRosterId={1} />,
     );

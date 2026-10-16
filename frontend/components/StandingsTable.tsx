@@ -28,6 +28,7 @@ const ACCURACY_COLUMNS: typeof COLUMNS = [
   { key: "accuracy", label: "Accuracy", numeric: true },
   { key: "left_on_bench", label: "Bench pts", numeric: true },
 ];
+const ALL_COLUMNS = [...COLUMNS, ...ACCURACY_COLUMNS];
 
 const percent = (n: number | null | undefined) =>
   n === null || n === undefined ? "–" : `${(n * 100).toFixed(1)}%`;
@@ -56,7 +57,7 @@ function StreakBadge({ streak }: { streak: string | null | undefined }) {
 }
 
 function describe(sort: SortState): string {
-  const column = [...COLUMNS, ...ACCURACY_COLUMNS].find((c) => c.key === sort.key)?.label ?? "";
+  const column = ALL_COLUMNS.find((c) => c.key === sort.key)?.label ?? "";
   const how =
     sort.key === "team"
       ? sort.direction === "asc"
@@ -80,10 +81,12 @@ export default function StandingsTable({
   /** When given, each team name links to that team's roster. */
   leagueId?: string;
 }) {
-  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
-  const rows = sortStandings(standings, sort);
+  const [chosen, setSort] = useState<SortState>(DEFAULT_SORT);
   const showAccuracy = standings.some((r) => r.accuracy !== null && r.accuracy !== undefined);
-  const columns = showAccuracy ? [...COLUMNS, ...ACCURACY_COLUMNS] : COLUMNS;
+  const columns = showAccuracy ? ALL_COLUMNS : COLUMNS;
+  // a sort on a column that is no longer shown (the accuracy data went away) falls back to rank
+  const sort = columns.some((c) => c.key === chosen.key) ? chosen : DEFAULT_SORT;
+  const rows = sortStandings(standings, sort);
   // the playoff bar only means something while the table runs from first place down
   const showPlayoffs = playoffTeams !== null && sort.key === "rank" && sort.direction === "asc";
 

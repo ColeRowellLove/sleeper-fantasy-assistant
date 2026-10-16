@@ -132,7 +132,10 @@ export default async function LeaguePage({
       : Promise.resolve(null),
     // sit vs start accuracy sits in the standings; it is extra, so a failure shows the table without it
     tab === "standings"
-      ? getJson<LineupAccuracy>(`/api/leagues/${leagueId}/accuracy`).catch(() => null)
+      ? getJson<LineupAccuracy>(`/api/leagues/${leagueId}/accuracy`).catch((error: unknown) => {
+          console.error("accuracy failed to load for the standings", error);
+          return null;
+        })
       : Promise.resolve(null),
     tab === "settings"
       ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
