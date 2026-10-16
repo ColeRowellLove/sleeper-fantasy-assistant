@@ -363,3 +363,21 @@
 .game-situation {
   color: var(--muted);
 }
+
+/* the live updating note and its pause button */
+.live-refresh {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  gap: 0.25rem 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.live-dot {
+  background: var(--game-live);
+  border-radius: 50%;
+  display: inline-block;
+  height: 0.55rem;
+  width: 0.55rem;
+}

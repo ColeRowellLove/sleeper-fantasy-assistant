@@ -42,6 +42,15 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
   (`sync_trending`, `sync_stats`), past seasons game by game once (`sync_history`: the 18 weekly stat lines of each of the last two seasons plus their schedules, about 6 MB of database per season, measured on 2024 and 2025; regular season only, playoffs are not included) ESPN's ownership
   percentages every 3 hours (`sync_ownership`) and every team's depth chart every 3 hours
   (`sync_depth_charts`). A failed download only leaves the previous numbers in place.
+- **Live games.** From an hour before a kickoff until five hours after (or while Sleeper says a game
+  is in progress) the app runs faster: the API answers reads with a 10 second cache instead of 30,
+  ESPN's scoreboard is cached 15 seconds, the worker syncs the stat lines every 2 minutes and the
+  schedule every 3 (instead of hourly and every 10), and a worker run that starts inside the window
+  keeps cycling about once a minute for up to 12 minutes (the next scheduled run carries on). Pages
+  with a live game refresh themselves every 15 seconds, with a Pause button. GitHub's scheduled runs
+  start every 15 minutes and can be late, so stats are as fresh as the last worker minute; a
+  continuously running worker would make them steadier. Outside the window nothing changes, so
+  quiet days cost nothing.
 - `backend/app.py` is the Vercel entrypoint; locally use `uvicorn sleeper_assistant.api:app`.
 
 ## Testing develop before a release

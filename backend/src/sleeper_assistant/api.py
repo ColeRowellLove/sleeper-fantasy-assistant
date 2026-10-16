@@ -33,6 +33,7 @@ from sleeper_assistant.depth import TEAM_IDS
 from sleeper_assistant.games_view import Games, build_games
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
 from sleeper_assistant.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
+from sleeper_assistant.live_window import live_window_open
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
 from sleeper_assistant.players_view import PlayersResponse, build_players
 from sleeper_assistant.rankings import Rankings, build_rankings
@@ -54,6 +55,8 @@ VIEW_TOUCH_INTERVAL = timedelta(hours=1)  # last_viewed_at is refreshed at most 
 # Read endpoints are identical for everyone and only change when a sync runs, so let the CDN
 # serve them briefly instead of hitting the database on every page view.
 READ_CACHE = "public, s-maxage=30, stale-while-revalidate=120"
+# while a game is on, answers are only trusted for a few seconds so scores and stats stay fresh
+READ_CACHE_LIVE = "public, s-maxage=10, stale-while-revalidate=20"
 
 app = FastAPI(title="Sleeper Fantasy Assistant", version=__version__)
 
@@ -88,6 +91,11 @@ def get_sleeper() -> SleeperClient:
 
 SessionDep = Annotated[Session, Depends(get_session)]
 SleeperDep = Annotated[SleeperClient, Depends(get_sleeper)]
+
+
+def read_cache(session: Session, season: str) -> str:
+    """The Cache-Control for a read: a few seconds while a game is on, longer otherwise."""
+    return READ_CACHE_LIVE if live_window_open(session, season) else READ_CACHE
 
 
 class LeagueSummary(BaseModel):
@@ -255,7 +263,7 @@ def get_league_dashboard(
         row.last_viewed_at = now
         session.commit()
     connected = _connected(row)
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return DashboardResponse(**build_dashboard(session, row).model_dump(), rules=connected.rules)
 
 
@@ -279,7 +287,7 @@ def get_league_settings(
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return LeagueSettings(
         league_id=row.league_id,
         name=row.name,
@@ -299,7 +307,7 @@ def get_league_players(
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_players(session, row)
 
 
@@ -317,7 +325,7 @@ def get_player_detail(
     detail = build_player_detail(session, row, player_id)
     if detail is None:
         raise HTTPException(status_code=404, detail="Player not found")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return detail
 
 
@@ -335,7 +343,7 @@ def get_team_depth(
         raise HTTPException(status_code=404, detail="League not connected yet")
     if team not in TEAM_IDS:
         raise HTTPException(status_code=404, detail="Team not found")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_team_depth(session, row, team)
 
 
@@ -350,7 +358,7 @@ def get_league_lineups(
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_lineups(session, row, week)
 
 
@@ -366,7 +374,7 @@ def get_start_sit(
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return compare_players(session, row, player, week)
 
 
@@ -385,7 +393,7 @@ def get_best_lineup(
     result = best_lineup(session, row, roster, week)
     if result is None:
         raise HTTPException(status_code=404, detail="Team not found")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return result
 
 
@@ -400,7 +408,7 @@ def get_games(
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_games(session, row, week)
 
 
@@ -416,7 +424,7 @@ def get_rankings(
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     chosen = [s for s in (sources or "").split(",") if s]
     return build_rankings(session, row, week, chosen)
 
@@ -429,7 +437,7 @@ def get_lineup_accuracy(
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = READ_CACHE
+    response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_lineup_accuracy(session, row)
 
 

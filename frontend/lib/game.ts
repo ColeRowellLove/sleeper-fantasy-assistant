@@ -233,3 +233,8 @@ export function situationLabel(game: GameInfo | null | undefined): SituationLabe
     redZone: s.red_zone === true,
   };
 }
+
+/** Whether any of the given games (any number of lists, with gaps) is live right now. */
+export function anyLive(lists: (GameInfo | null | undefined)[][]): boolean {
+  return lists.some((games) => games.some((game) => game?.state === "live"));
+}
