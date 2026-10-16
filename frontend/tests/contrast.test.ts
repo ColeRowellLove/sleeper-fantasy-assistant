@@ -1,10 +1,11 @@
 // @vitest-environment node
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { readAllCss } from "./css";
+
 // jsdom cannot compute CSS, so axe never checks palette contrast. This reads the real tokens from
-// globals.css and checks WCAG AA (4.5:1 for normal text) for both themes.
-const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf-8");
+// the stylesheets and checks WCAG AA (4.5:1 for normal text) for both themes.
+const css = readAllCss();
 
 function block(source: string): Record<string, string> {
   const tokens: Record<string, string> = {};
@@ -15,7 +16,7 @@ function block(source: string): Record<string, string> {
 /** The text between a selector's "{" and its closing "}" (the token blocks have no nesting). */
 function sliceBlock(selector: string): string {
   const start = css.indexOf(selector);
-  if (start === -1) throw new Error(`selector not found in globals.css: ${selector}`);
+  if (start === -1) throw new Error(`selector not found in the stylesheets: ${selector}`);
   const open = css.indexOf("{", start);
   return css.slice(open + 1, css.indexOf("}", open));
 }
@@ -44,7 +45,7 @@ function ratio(a: [number, number, number], b: [number, number, number]): number
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/** A color at the given opacity over a surface (the chip and badge tints in globals.css). */
+/** A color at the given opacity over a surface (the chip and badge tints in the stylesheets). */
 function chipBackgroundAt(color: string, surface: string, alpha: number): [number, number, number] {
   const p = rgb(color);
   const s = rgb(surface);

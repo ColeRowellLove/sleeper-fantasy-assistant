@@ -1,11 +1,14 @@
 // @vitest-environment node
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+
+import { readdirSync } from "node:fs";
+
+import { STYLE_FILES, readAllCss } from "./css";
 
 // jsdom cannot lay anything out, so this guards a CSS trap found on a real phone: .visually-hidden is
 // absolutely positioned, so inside a scrollable row that is not itself positioned it escapes the
 // row's clipping and widens the whole page.
-const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf-8");
+const css = readAllCss();
 
 function rule(selector: string): string {
   // plain string search instead of building a regex from the selector (no escaping to get wrong)
@@ -30,5 +33,14 @@ describe("settings rows", () => {
   it(".setting-rows opts out of the global dl grid", () => {
     expect(rule("dl")).toContain("display: grid");
     expect(rule(".setting-rows")).toContain("display: block");
+  });
+});
+
+describe("stylesheets", () => {
+  it("lists every file in app/styles, so the tests read the whole cascade", () => {
+    const onDisk = readdirSync(new URL("../app/styles", import.meta.url))
+      .map((f) => f.replace(/\.css$/, ""))
+      .sort();
+    expect([...STYLE_FILES].sort()).toEqual(onDisk);
   });
 });
