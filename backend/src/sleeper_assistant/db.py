@@ -184,6 +184,17 @@ class PlayerProjectionRow(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PlayerOwnershipRow(Base):
+    """ESPN-wide percent of leagues that roster and start a player (not Sleeper's numbers)."""
+
+    __tablename__ = "player_ownership"
+
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)  # the Sleeper player id
+    owned: Mapped[float | None]
+    started: Mapped[float | None]
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class PlayerSeasonStatsRow(Base):
     """A player's stat totals for a past season (summed from its weeks; the weeks are not kept)."""
 

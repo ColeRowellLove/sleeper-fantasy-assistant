@@ -11,7 +11,15 @@ from collections.abc import Iterable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import PlayerSeasonStatsRow, PlayerTrendRow, PlayerWeekStatsRow, utcnow
+from sleeper_assistant.db import (
+    PlayerOwnershipRow,
+    PlayerRow,
+    PlayerSeasonStatsRow,
+    PlayerTrendRow,
+    PlayerWeekStatsRow,
+    utcnow,
+)
+from sleeper_assistant.espn import Ownership, SleeperPerson, match_players
 from sleeper_assistant.sleeper import SleeperClient
 
 
@@ -120,3 +128,38 @@ def sync_season_history(session: Session, client: SleeperClient, season: str) ->
         )
     session.commit()
     return len(totals)
+
+
+def sync_ownership(session: Session, espn: list[Ownership]) -> int:
+    """Store ESPN's owned and started percentages for the Sleeper players they match.
+
+    ``espn`` is what was pulled; an empty pull (ESPN down or changed) changes nothing, so the
+    previous numbers stay. Returns how many players were stored.
+    """
+    if not espn:
+        return 0
+    people = [
+        SleeperPerson(
+            player_id=p.player_id,
+            name=p.full_name,
+            team=p.team,
+            position=p.position,
+            espn_id=str(p.external_ids["espn"]) if p.external_ids.get("espn") else None,
+        )
+        for p in session.scalars(select(PlayerRow).where(PlayerRow.team.is_not(None)))
+    ]
+    matched = match_players(espn, people)
+    existing = {row.player_id: row for row in session.scalars(select(PlayerOwnershipRow))}
+    now = utcnow()
+    for player_id, numbers in matched.items():
+        row = existing.pop(player_id, None)
+        if row is None:
+            row = PlayerOwnershipRow(player_id=player_id)
+            session.add(row)
+        row.owned = numbers.owned
+        row.started = numbers.started
+        row.fetched_at = now
+    for stale in existing.values():
+        session.delete(stale)  # no longer among ESPN's top players: below the cutoff
+    session.commit()
+    return len(matched)

@@ -24,6 +24,7 @@ from sleeper_assistant.dashboard import (
 )
 from sleeper_assistant.db import (
     LeagueRow,
+    PlayerOwnershipRow,
     PlayerProjectionRow,
     PlayerRow,
     PlayerTrendRow,
@@ -49,6 +50,8 @@ class PlayerListing(BaseModel):
     total_points: float = 0.0  # this season, under this league's scoring
     rank: int | None = None  # within position by total points; None when no points yet
     projected: float | None = None  # this week; None = no projection
+    owned_pct: float | None = None  # ESPN-wide share of leagues that roster the player
+    started_pct: float | None = None  # ESPN-wide share of leagues that start the player
 
 
 class PlayersResponse(BaseModel):
@@ -90,6 +93,7 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     games = games_for_week(session, league.season, week) if week else {}
     totals = _season_totals(session, league.season, league.scoring_settings)
     trends = {row.player_id: row for row in session.scalars(select(PlayerTrendRow))}
+    ownership = {row.player_id: row for row in session.scalars(select(PlayerOwnershipRow))}
     projected: dict[str, float] = {}
     if week:
         projectable = session.scalars(
@@ -102,7 +106,7 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
         )
 
     # a player is listed when this league or Sleeper gives a reason to look at them
-    relevant = set(owner) | set(totals) | set(trends) | set(projected)
+    relevant = set(owner) | set(totals) | set(trends) | set(projected) | set(ownership)
     candidates = session.scalars(
         select(PlayerRow).where(
             PlayerRow.player_id.in_(relevant),
@@ -127,6 +131,8 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
                 drops=trend.drops if trend else None,
                 total_points=totals.get(p.player_id, 0.0),
                 projected=projected.get(p.player_id),
+                owned_pct=ownership[p.player_id].owned if p.player_id in ownership else None,
+                started_pct=ownership[p.player_id].started if p.player_id in ownership else None,
             )
         )
 
