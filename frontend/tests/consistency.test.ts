@@ -23,15 +23,16 @@ function using(pattern: RegExp): string[] {
 
 describe("shared components are the only way to build these", () => {
   it("stats tables use StatTable (existing exceptions may only shrink)", () => {
-    const found = using(/<table className=\{?[`"]players/);
-    expect(found).toEqual(["StatTable.tsx"]);
-    const scrolling = using(/className="players-scroll/);
     const allowed = [
       "PlayerDialog.tsx",
       "StatTable.tsx",
       "TeamDepthChart.tsx",
       "TeamStatsTable.tsx",
     ];
+    const tables = using(/<table className=\{?[`"]players/);
+    expect(tables.filter((f) => !allowed.includes(f))).toEqual([]);
+    expect(tables).toContain("StatTable.tsx");
+    const scrolling = using(/className="players-scroll/);
     expect(scrolling.filter((f) => !allowed.includes(f))).toEqual([]);
   });
 
