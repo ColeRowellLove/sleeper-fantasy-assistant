@@ -3,17 +3,17 @@ import type { ConnectedLeague } from "./api";
 export type Rules = ConnectedLeague["rules"];
 
 export const TABS = [
-  { key: "standings", label: "Standings" },
-  { key: "rosters", label: "Rosters" },
-  { key: "lineups", label: "Lineups" },
-  { key: "games", label: "Games" },
-  { key: "rankings", label: "Rankings" },
-  { key: "alerts", label: "Alerts" },
-  { key: "waiver", label: "Waiver wire" },
-  { key: "startsit", label: "Start/Sit" },
-  { key: "players", label: "Players" },
-  { key: "teams", label: "Teams" },
-  { key: "settings", label: "Settings" },
+  { key: "standings", label: "Standings", group: "main" },
+  { key: "rosters", label: "Rosters", group: "main" },
+  { key: "lineups", label: "Lineups", group: "main" },
+  { key: "games", label: "Games", group: "main" },
+  { key: "alerts", label: "Alerts", group: "main" },
+  { key: "waiver", label: "Waiver wire", group: "main" },
+  { key: "rankings", label: "Rankings", group: "more" },
+  { key: "startsit", label: "Start/Sit", group: "more" },
+  { key: "players", label: "Players", group: "more" },
+  { key: "teams", label: "Teams", group: "more" },
+  { key: "settings", label: "Settings", group: "more" },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];

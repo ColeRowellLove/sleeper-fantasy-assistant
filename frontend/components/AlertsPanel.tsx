@@ -9,10 +9,22 @@ import {
   newestAlertTime,
   unreadAlerts,
   waiverTargets,
+  type WaiverTarget,
 } from "../lib/alerts";
 import { leaguePath } from "../lib/league";
 import { alertsSeenCookie, setCookie } from "../lib/myTeam";
 import PlayerLink from "./PlayerLink";
+
+const SHOWN_TARGETS = 3; // pickups shown at once; the rest are one click away
+
+function TargetItem({ target: t }: { target: WaiverTarget }) {
+  return (
+    <li>
+      <PlayerLink playerId={t.player_id}>{t.name}</PlayerLink>
+      {t.detail !== undefined ? ` ${t.detail}` : t.line.replace(t.name, "")}
+    </li>
+  );
+}
 
 /** What the alert engine sends today, in plain words (keep in step with the detectors). */
 const ALERT_KINDS = [
@@ -61,14 +73,23 @@ function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
         </div>
       )}
       {targets.length > 0 ? (
-        <ol className="alert-targets">
-          {targets.map((t) => (
-            <li key={t.player_id}>
-              <PlayerLink playerId={t.player_id}>{t.name}</PlayerLink>
-              {t.detail !== undefined ? ` ${t.detail}` : t.line.replace(t.name, "")}
-            </li>
-          ))}
-        </ol>
+        <>
+          <ol className="alert-targets">
+            {targets.slice(0, SHOWN_TARGETS).map((t) => (
+              <TargetItem key={t.player_id} target={t} />
+            ))}
+          </ol>
+          {targets.length > SHOWN_TARGETS && (
+            <details className="alert-more">
+              <summary>Show {targets.length - SHOWN_TARGETS} more</summary>
+              <ol className="alert-targets" start={SHOWN_TARGETS + 1}>
+                {targets.slice(SHOWN_TARGETS).map((t) => (
+                  <TargetItem key={t.player_id} target={t} />
+                ))}
+              </ol>
+            </details>
+          )}
+        </>
       ) : (
         <p className="alert-why">{alert.why}</p>
       )}
