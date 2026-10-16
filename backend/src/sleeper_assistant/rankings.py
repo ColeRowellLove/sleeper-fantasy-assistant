@@ -6,16 +6,20 @@ ranks, so the page can show how many signals back a player and how far apart the
 
 * ``projection``: Sleeper's projected points for the week, scored with this league's rules;
 * ``form``: points per game over the player's last three games before that week, same scoring;
-* ``start``: ESPN's share of leagues that start the player (current week only).
+* ``start``: ESPN's share of leagues that start the player (current week only);
+* ``vegas``: the points the betting line implies for the player's team (total / 2 minus the team's
+  spread / 2), from the lines stored with each game.
 
-More sources (a licensed expert ranking, usage shares) plug in by adding a signal. Weights start
-equal. A player missing from a signal is simply ranked by the rest.
+The caller can choose which of the available signals to use; the ranks, spread and source count
+are then computed from only those. More sources (a licensed expert ranking such as FantasyPros,
+usage shares) plug in by adding a signal. Weights start equal. A player missing from a selected
+signal is ranked by the rest, and one missing from all of them is left out.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -45,11 +49,16 @@ from sleeper_assistant.projections import score_projection, score_stats
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
 FLEX_POSITIONS = frozenset({"RB", "WR", "TE"})
 FORM_GAMES = 3
-SIGNALS = ("projection", "form", "start")
+SIGNALS = ("projection", "form", "start", "vegas")
 SIGNAL_LABELS = {
     "projection": "Sleeper projection",
     "form": "Last three games",
     "start": "ESPN start %",
+    "vegas": "Vegas implied points",
+}
+# sources people ask for that cannot be used yet, and why
+UNAVAILABLE = {
+    "fantasypros": "FantasyPros (not connected: needs a license, see the free-tier decision)",
 }
 
 
@@ -66,6 +75,7 @@ class RankedPlayer(BaseModel):
     projected: float | None = None
     form: float | None = None  # points per game over the last three games
     started_pct: float | None = None
+    implied_points: float | None = None  # points the betting line implies for his team
     signal_ranks: dict[str, int]  # signal -> rank within the position
     rank: int  # consensus rank within the position
     flex_rank: int | None = None  # consensus rank among RB, WR and TE together
@@ -80,7 +90,9 @@ class Rankings(BaseModel):
     week: int | None
     current_week: int | None
     weeks: list[int]
-    signals: dict[str, str]  # signal -> label, for the legend
+    signals: dict[str, str]  # the signals available this week: key -> label
+    selected: list[str]  # the signals the ranks were computed from
+    unavailable: dict[str, str] = {}  # sources not connected yet, with the reason
     players: list[RankedPlayer]
 
 
@@ -121,6 +133,8 @@ def _why(p: RankedPlayer, pool: int) -> str:
         bits.append(f"{p.form:.1f} a game over his last {FORM_GAMES}")
     if p.started_pct is not None:
         bits.append(f"started in {p.started_pct:.0f}% of ESPN leagues")
+    if p.implied_points is not None:
+        bits.append(f"Vegas has {p.team} scoring {p.implied_points:.1f}")
     if p.matchup is not None:
         side = "offense" if p.matchup.side == "offense" else "defense"
         bits.append(
@@ -137,7 +151,26 @@ def _ordinal(n: int) -> str:
     return f"{n}{({1: 'st', 2: 'nd', 3: 'rd'}).get(n % 10, 'th')}"
 
 
-def build_rankings(session: Session, league: LeagueRow, week: int | None = None) -> Rankings:
+def _implied_points(session: Session, season: str, week: int) -> dict[str, float]:
+    """team -> the points the betting line implies for it this week (games with a line only)."""
+    out: dict[str, float] = {}
+    for g in session.scalars(
+        select(NflGameRow).where(NflGameRow.season == season, NflGameRow.week == week)
+    ):
+        if g.total_line is None or g.spread_line is None:
+            continue
+        # spread_line is how many points the home team is favoured by
+        out[g.home] = round(g.total_line / 2 + g.spread_line / 2, 2)
+        out[g.away] = round(g.total_line / 2 - g.spread_line / 2, 2)
+    return out
+
+
+def build_rankings(
+    session: Session,
+    league: LeagueRow,
+    week: int | None = None,
+    sources: Sequence[str] | None = None,
+) -> Rankings:
     season = league.season
     scoring = league.scoring_settings
     now = current_week(session, season)
@@ -150,11 +183,10 @@ def build_rankings(session: Session, league: LeagueRow, week: int | None = None)
         | set(session.scalars(select(NflGameRow.week).where(NflGameRow.season == season)))
     )
     chosen = week if week in weeks else now
-    signals = dict(SIGNAL_LABELS)
     if chosen is None:
         return Rankings(
             league_id=league.league_id, week=None, current_week=now, weeks=weeks,
-            signals=signals, players=[],
+            signals={}, selected=[], unavailable=UNAVAILABLE, players=[],
         )  # fmt: skip
 
     projections = {
@@ -173,6 +205,15 @@ def build_rankings(session: Session, league: LeagueRow, week: int | None = None)
             for row in session.scalars(select(PlayerOwnershipRow))
             if row.started is not None
         }
+    implied = _implied_points(session, season, chosen)
+    has = {
+        "projection": bool(projections),
+        "form": bool(form),
+        "start": bool(started),
+        "vegas": bool(implied),
+    }
+    signals = {s: SIGNAL_LABELS[s] for s in SIGNALS if has[s]}
+    selected = [s for s in SIGNALS if s in (sources or []) and s in signals] or list(signals)
     candidates = {pid for pid, pts in projections.items() if pts > 0}
     players = {
         p.player_id: p
@@ -193,15 +234,20 @@ def build_rankings(session: Session, league: LeagueRow, week: int | None = None)
 
     def consensus(group: list[str]) -> dict[str, tuple[dict[str, int], float]]:
         """pid -> (signal ranks, average rank) for one pool of players."""
-        by_signal = {
-            "projection": _order({pid: projections[pid] for pid in group if pid in projections}),
-            "form": _order({pid: form[pid] for pid in group if pid in form}),
-            "start": _order({pid: started[pid] for pid in group if pid in started}),
+        values: dict[str, dict[str, float]] = {
+            "projection": {pid: projections[pid] for pid in group if pid in projections},
+            "form": {pid: form[pid] for pid in group if pid in form},
+            "start": {pid: started[pid] for pid in group if pid in started},
+            "vegas": {
+                pid: implied[team] for pid in group if (team := players[pid].team or "") in implied
+            },
         }
+        by_signal = {s: _order(values[s]) for s in selected}
         out: dict[str, tuple[dict[str, int], float]] = {}
         for pid in group:
             ranks = {s: r[pid] for s, r in by_signal.items() if pid in r}
-            out[pid] = (ranks, sum(ranks.values()) / len(ranks))
+            if ranks:  # a player none of the chosen sources has is left out, not guessed
+                out[pid] = (ranks, sum(ranks.values()) / len(ranks))
         return out
 
     by_position: dict[str, list[str]] = defaultdict(list)
@@ -209,8 +255,9 @@ def build_rankings(session: Session, league: LeagueRow, week: int | None = None)
         by_position[p.position or ""].append(pid)
 
     ranked: dict[str, RankedPlayer] = {}
-    for position, group in by_position.items():
-        scores = consensus(group)
+    for position, pool in by_position.items():
+        scores = consensus(pool)
+        group = [pid for pid in pool if pid in scores]
         order = sorted(group, key=lambda pid: (scores[pid][1], -projections[pid], pid))
         positions_rank = _order({pid: -scores[pid][1] for pid in group})  # ties share a rank
         for pid in order:
@@ -230,6 +277,7 @@ def build_rankings(session: Session, league: LeagueRow, week: int | None = None)
                 projected=round(projections[pid], 2) if pid in projections else None,
                 form=form.get(pid),
                 started_pct=started.get(pid),
+                implied_points=implied.get(p.team or ""),
                 signal_ranks=ranks,
                 rank=positions_rank[pid],
                 score=round(score, 2),
@@ -242,7 +290,9 @@ def build_rankings(session: Session, league: LeagueRow, week: int | None = None)
     flex_rank = _order({pid: -flex_scores[pid][1] for pid in flex_group})
     for pid in flex_group:
         ranked[pid].flex_rank = flex_rank[pid]
-    sizes = {pos: len(group) for pos, group in by_position.items()}
+    sizes: dict[str, int] = defaultdict(int)
+    for r in ranked.values():
+        sizes[r.position] += 1
     for r in ranked.values():
         r.why = _why(r, sizes[r.position])
 
@@ -253,5 +303,7 @@ def build_rankings(session: Session, league: LeagueRow, week: int | None = None)
         current_week=now,
         weeks=weeks,
         signals=signals,
+        selected=selected,
+        unavailable=UNAVAILABLE,
         players=ordered,
     )

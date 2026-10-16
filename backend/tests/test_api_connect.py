@@ -363,7 +363,10 @@ def test_rankings_endpoint(client: TestClient) -> None:
     assert client.post("/api/leagues/1/connect").status_code == 200
     body = client.get("/api/leagues/1/rankings?week=2").json()
     assert body["league_id"] == "1" and isinstance(body["players"], list)
-    assert "projection" in body["signals"]
+    assert body["selected"] == [] and body["signals"] == {}  # no projections or lines stored
+    assert "fantasypros" in body["unavailable"]
+    assert client.get("/api/leagues/1/rankings?sources=projection,vegas").status_code == 200
+    assert client.get("/api/leagues/1/rankings?sources=BAD;drop").status_code == 422
     assert client.get("/api/leagues/1/rankings?week=99").status_code == 422
 
 

@@ -5,7 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import RankingsPanel from "../components/RankingsPanel";
 import type { RankedPlayer, Rankings } from "../lib/api";
 import { parseTab } from "../lib/league";
-import { agreementText, parseRankPosition, rankedFor } from "../lib/rankings";
+import {
+  agreementText,
+  parseRankPosition,
+  parseSources,
+  rankedFor,
+  sourcesQuery,
+} from "../lib/rankings";
 import { expectNoA11yViolations } from "./a11y";
 
 vi.mock("next/navigation", () => ({
@@ -134,11 +140,94 @@ describe("RankingsPanel", () => {
     const nav = screen.getByRole("navigation", { name: "Week" });
     expect(within(nav).getByRole("link", { name: /7/ })).toHaveAttribute(
       "href",
-      "/league/1?tab=rankings&week=7",
+      "/league/1?tab=rankings&week=7&pos=RB",
     );
   });
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(<RankingsPanel data={data} leagueId="1" myRosterId={1} />);
+  });
+});
+
+describe("choosing which sources the ranks use", () => {
+  const withSources: Rankings = {
+    ...data,
+    signals: {
+      projection: "Sleeper projection",
+      form: "Last three games",
+      start: "ESPN start %",
+      vegas: "Vegas implied points",
+    },
+    selected: ["projection", "vegas"],
+    unavailable: { fantasypros: "FantasyPros (not connected: needs a license)" },
+  };
+
+  it("offers every available source as a checkbox with the chosen ones ticked", () => {
+    render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+    const group = screen.getByRole("group", { name: "Ranked by" });
+    expect(within(group).getByRole("checkbox", { name: "Sleeper projection" })).toBeChecked();
+    expect(within(group).getByRole("checkbox", { name: "Vegas implied points" })).toBeChecked();
+    expect(within(group).getByRole("checkbox", { name: "Last three games" })).not.toBeChecked();
+    expect(within(group).getByRole("checkbox", { name: "ESPN start %" })).not.toBeChecked();
+  });
+
+  it("is a plain GET form that keeps the tab, week and position", async () => {
+    const user = userEvent.setup();
+    render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+    await user.click(screen.getByRole("button", { name: "WR" }));
+    const button = screen.getByRole("button", { name: "Update rankings" });
+    const form = button.closest("form") as HTMLFormElement;
+    expect(form).toHaveAttribute("method", "get");
+    expect(form).toHaveAttribute("action", "/league/1");
+    const fields = Object.fromEntries(
+      [...form.querySelectorAll<HTMLInputElement>('input[type="hidden"]')].map((i) => [
+        i.name,
+        i.value,
+      ]),
+    );
+    expect(fields).toEqual({ tab: "rankings", week: "6", pos: "WR" });
+  });
+
+  it("says which sources are not connected instead of faking them", () => {
+    render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+    expect(screen.getByText(/Not connected yet: FantasyPros/)).toBeInTheDocument();
+  });
+
+  it("says which sources the ranks come from, and keeps them on the week links", () => {
+    render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+    expect(
+      screen.getByText(/ranked by Sleeper projection, Vegas implied points/),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("navigation", { name: "Week" })).getByRole("link", { name: /7/ }),
+    ).toHaveAttribute("href", "/league/1?tab=rankings&week=7&sources=projection,vegas&pos=RB");
+  });
+
+  it("omits the sources query when every source is chosen", () => {
+    const all = { ...withSources, selected: Object.keys(withSources.signals) };
+    render(<RankingsPanel data={all} leagueId="1" myRosterId={1} />);
+    expect(
+      within(screen.getByRole("navigation", { name: "Week" })).getByRole("link", { name: /7/ }),
+    ).toHaveAttribute("href", "/league/1?tab=rankings&week=7&pos=RB");
+  });
+
+  it("has no accessibility violations", async () => {
+    await expectNoA11yViolations(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+  });
+});
+
+describe("source helpers", () => {
+  it("leaves the query empty for all or none and lists the chosen ones in order", () => {
+    const all = ["projection", "form", "vegas"];
+    expect(sourcesQuery(all, all)).toBe("");
+    expect(sourcesQuery([], all)).toBe("");
+    expect(sourcesQuery(["vegas", "projection"], all)).toBe("projection,vegas");
+  });
+
+  it("keeps only well-formed names from the URL", () => {
+    expect(parseSources("projection,vegas")).toEqual(["projection", "vegas"]);
+    expect(parseSources(["form", "vegas"])).toEqual(["form", "vegas"]);
+    expect(parseSources("bad;drop,Form,vegas")).toEqual(["vegas"]);
+    expect(parseSources(undefined)).toEqual([]);
   });
 });

@@ -410,13 +410,15 @@ def get_rankings(
     session: SessionDep,
     response: Response,
     week: Annotated[int | None, Query(ge=1, le=18)] = None,
+    sources: Annotated[str | None, Query(pattern=r"^[a-z,]{0,80}$")] = None,
 ) -> Rankings:
-    """Weekly player rankings by position: a consensus of several signals, with the spread."""
+    """Weekly player rankings by position: a consensus of the chosen signals, with the spread."""
     row = session.get(LeagueRow, league_id)
     if row is None:
         raise HTTPException(status_code=404, detail="League not connected yet")
     response.headers["Cache-Control"] = READ_CACHE
-    return build_rankings(session, row, week)
+    chosen = [s for s in (sources or "").split(",") if s]
+    return build_rankings(session, row, week, chosen)
 
 
 @app.get("/api/leagues/{league_id}/accuracy")
