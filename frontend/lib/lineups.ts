@@ -80,6 +80,12 @@ export function formatPoints(value: number | null): string {
   return value === null ? "–" : value.toFixed(2);
 }
 
+/** 0.6234 becomes 62: a whole percent, never 0 or 100 because the model is never certain. */
+export function winPercent(probability: number | null | undefined): number | null {
+  if (probability === null || probability === undefined || Number.isNaN(probability)) return null;
+  return Math.min(99, Math.max(1, Math.round(probability * 100)));
+}
+
 /** A projection to two decimals, or null when there is none (never a misleading 0). */
 export function formatProjection(value: number | null | undefined): string | null {
   return value === null || value === undefined ? null : value.toFixed(2);

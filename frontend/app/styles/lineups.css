@@ -355,3 +355,12 @@ table.h2h {
 .sample .note {
   margin: 0 0 0.75rem;
 }
+
+/* Chance to win, under the projected total in the matchup scoreboard */
+.win-chance {
+  color: var(--muted);
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}

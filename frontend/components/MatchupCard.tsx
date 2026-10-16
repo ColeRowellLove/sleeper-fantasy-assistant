@@ -5,6 +5,7 @@ import {
   pairRows,
   projectionDelta,
   winnerId,
+  winPercent,
   type WeekState,
 } from "../lib/lineups";
 import GameBadge from "./GameBadge";
@@ -54,6 +55,20 @@ function Projection({
   );
 }
 
+/** "Win chance 62%", spoken in full for screen readers. Only before the matchup is decided. */
+function WinChance({ team, state }: { team: TeamLineup; state: WeekState }) {
+  const percent = winPercent(team.win_probability);
+  if (percent === null || state === "played") return null;
+  return (
+    <span className="win-chance">
+      <span aria-hidden="true">Win chance {percent}%</span>
+      <span className="visually-hidden">
+        {team.team} has a {percent} percent chance to win, from projected points
+      </span>
+    </span>
+  );
+}
+
 function TeamScore({
   team,
   state,
@@ -73,6 +88,7 @@ function TeamScore({
       </span>
       <span className="score num">{state === "upcoming" ? "–" : team.points.toFixed(2)}</span>
       <Projection projected={team.projected} actual={team.points} state={state} label="Projected" />
+      <WinChance team={team} state={state} />
       {isWinner && <span className="win-tag">Winner</span>}
     </div>
   );
