@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -6,9 +6,17 @@ import PlayersTable from "../components/PlayersTable";
 import TeamDepthChart from "../components/TeamDepthChart";
 import TeamDialog from "../components/TeamDialog";
 import TeamLink from "../components/TeamLink";
+import TeamLogo from "../components/TeamLogo";
 import TeamPicker from "../components/TeamPicker";
 import type { DepthPlayer, DepthSlot, TeamDepth, TeamStat } from "../lib/api";
-import { depthLabel, depthRows, groupSlots, isTeamCode, TEAM_CODES } from "../lib/depth";
+import {
+  depthLabel,
+  depthRows,
+  groupSlots,
+  isTeamCode,
+  recordText,
+  TEAM_CODES,
+} from "../lib/depth";
 import { parseTab } from "../lib/league";
 import { expectNoA11yViolations } from "./a11y";
 
@@ -386,5 +394,63 @@ describe("team stats with league ranks", () => {
   it("shows no stats section without data", () => {
     render(<TeamDepthChart data={data} myRosterId={null} />);
     expect(screen.queryByRole("heading", { name: "Team stats" })).not.toBeInTheDocument();
+  });
+});
+
+describe("team logo and record", () => {
+  it("writes the record, with ties only when there are some", () => {
+    expect(recordText({ wins: 3, losses: 2, ties: 0 })).toEqual({
+      short: "3-2",
+      spoken: "Record: 3 wins and 2 losses",
+    });
+    expect(recordText({ wins: 1, losses: 1, ties: 1 })).toEqual({
+      short: "1-1-1",
+      spoken: "Record: 1 win, 1 loss and 1 tie",
+    });
+    expect(recordText({ wins: 0, losses: 1, ties: 2 }).spoken).toBe(
+      "Record: 0 wins, 1 loss and 2 ties",
+    );
+  });
+
+  it("shows the logo (decorative) and the record beside the title", async () => {
+    const { container } = render(
+      <TeamDepthChart
+        data={{ ...data, record: { wins: 3, losses: 2, ties: 0 } }}
+        myRosterId={null}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: "Seattle Seahawks depth chart" });
+    const title = heading.closest(".depth-title") as HTMLElement;
+    const logo = title.querySelector("img");
+    expect(logo).toHaveAttribute("alt", "");
+    expect(logo?.getAttribute("src")).toContain("/team_logos/nfl/sea.png");
+    expect(within(title).getByText("3-2")).toBeInTheDocument();
+    expect(title).toHaveTextContent("Record: 3 wins and 2 losses"); // for screen readers
+    expect(container.querySelectorAll(".depth-record")).toHaveLength(1);
+    await expectNoA11yViolations(
+      <TeamDepthChart
+        data={{ ...data, record: { wins: 3, losses: 2, ties: 0 } }}
+        myRosterId={null}
+      />,
+    );
+  });
+
+  it("shows another team's logo even after one logo failed to load", () => {
+    const { rerender } = render(<TeamLogo team="SEA" />);
+    fireEvent.error(document.querySelector("img") as HTMLImageElement);
+    expect(document.querySelector("img")).toBeNull();
+    rerender(<TeamLogo team="DEN" />);
+    expect(document.querySelector("img")?.getAttribute("src")).toContain("/den.png");
+  });
+
+  it("leaves the record out when it is not known, and drops a logo that will not load", () => {
+    render(<TeamDepthChart data={data} myRosterId={null} />);
+    expect(document.querySelector(".depth-record")).toBeNull();
+    const logo = document.querySelector(".depth-title img") as HTMLImageElement;
+    fireEvent.error(logo);
+    expect(document.querySelector(".depth-title img")).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "Seattle Seahawks depth chart" }),
+    ).toBeInTheDocument();
   });
 });
