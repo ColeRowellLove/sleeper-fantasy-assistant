@@ -523,10 +523,10 @@ export interface AlertItem {
   data?: Record<string, unknown>;
 }
 
-export interface WireSignal {
-  source: string;
-  /** Whether this source points to adding him. */
-  backs: boolean;
+/** One reason for or against adding a player; "info" is a plain fact. */
+export interface WireReason {
+  stance: "for" | "against" | "info";
+  label: string;
   detail: string;
 }
 
@@ -541,11 +541,11 @@ export interface WireEntry {
   over: string;
   /** One line with the numbers behind it. */
   reason: string;
-  /** ESPN-wide percent of leagues that roster him. */
+  /** ESPN-wide percent of leagues that roster them. */
   owned: number | null;
-  /** How many of the signals back him. */
-  backing: number;
-  signals: WireSignal[];
+  for_count: number;
+  against_count: number;
+  reasons: WireReason[];
 }
 
 export interface WaiverWireData {
@@ -554,7 +554,10 @@ export interface WaiverWireData {
   waiver_date: string;
   waiver_day: string;
   week: number | null;
+  /** Best first; every position, capped per position. */
   entries: WireEntry[];
+  /** Ids of the mixed best-of view. */
+  top?: string[];
   /** Why the list is empty, when it is. */
   note: string | null;
 }

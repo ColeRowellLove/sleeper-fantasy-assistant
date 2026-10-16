@@ -2,9 +2,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import WaiverWirePanel, { backingLabel, waiverDateLabel } from "../components/WaiverWirePanel";
+import WaiverWirePanel, { reasonCounts, waiverDateLabel } from "../components/WaiverWirePanel";
 import type { Dashboard, WaiverWireData, WireEntry } from "../lib/api";
 import { parseTab } from "../lib/league";
+import { entriesFor, stanceWord } from "../lib/waiverView";
 import { expectNoA11yViolations } from "./a11y";
 
 vi.mock("next/navigation", () => ({
@@ -29,10 +30,13 @@ const entry = (over: Partial<WireEntry> = {}): WireEntry => ({
   over: "over Second Receiver at WR",
   reason: "projected 11.4",
   owned: 41.5,
-  backing: 1,
-  signals: [
-    { source: "Sleeper trending adds", backs: true, detail: "added in 8,200 leagues" },
-    { source: "NFL depth chart", backs: false, detail: "no starter out ahead of him" },
+  for_count: 2,
+  against_count: 1,
+  reasons: [
+    { stance: "for", label: "Adds points", detail: "projected 11.4, +4.2 over Second Receiver" },
+    { stance: "for", label: "Trending adds", detail: "added in 8,200 leagues today" },
+    { stance: "against", label: "Tough matchup", detail: "JAX defense ranks 30th of 32" },
+    { stance: "info", label: "Ownership", detail: "owned in 42% of ESPN leagues" },
   ],
   ...over,
 });
@@ -43,7 +47,12 @@ const data: WaiverWireData = {
   waiver_date: "2026-10-20",
   waiver_day: "Tuesday",
   week: 7,
-  entries: [entry(), entry({ player_id: "p2", name: "Free Back", backing: 1, owned: null })],
+  entries: [
+    entry(),
+    entry({ player_id: "p2", name: "Free Back", position: "RB", for_count: 1, against_count: 0 }),
+    entry({ player_id: "d1", name: "CLE defense", position: "DEF", team: "CLE" }),
+  ],
+  top: ["p1", "d1"],
   note: null,
 };
 
@@ -56,42 +65,87 @@ describe("waiver wire", () => {
     expect(parseTab("waiver")).toBe("waiver");
   });
 
-  it("labels the date and the count in words", () => {
+  it("labels the date and the counts in words", () => {
     expect(waiverDateLabel("2026-10-20")).toBe("Tue, Oct 20");
     expect(waiverDateLabel("nope")).toBe("nope");
-    expect(backingLabel(entry())).toBe("Also backed by 1 of 2 other signals");
+    expect(reasonCounts(entry())).toBe("2 for, 1 against");
+    expect(stanceWord("for")).toBe("For");
+    expect(stanceWord("against")).toBe("Against");
+    expect(stanceWord("info")).toBe("Note");
   });
 
-  it("lists the adds best first with their numbers and every signal as text", () => {
+  it("starts with the mixed top adds in the server's order", () => {
     render(panel(data));
-    expect(
-      screen.getByText(/Best adds for the Tuesday \(Tue, Oct 20\) waivers/),
-    ).toBeInTheDocument();
     const items = screen
       .getAllByRole("listitem")
       .filter((li) => li.classList.contains("wire-entry"));
     expect(items).toHaveLength(2);
     expect(within(items[0]).getByRole("link", { name: "Tyler Horton" })).toBeInTheDocument();
+    expect(within(items[1]).getByRole("link", { name: "CLE defense" })).toBeInTheDocument();
+  });
+
+  it("switches between position views", async () => {
+    const user = userEvent.setup();
+    render(panel(data));
+    const group = screen.getByRole("group", { name: "Position" });
+    expect(within(group).getByRole("button", { name: "Top adds" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(within(group).getByRole("button", { name: "RB" }));
+    expect(screen.getByRole("link", { name: "Free Back" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Tyler Horton" })).not.toBeInTheDocument();
+    await user.click(within(group).getByRole("button", { name: "Flex" }));
+    expect(screen.getByRole("link", { name: "Free Back" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Tyler Horton" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "CLE defense" })).not.toBeInTheDocument();
+    await user.click(within(group).getByRole("button", { name: "QB" }));
     expect(
-      within(items[0]).getByText(/Projected 11.4, \+4.2 over Second Receiver at WR/),
+      screen.getByText(/Nobody available would improve this team at that position/),
     ).toBeInTheDocument();
-    expect(within(items[0]).getByText("Also backed by 1 of 2 other signals.")).toBeInTheDocument();
-    expect(within(items[0]).getByText(/Owned in 42% of ESPN leagues/)).toBeInTheDocument();
-    expect(within(items[0]).getByText(/Sleeper trending adds:/)).toBeInTheDocument();
-    expect(within(items[1]).queryByText(/Owned in/)).not.toBeInTheDocument();
-    expect(within(items[0]).getAllByText("Backs it")).toHaveLength(1);
-    expect(within(items[0]).getByText("Does not back it")).toBeInTheDocument();
+  });
+
+  it("builds the views from the data, with a fallback when the server sends no top list", () => {
+    expect(entriesFor(data, "top").map((e) => e.player_id)).toEqual(["p1", "d1"]);
+    expect(entriesFor({ ...data, top: undefined }, "top")).toHaveLength(3);
+    expect(entriesFor(data, "FLEX").map((e) => e.player_id)).toEqual(["p1", "p2"]);
+    expect(entriesFor(data, "DEF").map((e) => e.name)).toEqual(["CLE defense"]);
+  });
+
+  it("marks each reason For or Against in words, and keeps plain facts out of the chips", () => {
+    render(panel(data));
+    const first = screen
+      .getAllByRole("listitem")
+      .filter((li) => li.classList.contains("wire-entry"))[0];
+    const chips = within(first).getByRole("list", { name: /2 for, 1 against/ });
+    const text = within(chips)
+      .getAllByRole("listitem")
+      .map((li) => li.textContent);
+    expect(text).toEqual(["For Adds points", "For Trending adds", "Against Tough matchup"]);
+    expect(within(chips).getAllByRole("listitem")[2]).toHaveClass("reason-against");
+    expect(within(chips).getAllByRole("listitem")[0]).toHaveClass("reason-for");
+    // the sentences, including the plain ownership note, are under Details
+    expect(within(first).getByText(/owned in 42% of ESPN leagues/)).toBeInTheDocument();
+    expect(within(first).getByText("Details")).toBeInTheDocument();
+  });
+
+  it("shows the projection and the gain beside each name", () => {
+    render(panel(data));
+    const first = screen
+      .getAllByRole("listitem")
+      .filter((li) => li.classList.contains("wire-entry"))[0];
+    expect(within(first).getByText("11.4")).toBeInTheDocument();
+    expect(within(first).getByText("+4.2")).toBeInTheDocument();
   });
 
   it("picks the team with a labelled GET form", () => {
     render(panel(data));
-    const select = screen.getByRole("combobox", { name: /Team/ });
-    expect(select).toHaveValue("1");
+    expect(screen.getByRole("combobox", { name: /Team/ })).toHaveValue("1");
     expect(screen.getByRole("option", { name: "Cole (you)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show waiver wire" })).toBeInTheDocument();
   });
 
-  it("reaches the team picker and its button with the keyboard", async () => {
+  it("reaches the team picker, its button and the position chips with the keyboard", async () => {
     const user = userEvent.setup();
     render(panel(data));
     await user.tab();
@@ -99,12 +153,12 @@ describe("waiver wire", () => {
     await user.tab();
     expect(screen.getByRole("button", { name: "Show waiver wire" })).toHaveFocus();
     await user.tab();
-    expect(screen.getByRole("link", { name: "Tyler Horton" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Top adds" })).toHaveFocus();
   });
 
   it("explains an empty list and a failed load", () => {
     const { rerender } = render(
-      panel({ ...data, entries: [], note: "Projections are not out yet." }),
+      panel({ ...data, entries: [], top: [], note: "Projections are not out yet." }),
     );
     expect(screen.getByText("Projections are not out yet.")).toBeInTheDocument();
     rerender(panel(null));
@@ -113,6 +167,6 @@ describe("waiver wire", () => {
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(panel(data));
-    await expectNoA11yViolations(panel({ ...data, entries: [], note: "None." }));
+    await expectNoA11yViolations(panel({ ...data, entries: [], top: [], note: "None." }));
   });
 });
