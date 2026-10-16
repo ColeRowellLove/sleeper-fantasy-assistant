@@ -97,9 +97,12 @@ describe("roster row columns", () => {
   it("keeps the position out of the columns, in the name's line, so a phone leaves the name room", () => {
     expect(css).not.toContain(".player-chip");
     // on a phone the three number columns together stay under 8rem (2.4 + 2.4 + 2.4)
-    const phone = css.slice(css.indexOf("@media (max-width: 40rem) {\n  .player {"));
-    expect(phone).toContain(".player-proj {\n    flex-basis: 2.4rem;");
-    expect(phone).toContain(".slot {\n    flex-basis: 2.4rem;");
+    expect(css).toMatch(
+      /@media \(max-width: 40rem\)[\s\S]*?\.player-proj \{\s*flex-basis: 2\.4rem/,
+    );
+    expect(css).toMatch(/@media \(max-width: 40rem\)[\s\S]*?\.slot \{\s*flex-basis: 2\.4rem/);
+    // an upcoming game's pill is only hidden when its time is there to say the same
+    expect(css).toContain(".player .game-upcoming .game-state:not(:only-child)");
   });
 });
 

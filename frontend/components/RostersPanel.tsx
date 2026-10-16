@@ -139,7 +139,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
         </span>
         <PlayerStatLine line={player.stat_line} projected={player.stat_line_projected} />
       </span>
-      {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with
+      {/* three fixed-width columns on every row, so the numbers and slot line up; a row with
           no value keeps its (empty) column */}
       {player.points !== null && player.points !== undefined ? (
         <span className="player-proj player-pts num">
