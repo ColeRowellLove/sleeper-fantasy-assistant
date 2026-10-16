@@ -168,6 +168,20 @@ class NflGameRow(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PlayerProjectionRow(Base):
+    """A player's projected stat line for one week, kept as pulled before the game kicked off."""
+
+    __tablename__ = "player_projections"
+    __table_args__ = (Index("ix_player_projections_season_week", "season", "week"),)
+
+    season: Mapped[str] = mapped_column(String, primary_key=True)
+    week: Mapped[int] = mapped_column(primary_key=True)
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    team: Mapped[str | None] = mapped_column(String)
+    stats: Mapped[dict[str, float]] = mapped_column(JSON)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class JobRow(Base):
     """Postgres-backed job queue. Workers claim rows with FOR UPDATE SKIP LOCKED."""
 

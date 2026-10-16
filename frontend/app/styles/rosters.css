@@ -230,3 +230,38 @@
     }
   }
 }
+
+/* Projected points, shown beside actual points */
+.proj {
+  color: var(--muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.team-score .proj {
+  font-size: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.proj-delta {
+  font-weight: 700;
+}
+
+.player-proj {
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.1;
+  min-width: 2.6rem;
+  text-align: right;
+}
+
+.player-proj-label {
+  font-size: 0.68rem;
+  font-weight: 500;
+}

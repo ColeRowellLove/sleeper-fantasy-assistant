@@ -25,8 +25,9 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
+from sleeper_assistant.ingest import MAX_WEEKS, sync_league, sync_players, sync_schedule
 from sleeper_assistant.kickoffs import sync_kickoffs
+from sleeper_assistant.projections import sync_projections
 from sleeper_assistant.sleeper import SleeperClient
 
 log = logging.getLogger(__name__)
@@ -42,6 +43,8 @@ PLAYER_SYNC_INTERVAL = timedelta(
 PLAYER_SYNC_FAILURE_COOLDOWN = timedelta(hours=6)  # do not hammer a failing /players endpoint
 SCHEDULE_SYNC_INTERVAL = timedelta(minutes=10)
 SCHEDULE_FAILURE_COOLDOWN = timedelta(minutes=30)
+PROJECTION_SYNC_INTERVAL = timedelta(hours=3)  # projections move with injuries and depth charts
+PROJECTION_FAILURE_COOLDOWN = timedelta(hours=3)
 KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
 KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
 CYCLE_MAX_JOBS = 50
@@ -64,6 +67,15 @@ def default_handlers(
         season = str(payload.get("season") or client.get_state().season)
         sync_schedule(session, client, season)
 
+    def _sync_projections(session: Session, payload: dict[str, Any]) -> None:
+        state = client.get_state()
+        if state.season_type != "regular":
+            return  # nothing is projected outside the regular season
+        season = str(payload.get("season") or state.season)
+        # this week and the next, so the coming week is ready before it starts
+        for week in range(state.week, min(state.week + 1, MAX_WEEKS) + 1):
+            sync_projections(session, client, season, week)
+
     def _sync_kickoffs(session: Session, payload: dict[str, Any]) -> None:
         season = str(payload.get("season") or client.get_state().season)
         with http_factory() as http:
@@ -71,6 +83,7 @@ def default_handlers(
 
     return {
         "sync_kickoffs": _sync_kickoffs,
+        "sync_projections": _sync_projections,
         "sync_league": _sync_league,
         "sync_players": _sync_players,
         "sync_schedule": _sync_schedule,
@@ -193,6 +206,17 @@ def enqueue_schedule_sync_if_due(session: Session, now: datetime | None = None) 
     )
 
 
+def enqueue_projection_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Refresh weekly projections about every few hours."""
+    return _enqueue_periodic(
+        session,
+        "sync_projections",
+        PROJECTION_SYNC_INTERVAL,
+        PROJECTION_FAILURE_COOLDOWN,
+        now,
+    )
+
+
 def enqueue_kickoff_sync_if_due(session: Session, now: datetime | None = None) -> bool:
     """Refresh kickoff times from nflverse about daily."""
     return _enqueue_periodic(
@@ -222,6 +246,7 @@ def run_cycle(
             + int(enqueue_player_sync_if_due(session))
             + int(enqueue_schedule_sync_if_due(session))
             + int(enqueue_kickoff_sync_if_due(session))
+            + int(enqueue_projection_sync_if_due(session))
         )
     ran = 0
     while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):

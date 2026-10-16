@@ -112,6 +112,15 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
           <GameBadge game={player.game} />
         </span>
       </span>
+      {player.projected !== null && player.projected !== undefined && (
+        <span className="player-proj num">
+          <span className="visually-hidden">Projected </span>
+          {player.projected.toFixed(1)}
+          <span className="player-proj-label" aria-hidden="true">
+            proj
+          </span>
+        </span>
+      )}
       {player.status === "starter" && player.slot && (
         <span className="slot" title="Lineup slot">
           <span className="visually-hidden">Slot </span>

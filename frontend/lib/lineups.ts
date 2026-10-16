@@ -79,3 +79,26 @@ export function winnerId(a: TeamLineup, b: TeamLineup): number | null {
 export function formatPoints(value: number | null): string {
   return value === null ? "–" : value.toFixed(2);
 }
+
+/** A projection to two decimals, or null when there is none (never a misleading 0). */
+export function formatProjection(value: number | null | undefined): string | null {
+  return value === null || value === undefined ? null : value.toFixed(2);
+}
+
+/**
+ * Actual minus projected as signed text ("+3.2"), for a finished week only. In the current week the
+ * actual points are partial (games still to play), so "-127.3 against projection" would mislead.
+ * Either number missing also means no comparison.
+ */
+export function projectionDelta(
+  actual: number | null | undefined,
+  projected: number | null | undefined,
+  state: WeekState,
+): string | null {
+  if (state !== "played") return null;
+  if (actual === null || actual === undefined) return null;
+  if (projected === null || projected === undefined) return null;
+  const diff = Math.round((actual - projected) * 10) / 10;
+  if (diff === 0) return "0.0";
+  return `${diff > 0 ? "+" : "-"}${Math.abs(diff).toFixed(1)}`;
+}

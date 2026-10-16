@@ -18,6 +18,7 @@ from sleeper_assistant.db import (
     JobRow,
     LeagueRow,
     NflGameRow,
+    PlayerProjectionRow,
     PlayerRow,
     RosterRow,
     make_session_factory,
@@ -41,6 +42,10 @@ for week, items in FIXTURE["matchups"].items():
     ROUTES[f"/league/1/matchups/{week}"] = items
 for week, items in FIXTURE["transactions"].items():
     ROUTES[f"/league/1/transactions/{week}"] = items
+
+PROJECTION = [{"player_id": "4034", "team": "SF", "stats": {"pts_ppr": 10.0, "rec": 4.0}}]
+for _week in (1, 2, 3, 4, 5, 6, 7, 8):
+    ROUTES[f"/projections/nfl/2026/{_week}"] = PROJECTION
 
 NFLVERSE_CSV = "season,game_type,week,gameday,gametime,home_team,away_team\n"
 
@@ -114,6 +119,33 @@ def test_sync_kickoffs_handler_stores_times_from_the_download(
     assert row is not None and row.kickoff is not None
     assert row.kickoff.replace(tzinfo=UTC) == datetime(2026, 9, 20, 17, 0, tzinfo=UTC)
     assert _status(session, "sync_kickoffs") == "done"
+
+
+def test_sync_projections_handler_stores_this_week_and_next(
+    engine: Engine, session: Session
+) -> None:
+    handlers = default_handlers(_sleeper(), _http(NFLVERSE_CSV))
+    _run(engine, "sync_projections", handlers, {})
+    session.expire_all()
+    assert _status(session, "sync_projections") == "done"
+    weeks = sorted(session.scalars(select(PlayerProjectionRow.week)))
+    state_week = ROUTES["/state/nfl"]["week"]
+    assert weeks == [state_week, state_week + 1]
+
+
+def test_sync_projections_handler_does_nothing_outside_the_regular_season(
+    engine: Engine, session: Session
+) -> None:
+    offseason = dict(ROUTES["/state/nfl"], season_type="off")
+    handlers = default_handlers(_sleeper(), _http(NFLVERSE_CSV))
+    ROUTES["/state/nfl"], original = offseason, ROUTES["/state/nfl"]
+    try:
+        _run(engine, "sync_projections", handlers, {})
+    finally:
+        ROUTES["/state/nfl"] = original
+    session.expire_all()
+    assert _status(session, "sync_projections") == "done"
+    assert session.scalar(select(func.count()).select_from(PlayerProjectionRow)) == 0
 
 
 def test_a_failed_kickoff_download_fails_the_job_and_keeps_the_worker_alive(
