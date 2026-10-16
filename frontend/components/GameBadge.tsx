@@ -3,7 +3,14 @@
 import { useSyncExternalStore } from "react";
 
 import type { GameInfo, MatchupRank } from "../lib/api";
-import { conditionsLabel, formatKickoff, gameLabel, matchupText } from "../lib/game";
+import {
+  conditionsLabel,
+  formatKickoff,
+  gameLabel,
+  matchupText,
+  playerUnitLabel,
+  situationLabel,
+} from "../lib/game";
 
 const noSubscription = () => () => {};
 
@@ -31,11 +38,16 @@ export default function GameBadge({
   const label = gameLabel(game, kickoff);
   if (!label) return null;
   const setting = conditions ? conditionsLabel(game, conditions === "compact") : null;
+  const situation = situationLabel(game);
+  const unit = playerUnitLabel(game, position);
   const rank = label.state === "bye" ? null : matchupText(matchup, position);
   return (
     <span className={`game game-${label.state}`}>
       <span className="game-state">{label.text}</span>
       {label.detail && <span className="game-detail">{label.detail}</span>}
+      {unit && <span className="unit-on">{unit}</span>}
+      {situation?.redZone && <span className="red-zone">Red zone</span>}
+      {situation?.text && <span className="game-situation">{situation.text}</span>}
       {setting && (
         <span className="game-conditions">
           {[setting.setting, setting.surface, setting.line].filter(Boolean).join(" · ")}

@@ -330,3 +330,34 @@
   font-weight: 600;
   margin: 0 0 0.5rem;
 }
+
+/* live game: the unit on the field, the red zone and where the ball is. Always words, never color alone. */
+.unit-on {
+  background: color-mix(in srgb, var(--game-live) 18%, var(--surface));
+  border: 1px solid var(--game-live);
+  border-radius: 999px;
+  color: var(--game-live);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.18rem 0.5rem;
+}
+
+.depth-section-title .unit-on,
+.depth-details > summary .unit-on {
+  margin-left: 0.6rem;
+}
+
+.red-zone {
+  background: var(--red-zone-bg, #b42318);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.18rem 0.5rem;
+}
+
+.game-situation {
+  color: var(--muted);
+}

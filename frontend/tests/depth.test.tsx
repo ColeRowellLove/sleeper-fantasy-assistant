@@ -8,7 +8,7 @@ import TeamDialog from "../components/TeamDialog";
 import TeamLink from "../components/TeamLink";
 import TeamLogo from "../components/TeamLogo";
 import TeamPicker from "../components/TeamPicker";
-import type { DepthPlayer, DepthSlot, TeamDepth, TeamStat } from "../lib/api";
+import type { DepthPlayer, DepthSlot, GameInfo, TeamDepth, TeamStat } from "../lib/api";
 import {
   depthLabel,
   depthRows,
@@ -452,5 +452,44 @@ describe("team logo and record", () => {
     expect(
       screen.getByRole("heading", { name: "Seattle Seahawks depth chart" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("the unit on the field", () => {
+  const liveGame = (team: string): GameInfo => ({
+    state: "live",
+    date: "2026-10-18",
+    opponent: "DEN",
+    home: true,
+    team,
+    situation: { possession: "SEA", down_distance: "1st & 10", ball_on: "SEA 35", red_zone: false },
+  });
+
+  it("marks the offense sections when the team has the ball", async () => {
+    render(<TeamDepthChart data={{ ...data, game: liveGame("SEA") }} myRosterId={null} />);
+    expect(screen.getAllByText("On the field now")).toHaveLength(2); // fantasy positions and the line
+    expect(screen.getByText("SEA have the ball · 1st & 10 · at SEA 35")).toBeInTheDocument();
+    const defense = screen.getByText("Defense").closest("summary") as HTMLElement;
+    expect(within(defense).queryByText("On the field now")).not.toBeInTheDocument();
+    await expectNoA11yViolations(
+      <TeamDepthChart data={{ ...data, game: liveGame("SEA") }} myRosterId={null} />,
+    );
+  });
+
+  it("marks the defense when the other team has the ball", () => {
+    render(
+      <TeamDepthChart
+        data={{ ...data, game: { ...liveGame("SEA"), situation: { possession: "DEN" } } }}
+        myRosterId={null}
+      />,
+    );
+    const defense = screen.getByText("Defense").closest("summary") as HTMLElement;
+    expect(within(defense).getByText("On the field now")).toBeInTheDocument();
+    expect(screen.getAllByText("On the field now")).toHaveLength(1);
+  });
+
+  it("marks nothing when the game is not live or ESPN has no situation", () => {
+    render(<TeamDepthChart data={data} myRosterId={null} />);
+    expect(screen.queryByText("On the field now")).not.toBeInTheDocument();
   });
 });

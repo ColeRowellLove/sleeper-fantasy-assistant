@@ -169,3 +169,55 @@ export function conditionsLabel(
   if (!setting && !surface && !line) return null;
   return { setting, surface, line };
 }
+
+export type Unit = "offense" | "defense";
+
+const OFFENSE_POSITIONS = new Set(["QB", "RB", "WR", "TE"]);
+
+/** The situation of a live game with someone known to have the ball; null otherwise. */
+function liveSituation(game: GameInfo | null | undefined) {
+  if (!game || game.state !== "live" || !game.situation) return null;
+  const s = game.situation;
+  return s.possession || s.ball_on || s.down_distance || s.red_zone ? s : null;
+}
+
+/**
+ * Which unit of a team is on the field right now: the offense when the team has the ball, the
+ * defense when the other team does. Null when the game is not live or the ball is unknown.
+ */
+export function unitOnField(
+  game: GameInfo | null | undefined,
+  team: string | null | undefined,
+): Unit | null {
+  const s = liveSituation(game);
+  if (!s?.possession || !team) return null;
+  return s.possession === team ? "offense" : "defense";
+}
+
+/** "Offense on field" / "Defense on field" for a player whose unit is on the field now. */
+export function playerUnitLabel(
+  game: GameInfo | null | undefined,
+  position: string | null | undefined,
+): string | null {
+  const unit = unitOnField(game, game?.team);
+  if (unit === "offense" && position && OFFENSE_POSITIONS.has(position)) return "Offense on field";
+  if (unit === "defense" && position === "DEF") return "Defense on field";
+  return null;
+}
+
+export interface SituationLabel {
+  /** "SEA have the ball · 3rd & 4 · at DEN 18", or "Ball on DEN 18" when only the spot is known. */
+  text: string | null;
+  redZone: boolean;
+}
+
+/** Plain words for where a live game's ball is. Null unless the game is live and ESPN said something. */
+export function situationLabel(game: GameInfo | null | undefined): SituationLabel | null {
+  const s = liveSituation(game);
+  if (!s) return null;
+  const parts: string[] = [];
+  if (s.possession) parts.push(`${s.possession} have the ball`);
+  if (s.down_distance) parts.push(s.down_distance);
+  if (s.ball_on) parts.push(s.possession ? `at ${s.ball_on}` : `Ball on ${s.ball_on}`);
+  return { text: parts.length > 0 ? parts.join(" · ") : null, redZone: s.red_zone === true };
+}
