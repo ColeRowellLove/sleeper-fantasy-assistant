@@ -12,6 +12,7 @@ import {
   statColumns,
   statTotals,
 } from "../lib/playerDetail";
+import { projectionDelta } from "../lib/lineups";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
@@ -51,6 +52,19 @@ export default function PlayerDialog({
     detail.position,
   );
   const totals = statTotals(weekStats);
+  // the projection columns only appear once at least one week has a stored projection
+  const showProjections = detail.weeks.some(
+    (w) => w.projected !== null && w.projected !== undefined,
+  );
+  const allProjected =
+    detail.weeks.length > 0 &&
+    detail.weeks.every(
+      (w) => w.projected !== null && w.projected !== undefined,
+    );
+  const projectedTotal = detail.weeks.reduce(
+    (sum, w) => sum + (w.projected ?? 0),
+    0,
+  );
 
   return (
     <dialog
@@ -82,7 +96,9 @@ export default function PlayerDialog({
             </p>
             <p className="player-dialog-owner">
               {detail.owner_team === null || detail.owner_team === undefined ? (
-                <span className="status-available">Available in this league</span>
+                <span className="status-available">
+                  Available in this league
+                </span>
               ) : (
                 <span className="status-owned">On {detail.owner_team}</span>
               )}
@@ -129,7 +145,12 @@ export default function PlayerDialog({
             </div>
             <div className="setting-row">
               <dt>Points per game</dt>
-              <dd>{detail.season.average === null || detail.season.average === undefined ? "–" : detail.season.average.toFixed(1)}</dd>
+              <dd>
+                {detail.season.average === null ||
+                detail.season.average === undefined
+                  ? "–"
+                  : detail.season.average.toFixed(1)}
+              </dd>
             </div>
             <div className="setting-row">
               <dt>Sleeper adds, last 24 hours</dt>
@@ -140,7 +161,9 @@ export default function PlayerDialog({
               <dd>{count(detail.drops)}</dd>
             </div>
           </dl>
-          <p className="note">Points use this league&apos;s scoring, and every stat counts.</p>
+          <p className="note">
+            Points use this league&apos;s scoring, and every stat counts.
+          </p>
         </section>
 
         {detail.projected && (
@@ -149,7 +172,9 @@ export default function PlayerDialog({
             <p className="pd-projected">
               <strong>{detail.projected.points.toFixed(1)}</strong> points
             </p>
-            <p className="note">{describeStats(detail.projected.stats, detail.position)}</p>
+            <p className="note">
+              {describeStats(detail.projected.stats, detail.position)}
+            </p>
           </section>
         )}
 
@@ -170,6 +195,16 @@ export default function PlayerDialog({
                     <th scope="col" className="num-col">
                       Points
                     </th>
+                    {showProjections && (
+                      <>
+                        <th scope="col" className="num-col">
+                          Proj
+                        </th>
+                        <th scope="col" className="num-col">
+                          +/-
+                        </th>
+                      </>
+                    )}
                     {columns.map((c) => (
                       <th key={c.key} scope="col" className="num-col">
                         {c.label}
@@ -182,9 +217,27 @@ export default function PlayerDialog({
                     <tr key={w.week}>
                       <th scope="row">{w.week}</th>
                       <td>
-                        {w.opponent ? `${w.home === false ? "at" : "vs"} ${w.opponent}` : "–"}
+                        {w.opponent
+                          ? `${w.home === false ? "at" : "vs"} ${w.opponent}`
+                          : "–"}
                       </td>
                       <td className="num num-col">{w.points.toFixed(1)}</td>
+                      {showProjections && (
+                        <>
+                          <td className="num num-col">
+                            {w.projected === null || w.projected === undefined
+                              ? "–"
+                              : w.projected.toFixed(1)}
+                          </td>
+                          <td className="num num-col">
+                            {projectionDelta(
+                              w.points,
+                              w.projected,
+                              w.final ? "played" : "current",
+                            ) ?? "–"}
+                          </td>
+                        </>
+                      )}
                       {columns.map((c) => (
                         <td key={c.key} className="num num-col">
                           {formatStat(w.stats[c.key])}
@@ -198,7 +251,25 @@ export default function PlayerDialog({
                     <th scope="row" colSpan={2}>
                       Season total
                     </th>
-                    <td className="num num-col">{detail.season.points.toFixed(1)}</td>
+                    <td className="num num-col">
+                      {detail.season.points.toFixed(1)}
+                    </td>
+                    {showProjections && (
+                      <>
+                        <td className="num num-col">
+                          {allProjected ? projectedTotal.toFixed(1) : "–"}
+                        </td>
+                        <td className="num num-col">
+                          {allProjected && detail.weeks.every((w) => w.final)
+                            ? projectionDelta(
+                                detail.season.points,
+                                projectedTotal,
+                                "played",
+                              )
+                            : "–"}
+                        </td>
+                      </>
+                    )}
                     {columns.map((c) => (
                       <td key={c.key} className="num num-col">
                         {formatStat(totals[c.key])}
@@ -210,7 +281,15 @@ export default function PlayerDialog({
                       <th scope="row" colSpan={2}>
                         Projected, week {detail.projected.week}
                       </th>
-                      <td className="num num-col">{detail.projected.points.toFixed(1)}</td>
+                      <td className="num num-col">
+                        {detail.projected.points.toFixed(1)}
+                      </td>
+                      {showProjections && (
+                        <>
+                          <td className="num num-col">–</td>
+                          <td className="num num-col">–</td>
+                        </>
+                      )}
                       {columns.map((c) => (
                         <td key={c.key} className="num num-col">
                           {formatStat(detail.projected?.stats[c.key])}
@@ -229,7 +308,9 @@ export default function PlayerDialog({
             <h3 id="pd-past">Past seasons</h3>
             <div className="players-scroll">
               <table className="players pd-table">
-                <caption className="visually-hidden">Season totals under this league&apos;s scoring</caption>
+                <caption className="visually-hidden">
+                  Season totals under this league&apos;s scoring
+                </caption>
                 <thead>
                   <tr>
                     <th scope="col">Season</th>
@@ -250,7 +331,9 @@ export default function PlayerDialog({
                       <th scope="row">{s.season}</th>
                       <td className="num num-col">{s.games}</td>
                       <td className="num num-col">{s.points.toFixed(1)}</td>
-                      <td className="num num-col">{rankText(detail.position, s.rank)}</td>
+                      <td className="num num-col">
+                        {rankText(detail.position, s.rank)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
