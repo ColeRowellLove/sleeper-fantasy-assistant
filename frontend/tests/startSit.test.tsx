@@ -175,3 +175,17 @@ describe("Start/Sit tool", () => {
     );
   });
 });
+
+describe("recommendation table", () => {
+  it("shows the verdict as a short chip and says when no game was found", () => {
+    const comparison2: StartSitComparison = {
+      ...comparison,
+      candidates: [cand({ player_id: "2", name: "Bench Back", projected: 15, game: null })],
+    };
+    const { container } = render(
+      <StartSitTool {...props} picks={["2", "1"]} comparison={comparison2} />,
+    );
+    expect(container.querySelector(".verdict-start")).toHaveTextContent("Start (close call)");
+    expect(screen.getByText("No game found")).toBeInTheDocument();
+  });
+});

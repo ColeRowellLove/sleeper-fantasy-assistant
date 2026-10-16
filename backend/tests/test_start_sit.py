@@ -79,6 +79,27 @@ def test_the_better_projected_and_hotter_player_is_recommended_with_the_numbers(
     assert result.close_call is False
 
 
+def test_a_player_the_rankings_leave_out_still_uses_his_stored_projection(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    # a zero projection keeps him out of the rankings (they list players projected above zero)
+    session.add(_proj("nobody", {"rush_yd": 0.0}))
+    session.commit()
+    result = compare_players(session, league, ["nobody", "r1"])
+    nobody = next(c for c in result.candidates if c.player_id == "nobody")
+    assert nobody.projected == 0.0  # his real, stored projection
+    assert nobody.out is None  # not "no projection this week"
+    assert nobody.game is not None and nobody.game.opponent == "BBB"
+    assert result.start == "r1"  # the better player still wins
+
+
+def test_a_player_with_no_projection_row_is_still_called_unprojected(session: Session) -> None:
+    result = compare_players(session, _setup(session), ["nobody", "r1"])
+    nobody = next(c for c in result.candidates if c.player_id == "nobody")
+    assert nobody.out == "no projection this week" and nobody.projected is None
+
+
 def test_near_equal_players_are_called_a_close_call(session: Session) -> None:
     result = compare_players(session, _setup(session), ["r2", "r4"])  # 10.0 and 9.0
     assert result.close_call is True

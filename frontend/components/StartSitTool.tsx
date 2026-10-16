@@ -258,24 +258,30 @@ export default function StartSitTool({
                       <PlayerCell c={c} />
                     </th>
                     <td>
-                      <GameBadge
-                        game={c.game}
-                        matchup={c.matchup}
-                        position={c.position}
-                        conditions="compact"
-                      />
+                      {c.game ? (
+                        <GameBadge
+                          game={c.game}
+                          matchup={c.matchup}
+                          position={c.position}
+                          conditions="compact"
+                        />
+                      ) : (
+                        <span className="muted">No game found</span>
+                      )}
                     </td>
                     <td className="num">{number(c.projected)}</td>
                     <td className="num">{number(c.form)}</td>
                     <td className="num">{c.rank ?? "–"}</td>
                     <td>
-                      {c.player_id === comparison.start
-                        ? comparison.close_call
-                          ? "Start (close call)"
-                          : "Start"
-                        : c.out
-                          ? `Can't start: ${c.out}`
-                          : "Sit"}
+                      {c.player_id === comparison.start ? (
+                        <span className="verdict verdict-start">
+                          {comparison.close_call ? "Start (close call)" : "Start"}
+                        </span>
+                      ) : c.out ? (
+                        <span className="verdict verdict-out">Can&apos;t start: {c.out}</span>
+                      ) : (
+                        <span className="verdict">Sit</span>
+                      )}
                     </td>
                   </tr>
                 ))}

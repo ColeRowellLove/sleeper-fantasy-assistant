@@ -8,16 +8,24 @@ figures behind it, and says when it is a close call instead of pretending to be 
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import GameInfo, InjuryInfo, starter_slots
+from sleeper_assistant.dashboard import GameInfo, InjuryInfo, _injury, games_for_week, starter_slots
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow
 from sleeper_assistant.lineup_slots import assign_lineup
-from sleeper_assistant.matchup_rank import MatchupRank
+from sleeper_assistant.matchup_rank import (
+    DefenseTable,
+    MatchupRank,
+    build_defense_table,
+    matchup_rank,
+)
 from sleeper_assistant.players_view import _name
-from sleeper_assistant.rankings import RankedPlayer, build_rankings
+from sleeper_assistant.projections import projected_points
+from sleeper_assistant.rankings import RankedPlayer, Rankings, build_rankings
 
 # designations that mean a player will not play
 _OUT = {"Out", "IR", "PUP", "Suspended", "NA", "DNR", "COV"}
@@ -77,9 +85,49 @@ class BestLineup(BaseModel):
     )  # everyone who can be picked to compare, with the same numbers
 
 
-def _candidate(pid: str, ranked: dict[str, RankedPlayer], info: dict[str, PlayerRow]) -> Candidate:
+@dataclass(frozen=True)
+class _Extra:
+    """What to use for a player the consensus rankings leave out: his stored projection and game."""
+
+    projections: dict[str, float]
+    games: dict[str, GameInfo]
+    defense: DefenseTable
+
+
+def _extra(session: Session, league: LeagueRow, rankings: Rankings, ids: list[str]) -> _Extra:
+    """Projections (scored with the league's rules), games and the defense table for ``ids``."""
+    week = rankings.week
+    if week is None:
+        return _Extra(projections={}, games={}, defense={})
+    return _Extra(
+        projections=projected_points(session, league.season, week, league.scoring_settings, ids),
+        games=games_for_week(session, league.season, week),
+        defense=build_defense_table(session, league.season, league.scoring_settings),
+    )
+
+
+def _candidate(
+    pid: str, ranked: dict[str, RankedPlayer], info: dict[str, PlayerRow], extra: _Extra
+) -> Candidate:
     player = info.get(pid)
     r = ranked.get(pid)
+    if r is None and player is not None and pid in extra.projections:
+        # the rankings left him out (a zero projection, or no source ranks him) but a projection
+        # exists: use it instead of calling him unprojected
+        game = extra.games.get(player.team or "")
+        injury = _injury({pid: player}, pid)
+        status = injury.status if injury else None
+        return Candidate(
+            player_id=pid, name=_name(player), position=player.position, team=player.team,
+            injury=injury, game=game,
+            matchup=matchup_rank(
+                extra.defense, player.position or "", game.opponent if game else None
+            ),
+            projected=round(extra.projections[pid], 2), sources=1,
+            out=f"listed {status}" if status in _OUT else (
+                "on a bye" if game is not None and game.state == "bye" else None
+            ),
+        )  # fmt: skip
     if r is not None:
         status = r.injury.status if r.injury else None
         return Candidate(
@@ -122,7 +170,8 @@ def compare_players(
         p.player_id: p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
     }
-    candidates = [_candidate(pid, ranked, info) for pid in ids]
+    extra = _extra(session, league, rankings, ids)
+    candidates = [_candidate(pid, ranked, info, extra) for pid in ids]
     eligible = [c for c in candidates if c.out is None and c.projected is not None]
     # the consensus decides; projected points break a tie, then the name keeps it stable
     candidates.sort(
@@ -176,7 +225,8 @@ def best_lineup(
         p.player_id: p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
     }
-    cands = {pid: _candidate(pid, ranked, info) for pid in ids}
+    extra = _extra(session, league, rankings, ids)
+    cands = {pid: _candidate(pid, ranked, info, extra) for pid in ids}
     usable = [
         (pid, c.position or "", c.projected or 0.0)
         for pid, c in cands.items()
