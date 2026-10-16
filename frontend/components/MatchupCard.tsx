@@ -209,6 +209,12 @@ function Cell({
               conditions="compact"
             />
           </span>
+          {player.stat_line && (
+            <span className="stat-line">
+              <span className="visually-hidden">Stats this week: </span>
+              {player.stat_line}
+            </span>
+          )}
         </span>
       </div>
     </td>
