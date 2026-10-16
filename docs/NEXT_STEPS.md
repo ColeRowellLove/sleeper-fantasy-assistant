@@ -1,72 +1,77 @@
 # Next steps
 
-Where the project stands and what to build next. Written 2026-10-15; milestone dates are in
+Where the project stands and what to build next. Updated 2026-10-16; milestone dates are in
 [PLAN.md](PLAN.md), and the issue list is the source of truth for status.
 
 ## Where we are
 
-**Milestone 1 (Foundation) is effectively complete.** The league connects by username and shows
-standings (sortable, with streaks and team names), rosters (injuries, game status, kickoff times in your
-time zone, byes), weekly lineups and a Settings tab. It runs on Vercel, Neon and a GitHub Actions
-worker, with CI, security scanning and branch protection.
+**Milestone 1 (Foundation) is complete, and a good part of milestone 2 is built from free sources.**
+A league connects by username and shows, with every number scored by that league's own rules:
 
-What is left of M1:
+- **Standings** (sortable, streaks, team names), **Rosters** (injuries, game status, points and
+  projection for the week), **Lineups** (head-to-head with a win chance and a bar), **Players** (filter,
+  search, sort by Sleeper adds and drops, ESPN owned and start percentages, rank, points, projection),
+  **Teams** (full depth charts with injuries) and **Settings**.
+- **Player pop-up** from any player: bio, rank, week-by-week stat table with team and opponent,
+  projection, past seasons game by game. NFL team codes open that team's depth chart.
+- **Projections** for every position including defenses, updated live during a game and equal to the
+  score once it ends, with the frozen pre-game number kept for comparing. Live score, quarter and clock
+  on game badges.
 
-- **v0.2.0 is merged to `main` but not deployed.** Vercel's free plan stopped the builds ("Deployment
-  rate limited", 100 a day, resets about 24 hours later). Production serves the previous version until a
-  redeploy goes through. Work branches no longer build on Vercel, which should keep us under the limit.
-- **The scheduled worker has not been seen running on its own yet.** It was enabled on 2026-10-15 and
-  GitHub's cron is best-effort. If scheduled runs do not appear within a day or two, add a fallback
-  scheduler (a new issue).
-- **#102 (visual design pass)** is largely delivered: dark and light themes, cards, bold numerals,
-  responsive layout, accessibility and screenshot tests. Review its acceptance text and close it.
+Data comes from Sleeper, ESPN's free endpoints (ownership, depth charts, live scoreboard) and nflverse,
+refreshed by a scheduled worker. Production runs on Vercel, Neon and GitHub Actions.
+
+What is left before this is live for everyone:
+
+- **v0.3.0 is not released.** `main` is at v0.2.0 and `develop` holds a lot more (migrations 0008 to
+  0016). Vercel's free plan stopped builds ("Deployment rate limited", 100 a day, resets about 24 hours
+  after the first failure, around 23:00 UTC on 2026-10-15). Once builds work, release with the
+  `release-to-main` skill, then check production.
+- **The worker has now run on its own schedule** (a scheduled run succeeded on 2026-10-16), so the
+  earlier worry about unattended sync is much smaller. Keep an eye on it for a few more days.
+- **Review #102** (visual design pass); it looks delivered. **Close #109** once you agree that Sleeper's
+  projections are enough for now (the consensus blend is still #15 to #17).
 
 ## Decisions needed from you
 
 | Decision | Why it matters | Default if you do not decide |
 |---|---|---|
-| FantasyPros | **Decided 2026-10-16:** this is a personal project for the owner and friends, so use the free API key and no paid tier. Still to confirm once the key exists: that the free key returns stat-level projections and what its terms say about a site shared with friends. | Start with the free sources (Sleeper projections, FantasyCalc, nflverse) |
+| FantasyPros | **Decided:** personal project, so use the free key and no paid tier. Still to confirm once you have a key: that it returns stat-level projections and what its terms say about a site shared with friends. | Use Sleeper, ESPN and nflverse only |
 | Buy a domain | Email alerts (#21) must send from a domain you own. Also a nicer link. About $10 to $15 a year. | Alerts wait until you have one |
 | League chat (#183) | Sleeper's public API has no chat, so it cannot be built as asked. | Link out to the league chat on Sleeper |
-| Vercel Pro, or stay free | Only if the free deployment limit keeps getting in the way. | Stay free |
+| Vercel Pro, or stay free | Only if the daily deployment limit keeps getting in the way. | Stay free |
 
-## Recommended order for milestone 2
+## What is next, in order
 
-M2 is done when a Tuesday waiver alert arrives with a ranked list and bid ranges. That needs a data
-spine first, then the alerts, then a way to deliver them.
+M2 is done when a Tuesday waiver alert arrives with a ranked list and bid ranges. The data now exists;
+what is missing is the ranking, the page and the delivery.
 
-1. **#15 Ingest FantasyPros, FantasyCalc and nflverse.** Everything else depends on it. Start with
-   Sleeper's projections (#211), FantasyCalc and nflverse; add FantasyPros on its free key (owner to request it). One parser and one recorded
-   fixture test per source, following the `add-source-parser` skill. nflverse is already used for
-   kickoff times, so its download code and attribution exist.
-2. **#16 Scoring normalization to league rules.** Convert every source to the connected league's scoring.
-   The league scoring is already stored and shown on the Settings tab.
-3. **#17 Combined positional rankings with spread and tiers.** The first thing users can see from the
-   data spine, and the input for waivers and trades.
-4. **#109 Projected points per player and lineup.** Reuses the same data; shows on rosters and lineups.
-5. **#18 Waiver wire alerts.** Scores each free agent against your worst starter or bench player.
-6. **#19 FAAB bid advisor.** The family league uses priority waivers, not FAAB, so build the
-   claim-order suggestions first and the bid ranges for FAAB leagues second.
-7. **#21 Alert delivery.** Email first (needs the domain), then web push. SMS last, since it costs money
-   and needs opt-in handling. Without delivery, M2's "alert arrives" test cannot pass.
-8. **#20 Injury report and status-change alerts.** Injury status already syncs hourly and is shown; the
-   new part is diffing each pull and alerting when a starter's status changes. Best after #21 exists.
-
-Do alongside, not in sequence:
-
-- **#22 Friends beta (rate limits, Sentry, `/status`, optional accounts).** Do the rate limits, Sentry and
-  the `/status` page before telling anyone beyond family, because each league connect costs about 40 calls
-  to Sleeper. Accounts are optional.
-- **#146 Multi-user readiness.** Needed for the same reason: many leagues and visitors at once.
-- **#153 Player pop-up.** A good self-contained project once #15 exists, since it reuses the same data.
+1. **Release v0.3.0** (above). Everything built so far is only visible locally until then.
+2. **#213 Waiver wire suggestions page** (with **#18 waiver alerts** and **#19 FAAB advisor**). Score each
+   available player against your worst starter using the projections already built, Sleeper's add
+   trends, ESPN ownership and the depth chart (an injured starter opens up his backup). The page resets
+   on the league's waiver day. Your league uses priority waivers, so build the claim-order suggestion
+   first and FAAB bid ranges for leagues that need them.
+3. **#20 Injury status-change alerts**, using the depth chart's "next up" logic.
+4. **#21 Alert delivery** (email first, which needs the domain; web push next; SMS last).
+5. **#15 to #17 more sources and consensus rankings.** Sleeper, ESPN and nflverse are in. Add
+   FantasyCalc, and FantasyPros on its free key if you get one, then blend with source spread and tiers.
+6. **#22 Friends beta and #146 multi-user readiness** before you share the link widely: rate limits,
+   Sentry, a `/status` page. Each league connect costs about 40 Sleeper calls, so this matters as
+   soon as friends join.
 
 Blocked until a decision: **#183 League chat.**
 
 ## Risks to keep in view
 
-- **Unofficial sources can change without notice** (Sleeper's schedule and projections, FantasyCalc).
-  Every parser needs a recorded fixture so a schema change fails CI instead of silently dropping data.
-- **Licensing:** this is a personal, non-commercial project, so free tiers are used (FantasyPros on its free key). If it ever charges or runs ads, revisit FantasyPros and Vercel's terms. nflverse needs credit (CC BY 4.0).
-- **Free-tier limits:** Vercel deployments per day, Neon compute that sleeps when idle, GitHub cron that
-  can run late. The first two are documented in [DEPLOY.md](DEPLOY.md).
+- **Unofficial sources can change without notice** (Sleeper's schedule, projections and stats; ESPN's
+  endpoints). Every parser has a recorded fixture test and a failed pull keeps the last good data.
+- **Free-tier limits:** Vercel deployments per day, Neon storage (the database grew by roughly 6 MB per
+  stored season) and compute that sleeps when idle, GitHub cron that can run late.
+- **Licensing:** this is a personal, non-commercial project, so free tiers and unofficial endpoints are
+  used. If it ever charges or runs ads, revisit ESPN's and FantasyPros's terms and Vercel's plan.
+  nflverse needs credit (CC BY 4.0).
+- **Models are starting values, not measured:** the win chance spread (28 points) and the live
+  projection's straight scaling should be checked against stored projections and results after a few
+  weeks of games.
 - **Trademark:** the app is unofficial. Do not use "Sleeper" in a domain or product name.
