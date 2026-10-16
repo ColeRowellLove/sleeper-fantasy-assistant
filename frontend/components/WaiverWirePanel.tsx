@@ -35,14 +35,17 @@ function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
         <strong>{backingLabel(entry)}.</strong>
         {entry.owned !== null && ` Owned in ${entry.owned.toFixed(0)}% of ESPN leagues.`}
       </p>
-      <ul className="wire-signals">
-        {entry.signals.map((s) => (
-          <li key={s.source}>
-            <span className="wire-signal-state">{s.backs ? "Backs it" : "Does not back it"}</span>{" "}
-            {s.source}: {s.detail}
-          </li>
-        ))}
-      </ul>
+      <details className="wire-why">
+        <summary>Why this pick</summary>
+        <ul className="wire-signals">
+          {entry.signals.map((s) => (
+            <li key={s.source}>
+              <span className="wire-signal-state">{s.backs ? "Backs it" : "Does not back it"}</span>{" "}
+              {s.source}: {s.detail}
+            </li>
+          ))}
+        </ul>
+      </details>
     </li>
   );
 }
