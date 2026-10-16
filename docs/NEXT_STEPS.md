@@ -25,7 +25,7 @@ What is left of M1:
 
 | Decision | Why it matters | Default if you do not decide |
 |---|---|---|
-| FantasyPros: pay for the commercial tier, or skip it | A public site cannot use a personal key. It is the best consensus source. | Start with the free sources (FantasyCalc, nflverse, Sleeper's own numbers) |
+| FantasyPros | **Decided 2026-10-16:** this is a personal project for the owner and friends, so use the free API key and no paid tier. Still to confirm once the key exists: that the free key returns stat-level projections and what its terms say about a site shared with friends. | Start with the free sources (Sleeper projections, FantasyCalc, nflverse) |
 | Buy a domain | Email alerts (#21) must send from a domain you own. Also a nicer link. About $10 to $15 a year. | Alerts wait until you have one |
 | League chat (#183) | Sleeper's public API has no chat, so it cannot be built as asked. | Link out to the league chat on Sleeper |
 | Vercel Pro, or stay free | Only if the free deployment limit keeps getting in the way. | Stay free |
@@ -36,7 +36,7 @@ M2 is done when a Tuesday waiver alert arrives with a ranked list and bid ranges
 spine first, then the alerts, then a way to deliver them.
 
 1. **#15 Ingest FantasyPros, FantasyCalc and nflverse.** Everything else depends on it. Start with
-   FantasyCalc and nflverse (free); add FantasyPros if you decide to pay. One parser and one recorded
+   Sleeper's projections (#211), FantasyCalc and nflverse; add FantasyPros on its free key (owner to request it). One parser and one recorded
    fixture test per source, following the `add-source-parser` skill. nflverse is already used for
    kickoff times, so its download code and attribution exist.
 2. **#16 Scoring normalization to league rules.** Convert every source to the connected league's scoring.
@@ -66,7 +66,7 @@ Blocked until a decision: **#183 League chat.**
 
 - **Unofficial sources can change without notice** (Sleeper's schedule and projections, FantasyCalc).
   Every parser needs a recorded fixture so a schema change fails CI instead of silently dropping data.
-- **Licensing:** FantasyPros needs the commercial tier for a public site; nflverse needs credit (CC BY 4.0).
+- **Licensing:** this is a personal, non-commercial project, so free tiers are used (FantasyPros on its free key). If it ever charges or runs ads, revisit FantasyPros and Vercel's terms. nflverse needs credit (CC BY 4.0).
 - **Free-tier limits:** Vercel deployments per day, Neon compute that sleeps when idle, GitHub cron that
   can run late. The first two are documented in [DEPLOY.md](DEPLOY.md).
 - **Trademark:** the app is unofficial. Do not use "Sleeper" in a domain or product name.
