@@ -111,8 +111,8 @@ export default function TeamDepthChart({
   const onField = unitOnField(data.game, data.team);
   const marker = (unit: Unit | null) =>
     unit !== null && unit === onField ? <span className="unit-on">On the field now</span> : null;
-  const sectionUnit = (key: string): Unit | null =>
-    key.startsWith("offense") ? "offense" : key === "defense" ? "defense" : null;
+  // fantasy positions are the offense's; the other sections are named by the chart's own keys
+  const SECTION_UNITS: Record<string, Unit> = { "offense-line": "offense", defense: "defense" };
   const updated = data.updated_at ? new Date(data.updated_at) : null;
 
   return (
@@ -154,7 +154,7 @@ export default function TeamDepthChart({
             <details key={section.key} className="card flush depth-details">
               <summary>
                 {section.title}
-                {marker(sectionUnit(section.key))}
+                {marker(SECTION_UNITS[section.key] ?? null)}
               </summary>
               <SlotTable slots={section.slots} myRosterId={myRosterId} title={section.title} />
             </details>

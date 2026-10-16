@@ -333,7 +333,7 @@
 
 /* live game: the unit on the field, the red zone and where the ball is. Always words, never color alone. */
 .unit-on {
-  background: color-mix(in srgb, var(--game-live) 18%, var(--surface));
+  background: color-mix(in srgb, var(--game-live) 16%, var(--surface));
   border: 1px solid var(--game-live);
   border-radius: 999px;
   color: var(--game-live);
@@ -348,10 +348,12 @@
   margin-left: 0.6rem;
 }
 
+/* the red zone reuses the injury color tokens, whose contrast the tests already check */
 .red-zone {
-  background: var(--red-zone-bg, #b42318);
+  background: color-mix(in srgb, var(--injury-out) 16%, var(--surface));
+  border: 1px solid var(--injury-out);
   border-radius: 999px;
-  color: #fff;
+  color: var(--injury-out);
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;

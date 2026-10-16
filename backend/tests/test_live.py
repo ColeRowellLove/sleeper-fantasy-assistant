@@ -318,3 +318,35 @@ def test_the_situation_reaches_both_teams_only_while_the_game_is_live(
     live.reset_cache()
     quiet = _games(session, monkeypatch, [])  # ESPN has nothing: no situation is made up
     assert quiet["DEN"].state == "live" and quiet["DEN"].situation is None
+
+
+def test_a_full_realistic_situation_block_is_read_and_extra_keys_are_ignored() -> None:
+    block = {
+        "down": 1, "yardLine": 82, "distance": 10, "isRedZone": True, "homeTimeouts": 3,
+        "awayTimeouts": 2, "possession": "7", "downDistanceText": "1st & 10 at SEA 18",
+        "shortDownDistanceText": "1st & 10", "possessionText": "SEA 18",
+        "lastPlay": {"id": "401", "type": {"id": "24", "text": "Rush"}, "text": "R.Smith up the middle"},
+    }  # fmt: skip
+    assert _situation(block) == Situation(
+        possession="DEN", down_distance="1st & 10", ball_on="SEA 18", red_zone=True
+    )
+
+
+@pytest.mark.parametrize("detail", ["Halftime", "End of 2nd Quarter", "End of 1st"])
+def test_between_plays_no_situation_is_shown_even_if_espn_leaves_the_last_one(detail: str) -> None:
+    event = _live_event({"possession": "7", "possessionText": "SEA 35", "isRedZone": True})
+    event["events"][0]["status"]["type"]["shortDetail"] = detail
+    assert parse_scoreboard(event)[0].situation is None
+
+
+def test_an_unreadable_situation_block_is_logged_not_silently_dropped(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("WARNING", logger="sleeper_assistant.live"):
+        assert _situation({"somethingNew": {"yard": 5}}) is None
+    assert "could not read the ESPN situation block" in caplog.text
+    assert "somethingNew" in caplog.text
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="sleeper_assistant.live"):
+        assert _situation({}) is None  # an empty block is just "nothing to say"
+    assert caplog.text == ""

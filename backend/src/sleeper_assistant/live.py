@@ -76,6 +76,11 @@ def _text(value: Any) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
+def _between_plays(detail: Any) -> bool:
+    """Halftime and the end of a quarter: ESPN may leave the last possession in place."""
+    return isinstance(detail, str) and any(word in detail.lower() for word in ("half", "end"))
+
+
 def parse_situation(competition: dict[str, Any], sides: dict[str, Any]) -> Situation | None:
     """The ball, down and red zone from a live competition's ``situation`` block.
 
@@ -90,24 +95,24 @@ def parse_situation(competition: dict[str, Any], sides: dict[str, Any]) -> Situa
     by_id: dict[str, str] = {}  # ESPN team id -> team code
     for side in sides.values():
         team = side.get("team") if isinstance(side, dict) else None
-        if (
-            isinstance(team, dict)
-            and team.get("id") is not None
-            and _code(team.get("abbreviation"))
-        ):
-            by_id[str(team["id"])] = str(_code(team.get("abbreviation")))
+        code = _code(team.get("abbreviation")) if isinstance(team, dict) else None
+        if code and isinstance(team, dict) and team.get("id") is not None:
+            by_id[str(team["id"])] = code
+    codes = set(by_id.values())
     ball_on = _text(block.get("possessionText"))
     possession = by_id.get(str(block.get("possession")))
     if ball_on:
         side, _, rest = ball_on.partition(" ")
         ball_code = _code(side)
-        if (
-            ball_code in by_id.values()
-        ):  # "WSH 35" is written with the codes the rest of the app uses
+        if ball_code in codes:  # "WSH 35" is written with the codes the rest of the app uses
             ball_on = f"{ball_code} {rest}".strip()
     down = _text(block.get("shortDownDistanceText")) or _text(block.get("downDistanceText"))
     red_zone = block.get("isRedZone") is True
     if possession is None and down is None and ball_on is None and not red_zone:
+        if (
+            block
+        ):  # ESPN sent a situation but nothing in it was readable: the shape may have changed
+            log.warning("could not read the ESPN situation block: keys %s", sorted(block))
         return None
     return Situation(possession=possession, down_distance=down, ball_on=ball_on, red_zone=red_zone)
 
@@ -149,7 +154,9 @@ def parse_scoreboard(payload: Any) -> list[LiveGame]:
                 detail=detail if isinstance(detail, str) else None,
                 home_score=_score(sides["home"].get("score")),
                 away_score=_score(sides["away"].get("score")),
-                situation=parse_situation(competition, sides) if state == "live" else None,
+                situation=parse_situation(competition, sides)
+                if state == "live" and not _between_plays(detail)
+                else None,
             )
         )
     return games

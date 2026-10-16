@@ -173,10 +173,14 @@ export function conditionsLabel(
 export type Unit = "offense" | "defense";
 
 const OFFENSE_POSITIONS = new Set(["QB", "RB", "WR", "TE"]);
+// the team defense and, in leagues that use them, individual defenders
+const DEFENSE_POSITIONS = new Set(["DEF", "DL", "DE", "DT", "LB", "DB", "CB", "S"]);
 
 /** The situation of a live game with someone known to have the ball; null otherwise. */
 function liveSituation(game: GameInfo | null | undefined) {
   if (!game || game.state !== "live" || !game.situation) return null;
+  // halftime and the end of a quarter: nobody is on the field, whatever was last reported
+  if (/half|end/i.test(game.period_text ?? "")) return null;
   const s = game.situation;
   return s.possession || s.ball_on || s.down_distance || s.red_zone ? s : null;
 }
@@ -201,11 +205,15 @@ export function playerUnitLabel(
 ): string | null {
   const unit = unitOnField(game, game?.team);
   if (unit === "offense" && position && OFFENSE_POSITIONS.has(position)) return "Offense on field";
-  if (unit === "defense" && position === "DEF") return "Defense on field";
+  if (unit === "defense" && position && DEFENSE_POSITIONS.has(position)) {
+    return "Defense on field";
+  }
   return null;
 }
 
 export interface SituationLabel {
+  /** Just the spot, "Ball on DEN 18"; for a row where the full line would repeat. */
+  spot: string | null;
   /** "SEA have the ball · 3rd & 4 · at DEN 18", or "Ball on DEN 18" when only the spot is known. */
   text: string | null;
   redZone: boolean;
@@ -219,5 +227,9 @@ export function situationLabel(game: GameInfo | null | undefined): SituationLabe
   if (s.possession) parts.push(`${s.possession} have the ball`);
   if (s.down_distance) parts.push(s.down_distance);
   if (s.ball_on) parts.push(s.possession ? `at ${s.ball_on}` : `Ball on ${s.ball_on}`);
-  return { text: parts.length > 0 ? parts.join(" · ") : null, redZone: s.red_zone === true };
+  return {
+    text: parts.length > 0 ? parts.join(" · ") : null,
+    spot: s.ball_on ? `Ball on ${s.ball_on}` : null,
+    redZone: s.red_zone === true,
+  };
 }
