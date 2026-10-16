@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import alert_advice
-from sleeper_assistant.alerts import NewAlert, already_told, register, register_pre_run
+from sleeper_assistant.alerts import NewAlert, needs_advice, register, register_pre_run
 from sleeper_assistant.dashboard import current_week, games_for_week, starter_slots
 from sleeper_assistant.db import LeagueRow, PlayerInjuryRow, PlayerRow, RosterRow, as_utc
 from sleeper_assistant.lineup_slots import eligible_positions
@@ -204,31 +204,31 @@ def _advice(  # noqa: PLR0913, PLR0917
 ) -> dict[str, object] | None:
     """The model's pick of a replacement among the legal options, or None (no model, no options,
     or an answer that failed its checks)."""
+    if alert_advice.client() is None:
+        return None  # no model: skip building the facts
     options = [
-        alert_advice.option(
-            p,
-            "bench",
-            projections.get(p.player_id),
-            next_up=bool(nu and p.player_id == nu.player_id),
-        )
+        alert_advice.option(p, "bench", projections.get(p.player_id))
         for p in _bench_options(session, spot)
         if p.team not in byes
     ]
     positions = eligible_positions(spot.slot, spot.out.position or "")
     options += alert_advice.free_agents(session, league, week, taken, set(positions), byes)
-    if nu and nu.player_id:
-        for o in options:
-            o["next_up"] = o.get("next_up") or o["player_id"] == nu.player_id
+    for o in options:
+        o["next_up"] = bool(nu and nu.player_id and o["player_id"] == nu.player_id)
+    roster = spot.roster
+    parked = {*roster.reserve, *roster.taxi, *roster.starters, spot.out.player_id}
+    droppable = {pid for pid in roster.players if pid not in parked}
     facts: dict[str, object] = {
         "week": week,
         "player_out": alert_advice.option(spot.out, "out", projections.get(spot.out.player_id)),
         "slot": spot.slot,
         "league_slots": slots,
         "roster": alert_advice.roster_facts(session, spot.roster, projections, slots),
+        "droppable": sorted(droppable),
         "next_up_on_depth_chart": nu.name if nu else None,
         "options": options,
     }
-    return alert_advice.advise("ruled_out.v1", facts, options, set())
+    return alert_advice.advise("ruled_out.v1", facts, options, droppable)
 
 
 def _all(roster: RosterRow) -> list[str]:
@@ -306,7 +306,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                 starts
                 and slot
                 and week
-                and not already_told(session, league.league_id, roster.roster_id, key)
+                and needs_advice(session, league.league_id, roster.roster_id, key, now)
             ):
                 advice = _advice(
                     session, league, Spot(roster, slot, player), nu, projections, week, slots,

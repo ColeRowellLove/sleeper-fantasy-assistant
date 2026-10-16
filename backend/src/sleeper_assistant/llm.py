@@ -15,8 +15,8 @@ Configure with environment variables (never commit keys):
 - ``LLM_MODEL``: the model name the provider expects.
 - ``LLM_API_KEY`` (``ANTHROPIC_API_KEY`` also works for ``anthropic``).
 - ``LLM_BASE_URL``: the OpenAI-compatible server, for example ``http://localhost:11434/v1``.
-- ``LLM_MAX_CALLS_PER_RUN``: a cap on calls per process run (default 50), so a bug cannot run up
-  a bill.
+- ``LLM_MAX_CALLS_PER_RUN``: a cap on calls per process run (default 20), so a bug cannot run up
+  a bill. After 3 failures in a row (throttled, down) the run stops asking.
 """
 
 from __future__ import annotations
@@ -38,8 +38,9 @@ from pydantic import BaseModel
 log = logging.getLogger(__name__)
 
 PROMPTS = Path(__file__).parent / "prompts"
-DEFAULT_CAP = 50
-TIMEOUT = 60.0
+DEFAULT_CAP = 20
+TIMEOUT = 25.0
+MAX_FAILURES = 3  # consecutive provider failures after which a run stops asking
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
 MAX_TOKENS = 2048
@@ -188,12 +189,13 @@ class Budget:
         env_cap = os.environ.get("LLM_MAX_CALLS_PER_RUN", "")
         self.cap = cap if cap is not None else int(env_cap) if env_cap.isdigit() else DEFAULT_CAP
         self.used = 0
+        self.failures = 0
         self.answers: dict[str, BaseModel] = {}
         self._lock = threading.Lock()
 
     def take(self) -> bool:
         with self._lock:
-            if self.used >= self.cap:
+            if self.used >= self.cap or self.failures >= MAX_FAILURES:
                 return False
             self.used += 1
             return True
@@ -223,7 +225,7 @@ def ask[T: BaseModel](  # noqa: PLR0913
     if cached is not None:
         return cached.model_copy(deep=True)  # type: ignore[return-value]
     if not spent.take():
-        log.warning("LLM call cap of %d reached; using the fallback", spent.cap)
+        log.warning("LLM call cap or failure limit reached; using the fallback")
         return None
     system = (
         f"{prompt}\n\nReply with only a JSON object matching this schema:\n"
@@ -237,6 +239,8 @@ def ask[T: BaseModel](  # noqa: PLR0913
             return None
     except Exception as error:  # any failure means "use the deterministic text"
         log.warning("LLM call failed (%s); using the fallback", type(error).__name__)
+        spent.failures += 1
         return None
+    spent.failures = 0
     spent.answers[key] = answer
     return answer.model_copy(deep=True)

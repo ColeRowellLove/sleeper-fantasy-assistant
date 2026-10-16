@@ -92,4 +92,9 @@ secret) for the worker.
 Free-tier limits and terms are Google's and can change; when it throttles, alerts keep their
 computed text. The ruled-out and waiver alerts then carry an "AI assistant" suggestion.
 
+Privacy: when a model is on, the worker sends each alert's facts (player names, projections, fantasy
+team names and rosters from Sleeper's public API, never emails, tokens or keys) to that provider.
+Some free tiers may use submitted content to improve their models; read the provider's terms
+before turning it on, and leave `LLM_PROVIDER` unset to keep everything local.
+
 A Claude.ai chat subscription cannot be used by a server; Claude needs an Anthropic API key.

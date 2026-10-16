@@ -26,7 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import alert_advice
-from sleeper_assistant.alerts import NewAlert, already_told, register
+from sleeper_assistant.alerts import NewAlert, needs_advice, register
 from sleeper_assistant.dashboard import current_week, games_for_week, starter_slots
 from sleeper_assistant.db import (
     LeagueRow,
@@ -142,12 +142,15 @@ def _advice(  # noqa: PLR0913, PLR0917
     slots: list[str],
     week: int,
     key: str,
+    now: datetime,
     lineup: list[tuple[str, str]],
     players: dict[str, PlayerRow],
 ) -> dict[str, object] | None:
     """The model's ranking of the computed pickups for this roster, or None (also None when this
-    team already has the alert, so the model is asked once per event)."""
-    if already_told(session, league.league_id, roster.roster_id, key):
+    team's alert already has advice, so the model is asked once per event)."""
+    if alert_advice.client() is None or not needs_advice(
+        session, league.league_id, roster.roster_id, key, now
+    ):
         return None
     options = [
         alert_advice.option(p, "pickup", projections[p.player_id], gain=round(gain, 1), over=over)
@@ -282,7 +285,7 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
             )
         key = f"waiver_targets:{league.league_id}:{waiver.isoformat()}"
         advice = _advice(
-            session, league, roster, top, projections, slots, week, key, lineup, players
+            session, league, roster, top, projections, slots, week, key, now, lineup, players
         )
         raised.append(
             NewAlert(

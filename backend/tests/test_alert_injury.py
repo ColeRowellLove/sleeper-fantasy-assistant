@@ -591,3 +591,56 @@ def test_a_bench_player_on_a_bye_is_not_offered(
     _with_model(monkeypatch, _answer("bench"))
     _run(session, league, now)
     assert _advice_for_team_one(session) is None
+
+
+def test_a_failed_model_call_is_retried_on_a_later_run_and_added_to_the_stored_alert(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    league, now = _ruled_out_with_a_free_back(session)
+    model = _with_model(monkeypatch, "the model is throttled")
+    _run(session, league, now)
+    assert _advice_for_team_one(session) is None
+    model.reply = _answer("bench")
+    _run(session, league, now + timedelta(minutes=10))
+    assert _advice_for_team_one(session) is not None  # the same alert, now with advice
+    assert session.query(AlertRow).count() == 3
+    calls = model.calls
+    _run(session, league, now + timedelta(minutes=20))
+    assert model.calls == calls  # advice in place: not asked again
+
+
+def test_an_alert_still_without_advice_is_given_up_on_after_the_retry_window(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    league, now = _ruled_out_with_a_free_back(session)
+    model = _with_model(monkeypatch, "down")
+    _run(session, league, now)
+    calls = model.calls
+    _run(session, league, now + timedelta(hours=4))
+    assert model.calls == calls
+
+
+def test_a_pickup_may_drop_a_bench_player_but_not_a_starter(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    league, now = _ruled_out_with_a_free_back(session)
+    _with_model(monkeypatch, _answer("free", "He is projected 11.0.", drop="bench"))
+    _run(session, league, now)
+    pick = _advice_for_team_one(session)["picks"][0]  # type: ignore[index]
+    assert (pick["drop_id"], pick["drop_name"]) == ("bench", "Bench Back")
+
+
+def test_a_player_id_is_not_a_number_the_advice_may_quote(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    league = _setup(session)
+    session.add_all([_player("4034", "RB", "Numbered Back"), _proj("4034", 70.0)])
+    roster = session.get(RosterRow, ("L1", 1))
+    assert roster is not None
+    roster.players = [*roster.players, "4034"]
+    session.commit()
+    now = utcnow()
+    _healthy_first_then_out(session, league, now)
+    _with_model(monkeypatch, _answer("bench", "He is projected 4034."))
+    _run(session, league, now)
+    assert _advice_for_team_one(session) is None

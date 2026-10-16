@@ -56,6 +56,18 @@ def client() -> llm.LlmClient | None:
     return llm.client_from_env()
 
 
+_UNQUOTABLE = {"player_id", "droppable"}
+
+
+def quotable(facts: object) -> object:
+    """The facts without ids, so a number written in advice cannot match some player's id."""
+    if isinstance(facts, dict):
+        return {k: quotable(v) for k, v in facts.items() if k not in _UNQUOTABLE}
+    if isinstance(facts, list):
+        return [quotable(v) for v in facts]
+    return facts
+
+
 def free_agents(  # noqa: PLR0913, PLR0917
     session: Session,
     league: LeagueRow,
@@ -155,7 +167,7 @@ def advise(
             and all(i in by_id for i in ids)
             and all(pick.drop_id is None or pick.drop_id in droppable for pick in advice.picks)
             and not any(_LINKS.search(t) for t in texts)
-            and llm.grounded_numbers(texts, facts)
+            and llm.grounded_numbers(texts, quotable(facts))
         )
 
     answer = llm.ask(
