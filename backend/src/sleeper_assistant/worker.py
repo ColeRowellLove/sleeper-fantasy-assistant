@@ -29,6 +29,7 @@ from sleeper_assistant.ingest import MAX_WEEKS, sync_league, sync_players, sync_
 from sleeper_assistant.kickoffs import sync_kickoffs
 from sleeper_assistant.player_data import (
     stored_weeks,
+    sync_season_history,
     sync_trending,
     sync_week_stats,
 )
@@ -54,6 +55,9 @@ TRENDING_SYNC_INTERVAL = timedelta(hours=1)  # Sleeper's add/drop counts move al
 TRENDING_FAILURE_COOLDOWN = timedelta(hours=1)
 STATS_SYNC_INTERVAL = timedelta(hours=1)  # the current week's stats grow during games
 STATS_FAILURE_COOLDOWN = timedelta(hours=3)
+HISTORY_SYNC_INTERVAL = timedelta(days=7)  # past seasons never change; this only fills gaps
+HISTORY_FAILURE_COOLDOWN = timedelta(hours=12)
+HISTORY_SEASONS = 2  # how many finished seasons the player pop-up shows
 KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
 KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
 CYCLE_MAX_JOBS = 50
@@ -99,12 +103,18 @@ def default_handlers(
         weeks = {w for w in range(1, last + 1) if w not in have} | {last}
         sync_week_stats(session, client, season, weeks)
 
+    def _sync_history(session: Session, payload: dict[str, Any]) -> None:
+        current = int(payload.get("season") or client.get_state().season)
+        for season in range(current - 1, current - 1 - HISTORY_SEASONS, -1):
+            sync_season_history(session, client, str(season))
+
     def _sync_kickoffs(session: Session, payload: dict[str, Any]) -> None:
         season = str(payload.get("season") or client.get_state().season)
         with http_factory() as http:
             sync_kickoffs(session, http, season)
 
     return {
+        "sync_history": _sync_history,
         "sync_kickoffs": _sync_kickoffs,
         "sync_projections": _sync_projections,
         "sync_stats": _sync_stats,
@@ -256,6 +266,13 @@ def enqueue_stats_sync_if_due(session: Session, now: datetime | None = None) -> 
     )
 
 
+def enqueue_history_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Fill in past seasons' stat totals (cheap to re-check: seasons already stored are skipped)."""
+    return _enqueue_periodic(
+        session, "sync_history", HISTORY_SYNC_INTERVAL, HISTORY_FAILURE_COOLDOWN, now
+    )
+
+
 def enqueue_kickoff_sync_if_due(session: Session, now: datetime | None = None) -> bool:
     """Refresh kickoff times from nflverse about daily."""
     return _enqueue_periodic(
@@ -288,6 +305,7 @@ def run_cycle(
             + int(enqueue_projection_sync_if_due(session))
             + int(enqueue_trending_sync_if_due(session))
             + int(enqueue_stats_sync_if_due(session))
+            + int(enqueue_history_sync_if_due(session))
         )
     ran = 0
     while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):

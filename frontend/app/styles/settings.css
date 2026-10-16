@@ -176,3 +176,101 @@ table.players {
 .players-empty {
   padding: 1rem 1.25rem;
 }
+
+/* Player pop-up */
+.player-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.player-link:hover,
+.player-link:focus-visible {
+  text-decoration: underline;
+}
+
+dialog.player-dialog {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  max-height: 90vh;
+  max-width: 44rem;
+  overflow-y: auto;
+  padding: 0;
+  width: min(44rem, calc(100% - 2rem));
+}
+
+dialog.player-dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+.player-dialog-body {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 1.25rem 1.5rem 1.75rem;
+}
+
+.player-dialog-head {
+  align-items: start;
+  display: flex;
+  gap: 1rem;
+}
+
+.player-dialog-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-dialog-title h2 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.player-dialog-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0;
+}
+
+.player-dialog-owner {
+  margin: 0.4rem 0 0;
+}
+
+.player-dialog h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.pd-projected {
+  font-size: 1.1rem;
+  margin: 0 0 0.25rem;
+}
+
+table.players.pd-table {
+  min-width: 0; /* the players table's own minimum width would stretch the whole dialog */
+}
+
+.pd-stats {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 40rem) {
+  /* a bottom sheet on phones */
+  dialog.player-dialog {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    bottom: 0;
+    margin: auto 0 0;
+    max-height: 92vh;
+    max-width: none;
+    width: 100%;
+  }
+
+  .player-dialog-body {
+    padding: 1rem 1rem 1.5rem;
+  }
+}

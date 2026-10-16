@@ -135,6 +135,8 @@ class PlayerRow(Base):
     injury_status: Mapped[str | None] = mapped_column(String)
     injury_body_part: Mapped[str | None] = mapped_column(String)
     external_ids: Mapped[dict[str, Any]]
+    # age, height, weight, college, experience, jersey number and depth chart, as Sleeper sends them
+    bio: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
 class CrosswalkRow(Base):
@@ -180,6 +182,17 @@ class PlayerProjectionRow(Base):
     team: Mapped[str | None] = mapped_column(String)
     stats: Mapped[dict[str, float]] = mapped_column(JSON)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PlayerSeasonStatsRow(Base):
+    """A player's stat totals for a past season (summed from its weeks; the weeks are not kept)."""
+
+    __tablename__ = "player_season_stats"
+
+    season: Mapped[str] = mapped_column(String, primary_key=True)
+    player_id: Mapped[str] = mapped_column(String, primary_key=True)
+    games: Mapped[int]
+    stats: Mapped[dict[str, float]] = mapped_column(JSON)
 
 
 class PlayerTrendRow(Base):

@@ -39,6 +39,7 @@ Connect a league by Sleeper username and the app shows, for each league:
   game (kickoff in your time zone, live, final, or bye week).
 - **Lineups:** every matchup side by side for any week, in the Sleeper starter order.
 - **Players:** every relevant NFL player through your league: filter by position and availability, search, and sort by Sleeper adds and drops, positional rank, season points under your scoring, and projected points.
+- **Player pop-up:** click any player (rosters, lineups, Players tab) for their bio, position rank, week-by-week points with every stat that counted, this week's projected stats, and past seasons, all scored with your league's rules.
 - **Projections:** projected points (scored with your league's own rules) next to actual points on rosters and lineups, with a team total in each matchup.
 - **Settings:** the league's rules and scoring as Sleeper reports them.
 
