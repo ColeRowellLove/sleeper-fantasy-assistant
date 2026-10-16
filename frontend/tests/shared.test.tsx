@@ -125,6 +125,12 @@ describe("StatTable", () => {
       </StatTable>,
     );
     expect(container.querySelector(".card")).toBeNull();
+    rerender(
+      <StatTable caption="Things" bare empty="No rows.">
+        {body}
+      </StatTable>,
+    );
+    expect(screen.getByText("No rows.")).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {

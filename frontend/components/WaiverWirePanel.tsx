@@ -22,7 +22,7 @@ export function backingLabel(entry: WireEntry): string {
 function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
   return (
     <li className="card wire-entry">
-      <h3 className="wire-title">
+      <div className="wire-title">
         <span className="wire-rank">{rank}.</span>
         <PlayerIdentity
           player_id={entry.player_id}
@@ -30,7 +30,7 @@ function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
           position={entry.position}
           team={entry.team}
         />
-      </h3>
+      </div>
       <p className="wire-numbers">
         Projected {entry.projected.toFixed(1)}, +{entry.gain.toFixed(1)} {entry.over}.{" "}
         <strong>{backingLabel(entry)}.</strong>

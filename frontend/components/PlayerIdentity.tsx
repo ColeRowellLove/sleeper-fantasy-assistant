@@ -48,7 +48,9 @@ export default function PlayerIdentity({
         <span className="player-meta">
           <PositionChip position={position ?? null} />
           {showTeam && (
-            <span className="muted">{team ? <TeamLink team={team}>{team}</TeamLink> : "FA"}</span>
+            <span className="muted">
+              {team ? <TeamLink team={team}>{team}</TeamLink> : team === null ? "FA" : null}
+            </span>
           )}
           <InjuryBadge injury={injury} />
           {meta}

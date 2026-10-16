@@ -29,11 +29,19 @@ export default function StatTable({
       </table>
     </div>
   );
-  if (bare) return table;
+  const message = empty ? <p className="note players-empty">{empty}</p> : null;
+  if (bare) {
+    return (
+      <>
+        {table}
+        {message}
+      </>
+    );
+  }
   return (
     <div className="card flush">
       {table}
-      {empty && <p className="note players-empty">{empty}</p>}
+      {message}
     </div>
   );
 }
