@@ -204,7 +204,9 @@ export default function StartSitTool({
                       : p.projected === null
                         ? "No projection yet"
                         : `Proj ${p.projected.toFixed(1)}`}
-                    {p.out && <span className="pick-out"> Can&apos;t start: {p.out}</span>}
+                    {p.out && p.out !== "no projection this week" && (
+                      <span className="pick-out"> Can&apos;t start: {p.out}</span>
+                    )}
                   </span>
                 </div>
               </li>

@@ -125,13 +125,20 @@ describe("Start/Sit tool", () => {
     await expectNoA11yViolations(ui);
   });
 
-  it("says why a player cannot be started, in words", () => {
+  it("says why a player cannot be started, but not when he only lacks a projection", async () => {
     const withOut: BestLineup = {
       ...best,
-      roster: [cand({ player_id: "9", name: "Hurt Back", projected: 12.3, out: "listed Out" })],
+      roster: [
+        cand({ player_id: "9", name: "Hurt Back", projected: 12.3, out: "listed Out" }),
+        cand({ player_id: "8", name: "No Data", projected: null, out: "no projection this week" }),
+      ],
     };
-    render(<StartSitTool {...props} best={withOut} />);
+    const ui = <StartSitTool {...props} best={withOut} />;
+    render(ui);
     expect(screen.getByText(/Can't start: listed Out/)).toBeInTheDocument();
+    expect(screen.getByText("No projection yet")).toBeInTheDocument();
+    expect(screen.queryByText(/Can't start: no projection/)).not.toBeInTheDocument();
+    await expectNoA11yViolations(ui);
   });
 
   it("shows the best lineup with the swaps and why", () => {

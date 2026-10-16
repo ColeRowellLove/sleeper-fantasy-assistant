@@ -672,7 +672,6 @@
 }
 
 .pick-out {
-  color: var(--danger);
   display: block;
-  font-weight: 600;
+  font-weight: 700; /* the words carry the meaning, not a colour */
 }

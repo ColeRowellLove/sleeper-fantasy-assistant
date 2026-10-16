@@ -47,13 +47,21 @@ STAT_KEYS = (
 PROJECTED_PER_POSITION = {"QB": 1, "RB": 2, "WR": 3, "TE": 1, "K": 1, "DEF": 1}
 
 
+def _number(value: object) -> float | None:
+    """A finite float for a number (or numeric text like "0"), else None; never raises."""
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        return None
+    try:
+        number = float(value)
+    except (ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
+
+
 def _numbers(stats: Mapping[str, object]) -> dict[str, float]:
-    """The finite numbers of a stored stat line; a null, text or NaN value is dropped, not fatal."""
-    return {
-        k: float(v)
-        for k, v in stats.items()
-        if isinstance(v, int | float) and not isinstance(v, bool) and math.isfinite(v)
-    }
+    """The finite numbers of a stored stat line; a null or non-numeric value is dropped."""
+    cleaned = ((k, _number(v)) for k, v in stats.items())
+    return {k: n for k, n in cleaned if n is not None}
 
 
 class GamePlayer(BaseModel):
@@ -120,19 +128,6 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
     }
     stats = {pid: line for pid, line in cleaned.items() if line.get("gp") is None or line["gp"] > 0}
     upcoming = {t for t in teams if t in info and info[t].state == "upcoming"}
-    # projections stand in only before kickoff, so a week with no game left to play reads none
-    projections = (
-        {
-            row.player_id: row.stats
-            for row in session.scalars(
-                select(PlayerProjectionRow).where(
-                    PlayerProjectionRow.season == season, PlayerProjectionRow.week == chosen
-                )
-            )
-        }
-        if upcoming
-        else {}
-    )
     candidates = list(
         session.scalars(
             select(PlayerRow).where(
@@ -142,12 +137,24 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
         )
     )
     by_team: dict[str, list[GamePlayer]] = {t: [] for t in teams}
-    # before a player has a line, the most projected of each team are worth showing
-    wanted = {p.player_id for p in candidates if p.team in upcoming}  # score only who may show
+    # projections stand in only before kickoff: load and score just the players of upcoming games
+    wanted = {p.player_id for p in candidates if p.team in upcoming}
+    projections = (
+        {
+            row.player_id: _numbers(row.stats)
+            for row in session.scalars(
+                select(PlayerProjectionRow).where(
+                    PlayerProjectionRow.season == season,
+                    PlayerProjectionRow.week == chosen,
+                    PlayerProjectionRow.player_id.in_(wanted),
+                )
+            )
+        }
+        if wanted
+        else {}
+    )
     scored = {
-        pid: score_projection(_numbers(line), league.scoring_settings)
-        for pid, line in projections.items()
-        if pid in wanted
+        pid: score_projection(line, league.scoring_settings) for pid, line in projections.items()
     }
     groups: dict[tuple[str, str], list[PlayerRow]] = {}
     for p in candidates:  # one pass: (team, position) -> the unrostered players with a projection
@@ -170,7 +177,7 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
         # a projection stands in only before the game: after kickoff no line means he did not play
         projected_line = projections.get(p.player_id) if not line and p.team in upcoming else None
         roster_id = owner.get(p.player_id)
-        shown_stats = _numbers(line or projected_line or {})
+        shown_stats = line or projected_line or {}
         by_team[p.team].append(
             GamePlayer(
                 player_id=p.player_id,
