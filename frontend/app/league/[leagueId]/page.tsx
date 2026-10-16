@@ -18,7 +18,6 @@ import GamesPanel from "../../../components/GamesPanel";
 import RankingsPanel from "../../../components/RankingsPanel";
 import AlertsPanel from "../../../components/AlertsPanel";
 import WaiverWirePanel from "../../../components/WaiverWirePanel";
-import AccuracyTable from "../../../components/AccuracyTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
   Dashboard,
@@ -42,6 +41,7 @@ import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
 import { USER_COOKIE, alertsSeenCookie, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 import { parseSeen, unreadAlerts } from "../../../lib/alerts";
+import { withAccuracy } from "../../../lib/standingsAccuracy";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "League", robots: { index: false } };
@@ -130,8 +130,12 @@ export default async function LeaguePage({
     tab === "rankings"
       ? getJson<Rankings>(`/api/leagues/${leagueId}/rankings${rankingsQuery}`)
       : Promise.resolve(null),
-    tab === "accuracy"
-      ? getJson<LineupAccuracy>(`/api/leagues/${leagueId}/accuracy`)
+    // sit vs start accuracy sits in the standings; it is extra, so a failure shows the table without it
+    tab === "standings"
+      ? getJson<LineupAccuracy>(`/api/leagues/${leagueId}/accuracy`).catch((error: unknown) => {
+          console.error("accuracy failed to load for the standings", error);
+          return null;
+        })
       : Promise.resolve(null),
     tab === "settings"
       ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
@@ -247,7 +251,7 @@ export default async function LeaguePage({
       {tab === "standings" && (
         <StandingsTable
           leagueId={leagueId}
-          standings={dashboard.standings}
+          standings={withAccuracy(dashboard.standings, accuracy)}
           playoffTeams={dashboard.rules.playoff_teams}
           myRosterId={myRosterId}
         />
@@ -305,9 +309,6 @@ export default async function LeaguePage({
           rosterId={wireTeam}
           myRosterId={myRosterId}
         />
-      )}
-      {tab === "accuracy" && accuracy && (
-        <AccuracyTable data={accuracy} leagueId={leagueId} myRosterId={myRosterId} />
       )}
       {tab === "players" && players && (
         <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />

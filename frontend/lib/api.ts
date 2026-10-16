@@ -205,6 +205,10 @@ export interface StandingsRow {
   points_against: number;
   /** Current run as Sleeper reports it: "3W", "2L" or "1T". */
   streak?: string | null;
+  /** Sit vs start accuracy (points over Sleeper's potential points, 0 to 1); added from /accuracy. */
+  accuracy?: number | null;
+  /** Points left on the bench, from Sleeper's potential points. */
+  left_on_bench?: number | null;
 }
 
 /** Who has the ball and where, for a game in progress (ESPN's live scoreboard). */
