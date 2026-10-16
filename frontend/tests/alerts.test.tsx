@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -191,8 +191,32 @@ describe("AlertsPanel", () => {
         seen={null}
       />,
     );
-    expect(screen.getByText(/No alerts yet/)).toBeInTheDocument();
-    expect(screen.queryByText(/ruled out|waiver/i)).not.toBeInTheDocument(); // promises nothing yet
+    expect(screen.getByText(/No alerts yet for your team/)).toBeInTheDocument();
+    expect(screen.getByText(/comes the day before your league/)).toBeInTheDocument();
+  });
+
+  it("says what alerts are sent, in words, and does not promise texts yet", () => {
+    render(
+      <AlertsPanel
+        data={{ ...data, alerts: [] }}
+        rosters={rosters}
+        leagueId="1"
+        myRosterId={1}
+        seen={null}
+      />,
+    );
+    const region = screen.getByRole("region", { name: "What alerts are sent" });
+    const items = within(region).getAllByRole("listitem");
+    expect(items.map((li) => li.querySelector("strong")?.textContent)).toEqual([
+      "A player on your team is ruled out.",
+      "Waiver targets.",
+      "Text messages.",
+    ]);
+    expect(within(region).getByText(/Not on yet/)).toBeInTheDocument();
+    // the team picker and its button share one compact row
+    expect(screen.getByRole("button", { name: "Show alerts" }).closest("form")).toHaveClass(
+      "inline-form",
+    );
   });
 
   it("has no accessibility violations", async () => {

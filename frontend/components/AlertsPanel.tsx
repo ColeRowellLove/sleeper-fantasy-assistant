@@ -14,6 +14,22 @@ import { leaguePath } from "../lib/league";
 import { alertsSeenCookie, setCookie } from "../lib/myTeam";
 import PlayerLink from "./PlayerLink";
 
+/** What the alert engine sends today, in plain words (keep in step with the detectors). */
+const ALERT_KINDS = [
+  {
+    title: "A player on your team is ruled out",
+    text: "We say where he starts and who to start instead: a healthy bench player, the next man up on his depth chart (even if you own him), or the best free agent.",
+  },
+  {
+    title: "Waiver targets",
+    text: "The day before your league's waiver day, the best available pickups for your lineup, each with its projected points and how much it adds over the player it would replace.",
+  },
+  {
+    title: "Text messages",
+    text: "Not on yet. Alerts are shown here; texting them to your phone is planned.",
+  },
+];
+
 /** One alert: title, what happened, and for a waiver alert the pickups as a linked, numbered list. */
 function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
   const targets = waiverTargets(alert);
@@ -104,7 +120,20 @@ export default function AlertsPanel({
         Things worth knowing about {mine ? "your team" : team}, from the last 14 days.
       </p>
 
-      <form method="get" action={leaguePath(leagueId)} className="players-controls">
+      <section aria-labelledby="alert-kinds-heading" className="alert-kinds">
+        <p id="alert-kinds-heading" className="alert-kinds-title">
+          What alerts are sent
+        </p>
+        <ul>
+          {ALERT_KINDS.map((k) => (
+            <li key={k.title}>
+              <strong>{k.title}.</strong> {k.text}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <form method="get" action={leaguePath(leagueId)} className="inline-form">
         <input type="hidden" name="tab" value="alerts" />
         <label>
           Team{" "}
@@ -133,8 +162,9 @@ export default function AlertsPanel({
 
       {data.alerts.length === 0 ? (
         <p className="note">
-          No alerts yet. Alerts for this team appear here as they are raised, and the last 14 days
-          are kept.
+          No alerts yet for {mine ? "your team" : team}. When one is raised it appears here, and the
+          last 14 days are kept. A waiver alert comes the day before your league&apos;s waiver day;
+          a ruled-out alert comes within minutes of a player being ruled out.
         </p>
       ) : (
         <ul className="alert-list">
