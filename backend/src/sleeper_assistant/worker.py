@@ -16,6 +16,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant import jobs
+from sleeper_assistant.alerts import run_all_leagues
 from sleeper_assistant.crosswalk import build_crosswalk
 from sleeper_assistant.db import (
     JobRow,
@@ -74,6 +75,8 @@ DEPTH_SYNC_INTERVAL = timedelta(hours=3)  # depth charts change with injuries an
 DEPTH_FAILURE_COOLDOWN = timedelta(hours=3)
 KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
 KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
+ALERTS_INTERVAL = timedelta(minutes=10)  # alerts follow the syncs that feed them
+ALERTS_FAILURE_COOLDOWN = timedelta(minutes=30)
 CYCLE_MAX_JOBS = 50
 CYCLE_BUDGET = timedelta(minutes=10)
 HEARTBEAT_SECONDS = jobs.STALE_AFTER.total_seconds() / 4
@@ -136,7 +139,11 @@ def default_handlers(
         with http_factory() as http:
             sync_kickoffs(session, http, season)
 
+    def _run_alerts(session: Session, _payload: dict[str, Any]) -> None:
+        run_all_leagues(session, utcnow() - ACTIVE_WINDOW)
+
     return {
+        "run_alerts": _run_alerts,
         "sync_depth_charts": _sync_depth_charts,
         "sync_history": _sync_history,
         "sync_kickoffs": _sync_kickoffs,
@@ -316,6 +323,11 @@ def enqueue_depth_sync_if_due(session: Session, now: datetime | None = None) -> 
     )
 
 
+def enqueue_alerts_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Run the alert detectors for active leagues every few minutes, after their syncs."""
+    return _enqueue_periodic(session, "run_alerts", ALERTS_INTERVAL, ALERTS_FAILURE_COOLDOWN, now)
+
+
 def enqueue_kickoff_sync_if_due(session: Session, now: datetime | None = None) -> bool:
     """Refresh kickoff times from nflverse about daily."""
     return _enqueue_periodic(
@@ -351,6 +363,7 @@ def run_cycle(
             + int(enqueue_history_sync_if_due(session))
             + int(enqueue_ownership_sync_if_due(session))
             + int(enqueue_depth_sync_if_due(session))
+            + int(enqueue_alerts_if_due(session))
         )
     ran = 0
     while ran < max_jobs and utcnow() - started < budget and run_once(factory, handlers):

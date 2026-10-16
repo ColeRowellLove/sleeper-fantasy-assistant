@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
+    UniqueConstraint,
     create_engine,
     text,
 )
@@ -251,6 +252,29 @@ class PlayerWeekStatsRow(Base):
     team: Mapped[str | None] = mapped_column(String)
     stats: Mapped[dict[str, float]] = mapped_column(JSON)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AlertRow(Base):
+    """An alert for one team in one league. Created once per event (the dedupe key)."""
+
+    __tablename__ = "alerts"
+    __table_args__ = (
+        UniqueConstraint("league_id", "roster_id", "dedupe_key", name="uq_alerts_event"),
+        Index("ix_alerts_team_created", "league_id", "roster_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    league_id: Mapped[str] = mapped_column(ForeignKey("leagues.league_id"))
+    roster_id: Mapped[int]
+    kind: Mapped[str] = mapped_column(String)  # injury_out, waiver_targets, ...
+    dedupe_key: Mapped[str] = mapped_column(String)  # the same event never alerts a team twice
+    player_id: Mapped[str | None] = mapped_column(
+        String
+    )  # the player it is about, when there is one
+    title: Mapped[str] = mapped_column(String)
+    why: Mapped[str] = mapped_column(String)  # one line with the numbers behind it
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # structured extras
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class JobRow(Base):
