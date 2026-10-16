@@ -534,3 +534,48 @@
 .rank-sources .note {
   margin: 0;
 }
+
+/* Games: the players of a game laid out like a box score, one team after the other */
+.game-team-block {
+  margin: 1rem 0 1.5rem;
+}
+
+.game-team-title {
+  align-items: center;
+  display: flex;
+  font-size: 1.1rem;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.game-teams {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.game-players {
+  margin-bottom: 0.75rem;
+}
+
+.game-player {
+  align-items: center;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.game-players .avatar {
+  --size: 2rem;
+}
+
+.game-players tr.mine {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+}
+
+.game-players tr.owned-other {
+  background: color-mix(in srgb, var(--wr) 10%, var(--surface));
+}
+
+.owner-other {
+  font-weight: 600;
+}

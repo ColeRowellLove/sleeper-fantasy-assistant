@@ -20,12 +20,28 @@ from sleeper_assistant.dashboard import (
     current_week,
     games_for_week,
 )
-from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, PlayerWeekStatsRow, RosterRow
+from sleeper_assistant.db import (
+    LeagueRow,
+    NflGameRow,
+    PlayerProjectionRow,
+    PlayerRow,
+    PlayerWeekStatsRow,
+    RosterRow,
+)
 from sleeper_assistant.players_view import _name
-from sleeper_assistant.projections import score_stats
+from sleeper_assistant.projections import score_projection, score_stats
 from sleeper_assistant.stat_lines import stat_line
 
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
+# the stat lines the page lays out, by Sleeper's own names; anything else is left out
+STAT_KEYS = (
+    "pass_cmp", "pass_att", "pass_yd", "pass_td", "pass_int", "rush_att", "rush_yd", "rush_td",
+    "rec_tgt", "rec", "rec_yd", "rec_td", "fum_lost", "fgm", "fga", "xpm", "xpa", "sack", "int",
+    "fum_rec", "def_td", "pts_allow",
+)  # fmt: skip
+PROJECTED_PER_TEAM = (
+    10  # projected players shown per team before kickoff, besides those on a roster
+)
 
 
 class GamePlayer(BaseModel):
@@ -38,6 +54,8 @@ class GamePlayer(BaseModel):
     owner_team: str | None = None
     points: float | None = None  # this game's fantasy points once he has stats
     stat_line: str | None = None
+    stats: dict[str, float] = {}  # the stat line (or the projected line before he has one)
+    projected: bool = False  # True when ``stats`` and ``points`` are projections, not play
 
 
 class GameCard(BaseModel):
@@ -88,18 +106,46 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
         )
         if row.stats.get("gp") is None or row.stats["gp"] > 0
     }
-    candidates = session.scalars(
-        select(PlayerRow).where(
-            PlayerRow.team.in_(teams),
-            PlayerRow.position.in_(POSITIONS),
+    projections = {
+        row.player_id: row.stats
+        for row in session.scalars(
+            select(PlayerProjectionRow).where(
+                PlayerProjectionRow.season == season, PlayerProjectionRow.week == chosen
+            )
+        )
+    }
+    candidates = list(
+        session.scalars(
+            select(PlayerRow).where(
+                PlayerRow.team.in_(teams),
+                PlayerRow.position.in_(POSITIONS),
+            )
         )
     )
     by_team: dict[str, list[GamePlayer]] = {t: [] for t in teams}
+    # before a player has a line, the most projected of each team are worth showing
+    scored = {
+        pid: score_projection(line, league.scoring_settings) for pid, line in projections.items()
+    }
+    top_projected: dict[str, set[str]] = {t: set() for t in teams}
+    pool = [p for p in candidates if p.team is not None and p.player_id in scored]
+    for team in teams:
+        best = sorted((p for p in pool if p.team == team), key=lambda p: -scored[p.player_id])
+        top_projected[team] = {p.player_id for p in best[:PROJECTED_PER_TEAM]}
     for p in candidates:
-        if p.team is None or (p.player_id not in stats and p.player_id not in owner):
+        if p.team is None:
+            continue
+        shown = (
+            p.player_id in stats
+            or p.player_id in owner
+            or p.player_id in top_projected.get(p.team, set())
+        )
+        if not shown:
             continue
         line = stats.get(p.player_id)
+        projected_line = None if line else projections.get(p.player_id)
         roster_id = owner.get(p.player_id)
+        shown_stats = line or projected_line or {}
         by_team[p.team].append(
             GamePlayer(
                 player_id=p.player_id,
@@ -109,8 +155,12 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
                 injury=_injury({p.player_id: p}, p.player_id),
                 owner_roster_id=roster_id,
                 owner_team=team_name.get(roster_id) if roster_id is not None else None,
-                points=score_stats(line, league.scoring_settings) if line else None,
+                points=(
+                    score_stats(line, league.scoring_settings) if line else scored.get(p.player_id)
+                ),
                 stat_line=stat_line(p.position, line, league.scoring_settings) if line else None,
+                stats={k: float(shown_stats[k]) for k in STAT_KEYS if shown_stats.get(k)},
+                projected=line is None and projected_line is not None,
             )
         )
 
