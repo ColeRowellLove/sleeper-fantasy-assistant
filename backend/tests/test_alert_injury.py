@@ -187,7 +187,7 @@ def test_no_healthy_bench_player_who_fits_is_said_plainly(session: Session) -> N
     _healthy_first_then_out(session, league, now)
     _run(session, league, now)
     why = next(a.why for a in session.scalars(select(AlertRow)) if a.roster_id == 1)
-    assert "Nobody on your bench fits that slot." in why
+    assert "Nobody on your bench can play that slot this week." in why
 
 
 def test_only_out_counts_and_a_player_nobody_owns_alerts_nobody(session: Session) -> None:
