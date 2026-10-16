@@ -71,13 +71,14 @@ const SHORT: Record<string, string> = {
   xpm: "XP made",
   sack: "Sacks",
   int: "INT",
+  pts_allow: "Pts allowed",
 };
 
 const PASS = ["pass_att", "pass_cmp", "pass_yd", "pass_td", "pass_int"];
 const RUSH = ["rush_att", "rush_yd", "rush_td"];
 const REC = ["rec_tgt", "rec", "rec_yd", "rec_td"];
 const KICK = ["fga", "fgm", "xpm"];
-const DEFENSE = ["sack", "int", "ff", "fum_rec", "def_td", "safe", "blk_kick"];
+const DEFENSE = ["pts_allow", "sack", "int", "ff", "fum_rec", "def_td", "safe", "blk_kick"];
 
 /** Stats come in reading order for the position: a quarterback's passing first, a receiver's catches first. */
 const ORDER: Record<string, string[]> = {
