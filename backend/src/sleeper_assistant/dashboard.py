@@ -568,9 +568,7 @@ def _set_win_probability(a: TeamLineup, b: TeamLineup) -> None:
     if chances is None:
         # too many starters without a projection for a firm number: still give a rough one so every
         # matchup has a bar, marked as rough (None stays for a decided or empty matchup)
-        chances = matchup_chances(
-            _starter_states(a), _starter_states(b), max_missing=99, fill_missing=True
-        )
+        chances = matchup_chances(_starter_states(a), _starter_states(b), fill_missing=True)
         rough = chances is not None
     if chances is not None:
         a.win_probability, b.win_probability = chances

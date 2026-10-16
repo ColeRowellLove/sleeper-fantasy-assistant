@@ -218,7 +218,7 @@ def test_a_rough_estimate_fills_in_missing_starters_and_is_less_sure() -> None:
     ]
     assert expectation(two_missing).total == 20.0
     assert expectation(two_missing, fill_missing=True).total == 60.0  # stand-in: the 20 average
-    rough = matchup_chances(two_missing, _team(10, 10, 10), max_missing=99, fill_missing=True)
+    rough = matchup_chances(two_missing, _team(10, 10, 10), fill_missing=True)
     firm = matchup_chances(_team(20, 20, 20), _team(10, 10, 10))
     assert rough is not None and firm is not None
     assert 0.5 < rough[0] < firm[0]  # same lead, wider spread
@@ -227,4 +227,22 @@ def test_a_rough_estimate_fills_in_missing_starters_and_is_less_sure() -> None:
 
 def test_a_rough_estimate_needs_at_least_one_projected_starter_per_side() -> None:
     nothing = [StarterState("upcoming", 0.0, None), StarterState("upcoming", 0.0, None)]
-    assert matchup_chances(nothing, _team(20, 20), max_missing=99, fill_missing=True) is None
+    assert matchup_chances(nothing, _team(20, 20), fill_missing=True) is None
+
+
+def test_a_bye_does_not_drag_the_stand_in_down_and_cannot_be_its_only_basis() -> None:
+    bye = StarterState("bye", 0.0, None)
+    unknown = StarterState("upcoming", 0.0, None)
+    team = [StarterState("upcoming", 0.0, 20.0), bye, unknown, unknown]
+    assert expectation(team, fill_missing=True).total == 60.0  # 20 + 0 + 20 + 20
+    only_bye = [bye, unknown, unknown]
+    assert matchup_chances(only_bye, _team(10, 10), fill_missing=True) is None
+
+
+def test_more_guessing_means_less_certainty() -> None:
+    few = [StarterState("upcoming", 0.0, 30.0)] * 3 + [StarterState("upcoming", 0.0, None)]
+    many = [StarterState("upcoming", 0.0, 30.0)] + [StarterState("upcoming", 0.0, None)] * 3
+    opponent = _team(20, 20, 20, 20)
+    one = matchup_chances(few, opponent, fill_missing=True)
+    three = matchup_chances(many, opponent, fill_missing=True)
+    assert one is not None and three is not None and 0.5 < three[0] < one[0]

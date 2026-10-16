@@ -40,6 +40,7 @@ class Expectation(NamedTuple):
     remaining: float  # share of the projected points still to be played, 0 to 1
     missing: int  # starters still to play with no projection
     starters: int
+    basis: int = 0  # starters who can score and have a number: what a stand-in is based on
 
 
 def _expected(player: StarterState) -> float | None:
@@ -66,7 +67,8 @@ def expectation(starters: Iterable[StarterState], *, fill_missing: bool = False)
     missing = 0
     still_to_play = 0.0
     projected_total = 0.0
-    known = [e for p in players if (e := _expected(p)) is not None]
+    # bye weeks (a true 0.0) would drag the stand-in down, so only players who can score count
+    known = [e for p in players if p.state != "bye" and (e := _expected(p)) is not None]
     stand_in = sum(known) / len(known) if fill_missing and known else None
     for p in players:
         expected = _expected(p)
@@ -87,7 +89,9 @@ def expectation(starters: Iterable[StarterState], *, fill_missing: bool = False)
             share_left = 1.0 if p.elapsed is None else max(0.0, 1.0 - p.elapsed)
             still_to_play += planned * share_left
     remaining = still_to_play / projected_total if projected_total > 0 else 1.0
-    return Expectation(round(total, 2), min(1.0, max(0.0, remaining)), missing, len(players))
+    return Expectation(
+        round(total, 2), min(1.0, max(0.0, remaining)), missing, len(players), len(known)
+    )
 
 
 def spread(starters: int, remaining: float) -> float:
@@ -118,6 +122,10 @@ def matchup_chances(
     None when either team has more than ``max_missing`` starters with no projection (so the totals
     would be guesses), when no one has anything to compare, or when every starter on both teams
     is done (the result is known, so the page shows it instead of a percentage).
+
+    With ``fill_missing`` the first rule is replaced: a starter with no projection is assumed to
+    score what the team's other starters average, and the spread widens with the share of starters
+    guessed (a team with no starter to base the guess on still gives None).
     """
     a, b = (
         expectation(team_a, fill_missing=fill_missing),
@@ -125,14 +133,15 @@ def matchup_chances(
     )
     if a.starters == 0 or b.starters == 0:
         return None
-    if fill_missing and (a.missing == a.starters or b.missing == b.starters):
-        return None  # nothing to base a stand-in on
-    if a.missing > max_missing or b.missing > max_missing:
+    if fill_missing and ((a.basis == 0 and a.missing) or (b.basis == 0 and b.missing)):
+        return None  # a side with nothing known to base a stand-in on
+    if not fill_missing and (a.missing > max_missing or b.missing > max_missing):
         return None
     if a.remaining == 0.0 and b.remaining == 0.0:
         return None  # decided: show the result
     sigma = spread(max(a.starters, b.starters), max(a.remaining, b.remaining))
-    if fill_missing and (a.missing or b.missing):
-        sigma *= ROUGH_SPREAD  # the totals include guesses, so be less sure
+    if fill_missing:
+        guessed = max(a.missing / a.starters, b.missing / b.starters)
+        sigma *= 1.0 + (ROUGH_SPREAD - 1.0) * guessed  # the more is guessed, the less sure
     chance = win_probability(a.total, b.total, sigma)
     return round(chance, 4), round(1.0 - chance, 4)

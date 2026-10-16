@@ -25,15 +25,12 @@ export default function WinBar({
   const left = winPercent(a.win_probability);
   const right = winPercent(b.win_probability);
   if (left === null || right === null || state === "played") return null;
+  const rough = Boolean(a.win_probability_rough || b.win_probability_rough);
+  const roughNote = "Rough estimate: some starters have no projection yet.";
   return (
     <div className="win-bar">
       <span className="visually-hidden">
-        {a.team} has a {left} percent chance to win and {b.team} has {right} percent, from projected
-        points
-        {a.win_probability_rough || b.win_probability_rough
-          ? ". This is a rough estimate because some starters have no projection"
-          : ""}
-        .
+        {`${a.team} has a ${left} percent chance to win and ${b.team} has ${right} percent, from projected points.`}
       </span>
       <div className="win-bar-track" aria-hidden="true">
         <span className={`win-bar-a ${tone(left, right)}`} style={{ width: `${left}%` }} />
@@ -47,11 +44,7 @@ export default function WinBar({
           {right}% {b.team}
         </span>
       </div>
-      {(a.win_probability_rough || b.win_probability_rough) && (
-        <p className="muted win-bar-rough" aria-hidden="true">
-          Rough estimate: some starters have no projection yet.
-        </p>
-      )}
+      {rough && <p className="muted win-bar-rough">{roughNote}</p>}
     </div>
   );
 }

@@ -166,7 +166,6 @@ describe("win chance in the matchup", () => {
     expect(
       screen.getByText(/Rough estimate: some starters have no projection/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/rough estimate because some starters/)).toBeInTheDocument();
     await expectNoA11yViolations(card);
   });
 
