@@ -221,8 +221,10 @@ export interface LineupPlayer {
   points: number | null;
   game?: GameInfo | null;
   injury?: InjuryInfo | null;
-  /** Projected points under the league's scoring; null/absent = no projection. */
+  /** Projected points under the league's scoring; 0 when nothing is projected. */
   projected?: number | null;
+  /** No projection was stored, so the 0 above is an assumption. */
+  projection_missing?: boolean;
 }
 
 export interface TeamLineup {

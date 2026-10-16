@@ -170,9 +170,11 @@ def test_lineups_show_projected_points_and_a_team_total(session: Session) -> Non
     league = _league_with_projections(session)
     lineups = build_lineups(session, league, week=6)
     mine, theirs = lineups.matchups[0].teams
-    assert [p.projected for p in mine.starters] == [22.4, None]  # no projection is not 0
-    assert mine.projected == 22.4  # only the starters that have one are summed
-    assert theirs.projected is None  # nobody to project: not a misleading 0
+    # a starter with no projection is projected at zero, and flagged so the 0 is known to be assumed
+    assert [p.projected for p in mine.starters] == [22.4, 0.0]
+    assert [p.projection_missing for p in mine.starters] == [False, True]
+    assert mine.projected == 22.4  # the zero adds nothing
+    assert theirs.projected is None  # no starters at all: nothing to project
 
 
 def test_rosters_show_projected_points_for_the_current_week(session: Session) -> None:
@@ -180,7 +182,7 @@ def test_rosters_show_projected_points_for_the_current_week(session: Session) ->
     dashboard = build_dashboard(session, league)
     assert dashboard.week == 6
     projected = {p.name: p.projected for p in dashboard.rosters[0].players}
-    assert projected == {"Nacua": 22.4, "Unknown": None}
+    assert projected == {"Nacua": 22.4, "Unknown": 0.0}  # no projection: zero, as the owner asked
 
 
 def test_every_stat_category_counts_not_just_the_positions_main_stats() -> None:

@@ -197,3 +197,14 @@ def test_a_finished_matchup_shows_no_chance(session: Session) -> None:
     lineups = build_lineups(session, _build(session, status="complete"), week=6)
     a, b = lineups.matchups[0].teams
     assert a.win_probability is None and b.win_probability is None  # the page shows the result
+
+
+def test_zero_filled_projections_still_count_as_missing_for_the_win_chance(
+    session: Session,
+) -> None:
+    # both of team B's starters have no stored projection: shown as 0.0 but not trusted as data
+    lineups = build_lineups(session, _build(session, projections_b=False), week=6)
+    a, b = lineups.matchups[0].teams
+    assert [p.projected for p in b.starters] == [0.0, 0.0]
+    assert all(p.projection_missing for p in b.starters)
+    assert a.win_probability is None and b.win_probability is None
