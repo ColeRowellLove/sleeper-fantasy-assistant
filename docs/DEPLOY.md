@@ -46,8 +46,9 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
   is in progress) the app runs faster: the API answers reads with a 10 second cache instead of 30,
   ESPN's scoreboard is cached 15 seconds, the worker syncs the stat lines every 2 minutes and the
   schedule every 3 (instead of hourly and every 10), and a worker run that starts inside the window
-  keeps cycling about once a minute for up to 12 minutes (the next scheduled run carries on). Pages
-  with a live game refresh themselves every 15 seconds, with a Pause button. GitHub's scheduled runs
+  keeps cycling about once a minute for up to 11 minutes (the next scheduled run carries on; a game
+  Sleeper still calls in progress 8 hours after kickoff is treated as stale). Pages with a live game,
+  or one about to kick off, refresh themselves every 15 seconds, with a Pause button. GitHub's scheduled runs
   start every 15 minutes and can be late, so stats are as fresh as the last worker minute; a
   continuously running worker would make them steadier. Outside the window nothing changes, so
   quiet days cost nothing.

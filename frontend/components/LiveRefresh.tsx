@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 /** How often a page with a live game asks the server for fresh data. */
 export const REFRESH_SECONDS = 15;
@@ -24,30 +24,24 @@ export default function LiveRefresh({
   const router = useRouter();
   const [paused, setPaused] = useState(false);
   const [updated, setUpdated] = useState<string | null>(null);
-  const refresh = useRef(() => {});
-
-  useEffect(() => {
-    refresh.current = () => {
-      router.refresh();
-      setUpdated(new Date().toLocaleTimeString());
-    };
-  }, [router]);
 
   useEffect(() => {
     if (!active || paused) return;
-    const tick = () => {
-      if (!document.hidden) refresh.current();
+    let last = Date.now();
+    const refresh = () => {
+      // a tick right after a catch-up refresh (or the other way round) would double the request
+      if (document.hidden || Date.now() - last < (seconds * 1000) / 2) return;
+      last = Date.now();
+      router.refresh();
+      setUpdated(new Date().toLocaleTimeString());
     };
-    const onVisible = () => {
-      if (!document.hidden) refresh.current();
-    };
-    const timer = window.setInterval(tick, seconds * 1000);
-    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(refresh, seconds * 1000);
+    document.addEventListener("visibilitychange", refresh);
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
+      document.removeEventListener("visibilitychange", refresh);
     };
-  }, [active, paused, seconds]);
+  }, [active, paused, seconds, router]);
 
   if (!active) return null;
   return (

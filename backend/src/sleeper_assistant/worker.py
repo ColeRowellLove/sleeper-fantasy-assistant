@@ -63,9 +63,8 @@ STATS_FAILURE_COOLDOWN = timedelta(hours=3)
 STATS_SYNC_INTERVAL_LIVE = timedelta(minutes=2)  # stat lines grow play by play while a game is on
 STATS_FAILURE_COOLDOWN_LIVE = timedelta(minutes=5)  # back off a little if the source fails
 LIVE_CYCLE_SECONDS = 60.0  # how often a batch repeats inside its job while a game is on
-LIVE_LOOP_BUDGET = timedelta(
-    minutes=12
-)  # stop before the 15-minute job limit; cron starts the next
+LIVE_LOOP_BUDGET = timedelta(minutes=11)  # stop well before the 15-minute job limit
+LIVE_CYCLE_BUDGET = timedelta(minutes=2)  # one repeated cycle never runs longer than this
 HISTORY_SYNC_INTERVAL = timedelta(days=7)  # past seasons never change; this only fills gaps
 HISTORY_FAILURE_COOLDOWN = timedelta(hours=12)
 HISTORY_SEASONS = 2  # how many finished seasons the player pop-up shows
@@ -372,6 +371,8 @@ def run_batch(
     Outside a live window this is a single cycle, exactly as before. While a game is on it keeps
     cycling (so the stat lines, which sync every couple of minutes then, stay fresh) until the
     window closes or ``LIVE_LOOP_BUDGET`` is used up, leaving the next scheduled run to carry on.
+    Each repeated cycle has its own short time budget, a failed one is logged and the loop goes on,
+    and the workflow's concurrency group stops two runs overlapping.
     Returns how many cycles ran.
     """
     started = clock()
@@ -382,7 +383,11 @@ def run_batch(
             if not live_window_open(session, now=clock()):
                 break
         sleep(LIVE_CYCLE_SECONDS)
-        run_cycle(factory, handlers)
+        remaining = LIVE_LOOP_BUDGET - (clock() - started)
+        try:
+            run_cycle(factory, handlers, budget=min(LIVE_CYCLE_BUDGET, remaining))
+        except Exception:  # a dropped connection or a source down must not end the live loop
+            log.exception("live worker cycle failed; trying again next minute")
         cycles += 1
     return cycles
 

@@ -2,12 +2,13 @@
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import api
+from sleeper_assistant import api, live_window, worker
 from sleeper_assistant.db import JobRow, NflGameRow, make_session_factory, utcnow
-from sleeper_assistant.live_window import live_window_open
+from sleeper_assistant.live_window import live_window_cached, live_window_open
 from sleeper_assistant.worker import (
     LIVE_CYCLE_SECONDS,
     STATS_SYNC_INTERVAL,
@@ -67,6 +68,7 @@ def test_reads_are_cached_briefly_only_while_a_game_is_on(session: Session) -> N
     assert api.read_cache(session, "2026") == api.READ_CACHE
     session.add(_game("g", now + timedelta(minutes=5)))
     session.commit()
+    live_window.reset_cache()  # the quiet answer above is remembered for a few seconds
     assert api.read_cache(session, "2026") == api.READ_CACHE_LIVE
     assert "s-maxage=10" in api.READ_CACHE_LIVE and "s-maxage=30" in api.READ_CACHE
 
@@ -124,10 +126,56 @@ def test_a_batch_repeats_about_once_a_minute_while_a_game_is_on_then_stops(
     cycles = run_batch(factory, {}, sleep=sleep, clock=lambda: clock["now"])
     assert slept and all(s == LIVE_CYCLE_SECONDS for s in slept)
     assert cycles == len(slept) + 1
-    assert 10 <= cycles <= 12  # about a cycle a minute for the 12 minutes of budget
+    assert 9 <= cycles <= 11  # about a cycle a minute for the 11 minutes of budget
 
 
 def test_a_batch_is_a_single_cycle_when_no_game_is_on(engine: Engine) -> None:
     slept: list[float] = []
     cycles = run_batch(make_session_factory(engine), {}, sleep=slept.append, clock=utcnow)
     assert cycles == 1 and slept == []
+
+
+def test_a_game_still_marked_in_progress_long_after_kickoff_does_not_keep_it_open(
+    session: Session,
+) -> None:
+    session.add(_game("stale", NOW - timedelta(hours=12), status="in_game"))
+    session.commit()
+    assert not live_window_open(session, now=NOW)  # a missed sync or a suspended game
+    session.add(_game("recent", NOW - timedelta(hours=3), status="in_game"))
+    session.commit()
+    assert live_window_open(session, now=NOW)
+
+
+def test_the_window_answer_is_remembered_for_a_few_seconds(session: Session) -> None:
+    session.add(_game("g", datetime.now(UTC) + timedelta(minutes=5)))
+    session.commit()
+    assert live_window_cached(session, "2026") is True
+    session.query(NflGameRow).delete()
+    session.commit()
+    assert live_window_cached(session, "2026") is True  # remembered: no second scan
+    live_window.reset_cache()
+    assert live_window_cached(session, "2026") is False
+
+
+def test_one_failed_cycle_does_not_end_the_live_loop(
+    engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    factory = make_session_factory(engine)
+    with factory() as s:
+        s.add(_game("live", utcnow() - timedelta(minutes=30), status="in_game"))
+        s.commit()
+    calls = {"n": 0}
+
+    def flaky(*_a: object, **_k: object) -> None:
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise RuntimeError("connection dropped")
+
+    monkeypatch.setattr(worker, "run_cycle", flaky)
+    clock = {"now": utcnow()}
+
+    def sleep(seconds: float) -> None:
+        clock["now"] += timedelta(seconds=seconds)
+
+    cycles = worker.run_batch(factory, {}, sleep=sleep, clock=lambda: clock["now"])
+    assert calls["n"] == cycles > 5  # it went on after the failure

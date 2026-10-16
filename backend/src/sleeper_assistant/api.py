@@ -33,7 +33,7 @@ from sleeper_assistant.depth import TEAM_IDS
 from sleeper_assistant.games_view import Games, build_games
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
 from sleeper_assistant.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
-from sleeper_assistant.live_window import live_window_open
+from sleeper_assistant.live_window import live_window_cached
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
 from sleeper_assistant.players_view import PlayersResponse, build_players
 from sleeper_assistant.rankings import Rankings, build_rankings
@@ -56,7 +56,7 @@ VIEW_TOUCH_INTERVAL = timedelta(hours=1)  # last_viewed_at is refreshed at most 
 # serve them briefly instead of hitting the database on every page view.
 READ_CACHE = "public, s-maxage=30, stale-while-revalidate=120"
 # while a game is on, answers are only trusted for a few seconds so scores and stats stay fresh
-READ_CACHE_LIVE = "public, s-maxage=10, stale-while-revalidate=20"
+READ_CACHE_LIVE = "public, s-maxage=10, stale-while-revalidate=5"
 
 app = FastAPI(title="Sleeper Fantasy Assistant", version=__version__)
 
@@ -95,7 +95,7 @@ SleeperDep = Annotated[SleeperClient, Depends(get_sleeper)]
 
 def read_cache(session: Session, season: str) -> str:
     """The Cache-Control for a read: a few seconds while a game is on, longer otherwise."""
-    return READ_CACHE_LIVE if live_window_open(session, season) else READ_CACHE
+    return READ_CACHE_LIVE if live_window_cached(session, season) else READ_CACHE
 
 
 class LeagueSummary(BaseModel):

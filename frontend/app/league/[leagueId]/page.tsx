@@ -34,7 +34,7 @@ import type {
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
 import { leaguePath, parseTab } from "../../../lib/league";
-import { anyLive } from "../../../lib/game";
+import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
 import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 
@@ -44,8 +44,8 @@ export const metadata = { title: "League", robots: { index: false } };
 const API_URL = resolveApiUrl();
 
 async function getJson<T>(path: string): Promise<T> {
-  // a few seconds of shared cache keeps repeat views instant; the API's own cache headers decide
-  // how fresh an answer really is (short while a game is on, longer the rest of the time)
+  // a few seconds of cache here keeps repeat views instant; behind it the API's CDN cache (10
+  // seconds while a game is on, 30 otherwise) is what protects the backend, so this stays short
   const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 10 } });
   if (res.status === 404) notFound();
   if (!res.ok) throw new Error("Could not load the league. Please try again.");
@@ -156,7 +156,7 @@ export default async function LeaguePage({
   const closeHref = `${leaguePath(leagueId)}${closeQuery ? `?${closeQuery}` : ""}`;
 
   // refresh by itself while any game the page shows is live
-  const liveNow = anyLive([
+  const liveNow = needsLiveRefresh([
     dashboard.rosters.flatMap((r) => r.players.map((p) => p.game)),
     lineups?.matchups.flatMap((m) =>
       m.teams.flatMap((t) => [...t.starters, ...t.bench].map((p) => p.game)),

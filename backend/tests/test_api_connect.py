@@ -356,9 +356,10 @@ def test_reads_are_cached_briefly_while_a_game_is_on_and_longer_otherwise(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     assert client.post("/api/leagues/1/connect").status_code == 200
+    monkeypatch.setattr(api, "live_window_cached", lambda *_a, **_k: False)  # not the wall clock
     quiet = client.get("/api/leagues/1/games")
     assert quiet.headers["cache-control"] == api.READ_CACHE
-    monkeypatch.setattr(api, "live_window_open", lambda *_a, **_k: True)
+    monkeypatch.setattr(api, "live_window_cached", lambda *_a, **_k: True)
     for path in ("", "/lineups", "/games", "/rankings", "/players", "/teams/SF"):
         assert client.get(f"/api/leagues/1{path}").headers["cache-control"] == api.READ_CACHE_LIVE
 

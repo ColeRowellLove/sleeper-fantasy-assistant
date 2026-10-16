@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LiveRefresh from "../components/LiveRefresh";
 import type { GameInfo } from "../lib/api";
-import { anyLive } from "../lib/game";
+import { needsLiveRefresh } from "../lib/game";
 import { expectNoA11yViolations } from "./a11y";
 
 const refresh = vi.fn();
@@ -83,6 +83,20 @@ describe("LiveRefresh", () => {
     expect(refresh).toHaveBeenCalledTimes(1); // straight away, not after another full wait
   });
 
+  it("does not refresh twice when the tab is shown just before a tick", () => {
+    render(<LiveRefresh active seconds={15} />);
+    act(() => {
+      vi.advanceTimersByTime(14_500);
+      setHidden(true);
+      setHidden(false); // shown again half a second before the tick
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
+    act(() => {
+      vi.advanceTimersByTime(600); // the tick lands right after the catch-up
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
   it("stops when the game ends", () => {
     const { rerender, container } = render(<LiveRefresh active seconds={15} />);
     rerender(<LiveRefresh active={false} seconds={15} />);
@@ -101,21 +115,33 @@ describe("LiveRefresh", () => {
   });
 });
 
-describe("anyLive", () => {
-  const game = (state: GameInfo["state"]): GameInfo => ({
+describe("needsLiveRefresh", () => {
+  const NOW = Date.parse("2026-10-18T17:00:00Z");
+  const game = (state: GameInfo["state"], kickoff?: string): GameInfo => ({
     state,
     date: "2026-10-18",
     opponent: "DEN",
     home: true,
+    kickoff,
   });
 
   it("is true when any list has a live game, ignoring gaps", () => {
-    expect(anyLive([[game("final")], [undefined, null, game("live")]])).toBe(true);
+    expect(needsLiveRefresh([[game("final")], [undefined, null, game("live")]], NOW)).toBe(true);
   });
 
-  it("is false for no games, finished games, upcoming games and byes", () => {
-    expect(anyLive([])).toBe(false);
-    expect(anyLive([[], [undefined, null]])).toBe(false);
-    expect(anyLive([[game("final"), game("upcoming"), game("bye")]])).toBe(false);
+  it("is true for an upcoming game within an hour of kickoff, or past it, so the page starts itself", () => {
+    expect(needsLiveRefresh([[game("upcoming", "2026-10-18T17:30:00Z")]], NOW)).toBe(true);
+    expect(needsLiveRefresh([[game("upcoming", "2026-10-18T17:00:00Z")]], NOW)).toBe(true);
+    expect(needsLiveRefresh([[game("upcoming", "2026-10-18T16:40:00Z")]], NOW)).toBe(true); // late data
+  });
+
+  it("is false for games hours away, long past, without a time, finished or byes", () => {
+    expect(needsLiveRefresh([[game("upcoming", "2026-10-18T19:00:00Z")]], NOW)).toBe(false);
+    expect(needsLiveRefresh([[game("upcoming", "2026-10-17T10:00:00Z")]], NOW)).toBe(false);
+    expect(needsLiveRefresh([[game("upcoming")]], NOW)).toBe(false);
+    expect(needsLiveRefresh([[game("upcoming", "not a date")]], NOW)).toBe(false);
+    expect(needsLiveRefresh([], NOW)).toBe(false);
+    expect(needsLiveRefresh([[], [undefined, null]], NOW)).toBe(false);
+    expect(needsLiveRefresh([[game("final"), game("bye")]], NOW)).toBe(false);
   });
 });
