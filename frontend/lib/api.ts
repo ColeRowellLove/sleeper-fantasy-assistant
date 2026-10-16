@@ -437,3 +437,38 @@ export interface BestLineup {
   changes: { start: StartSitCandidate; sit: StartSitCandidate; gain: number }[];
   why: string;
 }
+
+/** A player in a game on the Games tab. */
+export interface GamePlayer {
+  player_id: string;
+  name: string;
+  position: string;
+  /** The NFL team he plays for in this game. */
+  team: string;
+  injury?: InjuryInfo | null;
+  /** The league roster that has him; null/absent means available. */
+  owner_roster_id?: number | null;
+  owner_team?: string | null;
+  /** Fantasy points in this game under the league's scoring, once he has stats. */
+  points?: number | null;
+  stat_line?: string | null;
+}
+
+export interface GameCard {
+  game_id: string;
+  week: number;
+  home: string;
+  away: string;
+  /** From the home team's side: score, state, clock, line and conditions. */
+  game: GameInfo;
+  players: GamePlayer[];
+}
+
+export interface Games {
+  league_id: string;
+  week: number | null;
+  current_week: number | null;
+  weeks: number[];
+  /** In kickoff order. */
+  games: GameCard[];
+}

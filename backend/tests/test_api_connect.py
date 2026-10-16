@@ -350,6 +350,14 @@ def test_start_sit_endpoints(client: TestClient) -> None:
     assert client.get("/api/leagues/1/start-sit/lineup?roster=40").status_code == 404
 
 
+def test_games_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/games").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/games?week=2").json()
+    assert body["league_id"] == "1" and isinstance(body["games"], list)
+    assert client.get("/api/leagues/1/games?week=99").status_code == 422
+
+
 def test_rankings_endpoint(client: TestClient) -> None:
     assert client.get("/api/leagues/1/rankings").status_code == 404  # league not connected
     assert client.post("/api/leagues/1/connect").status_code == 200
