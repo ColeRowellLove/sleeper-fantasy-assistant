@@ -12,10 +12,12 @@ import TeamDialog from "../../../components/TeamDialog";
 import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
+import RankingsPanel from "../../../components/RankingsPanel";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
   Dashboard,
   LeagueSettings,
+  Rankings,
   Lineups,
   PlayerDetail,
   PlayersData,
@@ -65,11 +67,14 @@ export default async function LeaguePage({
       : "";
 
   // the header needs the dashboard on every tab; lineups are only fetched for their own tab
-  const [dashboard, lineups, leagueSettings, players, playerDetail, depth, depthDialog] =
+  const [dashboard, lineups, rankings, leagueSettings, players, playerDetail, depth, depthDialog] =
     await Promise.all([
       getJson<Dashboard>(`/api/leagues/${leagueId}`),
       tab === "lineups"
         ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
+        : Promise.resolve(null),
+      tab === "rankings"
+        ? getJson<Rankings>(`/api/leagues/${leagueId}/rankings${weekQuery}`)
         : Promise.resolve(null),
       tab === "settings"
         ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
@@ -132,6 +137,9 @@ export default async function LeaguePage({
       )}
       {tab === "lineups" && lineups && (
         <WeeklyLineups data={lineups} leagueId={leagueId} myRosterId={myRosterId} />
+      )}
+      {tab === "rankings" && rankings && (
+        <RankingsPanel data={rankings} leagueId={leagueId} myRosterId={myRosterId} />
       )}
       {tab === "players" && players && (
         <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />

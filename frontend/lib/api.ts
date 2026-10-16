@@ -336,3 +336,40 @@ export interface Dashboard {
   }[];
   rules: ConnectedLeague["rules"];
 }
+
+export interface RankedPlayer {
+  player_id: string;
+  name: string;
+  position: string;
+  team: string | null;
+  injury?: InjuryInfo | null;
+  game?: GameInfo | null;
+  matchup?: MatchupRank | null;
+  owner_roster_id?: number | null;
+  owner_team?: string | null;
+  projected?: number | null;
+  /** Points per game over his last three games. */
+  form?: number | null;
+  /** ESPN-wide share of leagues that start him, in percent. */
+  started_pct?: number | null;
+  /** Rank within the position from each signal that has him. */
+  signal_ranks: Record<string, number>;
+  /** Consensus rank within the position, and among RB, WR and TE together. */
+  rank: number;
+  flex_rank?: number | null;
+  /** Average of the signal ranks (lower is better) and the gap between the best and worst. */
+  score: number;
+  spread: number;
+  sources: number;
+  why: string;
+}
+
+export interface Rankings {
+  league_id: string;
+  week: number | null;
+  current_week: number | null;
+  weeks: number[];
+  /** Signal key -> label, for the legend. */
+  signals: Record<string, string>;
+  players: RankedPlayer[];
+}

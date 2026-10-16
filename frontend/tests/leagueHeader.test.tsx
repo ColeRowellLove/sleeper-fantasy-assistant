@@ -71,6 +71,7 @@ describe("LeagueTabs", () => {
       "Standings",
       "Rosters",
       "Lineups",
+      "Rankings",
       "Players",
       "Teams",
       "Settings",
