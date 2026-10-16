@@ -698,3 +698,9 @@
   display: block;
   font-weight: 700; /* the words carry the meaning, not a colour */
 }
+
+.wire-title {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}

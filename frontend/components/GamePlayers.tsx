@@ -1,9 +1,7 @@
 import type { GameCard, GamePlayer } from "../lib/api";
 import { GROUPS, playersFor, type StatGroup } from "../lib/gameStats";
-import InjuryBadge from "./InjuryBadge";
-import PlayerAvatar from "./PlayerAvatar";
-import PlayerLink from "./PlayerLink";
-import PositionChip from "./PositionChip";
+import PlayerIdentity from "./PlayerIdentity";
+import StatTable from "./StatTable";
 import TeamLogo from "./TeamLogo";
 
 const points = (n: number | null | undefined) =>
@@ -34,72 +32,61 @@ function GroupTable({
 }) {
   const projected = players.length > 0 && players.every((p) => p.projected);
   return (
-    <div className="players-scroll">
-      <table className="players pd-table game-players">
-        <caption className="visually-hidden">
-          {team} {group.title.toLowerCase()}
-          {projected ? " (projected)" : ""}
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">{group.title}</th>
-            <th scope="col">Fantasy team</th>
-            {group.columns.map((c) => (
-              <th key={c.label} scope="col" className="num">
-                {c.label}
-              </th>
-            ))}
-            <th scope="col" className="num">
-              {projected ? "Proj pts" : "Pts"}
+    <StatTable
+      bare
+      caption={`${team} ${group.title.toLowerCase()}${projected ? " (projected)" : ""}`}
+      className="pd-table game-players"
+    >
+      <thead>
+        <tr>
+          <th scope="col">{group.title}</th>
+          <th scope="col">Fantasy team</th>
+          {group.columns.map((c) => (
+            <th key={c.label} scope="col" className="num">
+              {c.label}
             </th>
-          </tr>
-        </thead>
-        <tbody>
-          {players.map((p) => {
-            const mine = myRosterId !== null && p.owner_roster_id === myRosterId;
-            const cls = mine ? "mine" : p.owner_team ? "owned-other" : undefined;
-            const stats = p.stats ?? {};
-            return (
-              <tr key={p.player_id} className={cls}>
-                <th scope="row" className="player-cell">
-                  <span className="game-player">
-                    <PlayerAvatar
-                      player_id={p.player_id}
-                      name={p.name}
-                      position={p.position}
-                      team={p.team}
-                    />
-                    <span>
-                      <span className="player-name">
-                        <PlayerLink playerId={p.player_id}>{p.name}</PlayerLink>
-                      </span>
-                      <span className="player-meta">
-                        <PositionChip position={p.position} />
-                        <InjuryBadge injury={p.injury} />
-                      </span>
-                    </span>
-                  </span>
-                </th>
-                <td>
-                  <Owner player={p} mine={mine} />
+          ))}
+          <th scope="col" className="num">
+            {projected ? "Proj pts" : "Pts"}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {players.map((p) => {
+          const mine = myRosterId !== null && p.owner_roster_id === myRosterId;
+          const cls = mine ? "mine" : p.owner_team ? "owned-other" : undefined;
+          const stats = p.stats ?? {};
+          return (
+            <tr key={p.player_id} className={cls}>
+              <th scope="row" className="player-cell">
+                <PlayerIdentity
+                  player_id={p.player_id}
+                  name={p.name}
+                  position={p.position}
+                  team={p.team}
+                  injury={p.injury}
+                  showTeam={false}
+                />
+              </th>
+              <td>
+                <Owner player={p} mine={mine} />
+              </td>
+              {group.columns.map((c) => (
+                <td key={c.label} className="num">
+                  {c.get(stats, p.projected === true) ?? <span className="muted">–</span>}
                 </td>
-                {group.columns.map((c) => (
-                  <td key={c.label} className="num">
-                    {c.get(stats, p.projected === true) ?? <span className="muted">–</span>}
-                  </td>
-                ))}
-                <td className="num">
-                  {points(p.points)}
-                  {p.projected && p.points !== null && p.points !== undefined && (
-                    <span className="muted"> proj</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+              ))}
+              <td className="num">
+                {points(p.points)}
+                {p.projected && p.points !== null && p.points !== undefined && (
+                  <span className="muted"> proj</span>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </StatTable>
   );
 }
 
