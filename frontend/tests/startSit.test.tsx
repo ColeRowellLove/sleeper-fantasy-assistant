@@ -121,6 +121,23 @@ describe("Start/Sit tool", () => {
     expect(within(group).getByText("No projection yet")).toBeInTheDocument();
     expect(container.querySelectorAll(".pick-row .avatar")).toHaveLength(2);
     expect(rows[0]).toBeChecked();
+    expect(within(group).queryByText(/Can't start/)).not.toBeInTheDocument();
+    await expectNoA11yViolations(ui);
+  });
+
+  it("says why a player cannot be started, but not when he only lacks a projection", async () => {
+    const withOut: BestLineup = {
+      ...best,
+      roster: [
+        cand({ player_id: "9", name: "Hurt Back", projected: 12.3, out: "listed Out" }),
+        cand({ player_id: "8", name: "No Data", projected: null, out: "no projection this week" }),
+      ],
+    };
+    const ui = <StartSitTool {...props} best={withOut} />;
+    render(ui);
+    expect(screen.getByText(/Can't start: listed Out/)).toBeInTheDocument();
+    expect(screen.getByText("No projection yet")).toBeInTheDocument();
+    expect(screen.queryByText(/Can't start: no projection/)).not.toBeInTheDocument();
     await expectNoA11yViolations(ui);
   });
 

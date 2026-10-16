@@ -693,3 +693,8 @@
   margin: 0.5rem 0 0;
   padding-left: 1.1rem;
 }
+
+.pick-out {
+  display: block;
+  font-weight: 700; /* the words carry the meaning, not a colour */
+}

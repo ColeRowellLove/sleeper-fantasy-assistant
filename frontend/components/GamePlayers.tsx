@@ -85,7 +85,7 @@ function GroupTable({
                 </td>
                 {group.columns.map((c) => (
                   <td key={c.label} className="num">
-                    {c.get(stats) ?? <span className="muted">–</span>}
+                    {c.get(stats, p.projected === true) ?? <span className="muted">–</span>}
                   </td>
                 ))}
                 <td className="num">
