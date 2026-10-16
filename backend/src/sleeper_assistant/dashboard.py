@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -28,7 +28,7 @@ from sleeper_assistant.matchup_rank import (
     matchup_rank,
 )
 from sleeper_assistant.projections import projected_points
-from sleeper_assistant.stat_lines import week_stat_lines
+from sleeper_assistant.stat_lines import projected_stat_lines, week_stat_lines
 from sleeper_assistant.win_probability import StarterState, matchup_chances
 
 # Sleeper marks an empty starter slot with the player id "0".
@@ -114,6 +114,7 @@ class RosterPlayer(BaseModel):
     projected_pregame: float | None = None  # the projection frozen before kickoff
     matchup: MatchupRank | None = None  # the opponent's defense rank against his position
     stat_line: str | None = None  # how he did, once his game has started: "18 car, 92 yds, 1 TD"
+    stat_line_projected: bool = False  # True when stat_line is what he is projected to do
 
 
 class RosterView(BaseModel):
@@ -146,6 +147,7 @@ class LineupPlayer(BaseModel):
     projection_missing: bool = False  # no projection was stored, so the 0 above is an assumption
     matchup: MatchupRank | None = None  # the opponent's defense rank against his position
     stat_line: str | None = None  # how he did, once his game has started
+    stat_line_projected: bool = False  # True when stat_line is what he is projected to do
 
 
 class TeamLineup(BaseModel):
@@ -394,20 +396,35 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
     )
 
 
+class _Line(NamedTuple):
+    text: str
+    projected: bool
+
+
 def _stat_lines(
     session: Session,
     league: LeagueRow,
     week: int,
     players: dict[str, PlayerRow],
     games: dict[str, GameInfo],
-) -> dict[str, str]:
-    """Summaries for players whose game is live or over (nothing is said before kickoff)."""
-    started = {
-        pid: p.position
-        for pid, p in players.items()
-        if (game := games.get(p.team or "")) is not None and game.state in ("live", "final")
+) -> dict[str, _Line]:
+    """How each player did once his game started, or what he is projected to do before it."""
+    started: dict[str, str | None] = {}
+    waiting: dict[str, str | None] = {}
+    for pid, p in players.items():
+        game = games.get(p.team or "")
+        if game is None:
+            continue
+        if game.state in ("live", "final"):
+            started[pid] = p.position
+        elif game.state == "upcoming":
+            waiting[pid] = p.position
+    played = week_stat_lines(session, league.season, week, started, league.scoring_settings)
+    planned = projected_stat_lines(session, league.season, week, waiting, league.scoring_settings)
+    return {
+        **{pid: _Line(text, True) for pid, text in planned.items()},
+        **{pid: _Line(text, False) for pid, text in played.items()},
     }
-    return week_stat_lines(session, league.season, week, started, league.scoring_settings)
 
 
 def _week_points(session: Session, league_id: str, week: int) -> dict[int, dict[str, float]]:
@@ -439,7 +456,7 @@ def _roster_players(  # noqa: PLR0913, PLR0917
     projected: dict[str, float],
     earned: dict[str, float],
     defense: DefenseTable,
-    lines: dict[str, str],
+    lines: dict[str, _Line],
 ) -> list[RosterPlayer]:
     def make(pid: str, status: Status, slot: str | None = None) -> RosterPlayer:
         name, position, nfl_team = _display(players, pid)
@@ -459,7 +476,8 @@ def _roster_players(  # noqa: PLR0913, PLR0917
             projected_pregame=pregame,
             points=scored,
             matchup=matchup_rank(defense, position, game.opponent if game else None),
-            stat_line=lines.get(pid),
+            stat_line=lines[pid].text if pid in lines else None,
+            stat_line_projected=pid in lines and lines[pid].projected,
         )
 
     out: list[RosterPlayer] = []
@@ -602,7 +620,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
     parked: dict[str, str],
     projected: dict[str, float],
     defense: DefenseTable,
-    lines: dict[str, str],
+    lines: dict[str, _Line],
 ) -> TeamLineup:
     points: dict[str, Any] = m.players_points
 
@@ -638,7 +656,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 projected_pregame=pregame,
                 projection_missing=pid not in projected,
                 matchup=matchup_rank(defense, position, game.opponent if game else None),
-                stat_line=lines.get(pid),
+                stat_line=lines[pid].text if pid in lines else None,
+                stat_line_projected=pid in lines and lines[pid].projected,
             )
         )
 
@@ -663,7 +682,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 projected_pregame=pregame,
                 projection_missing=pid not in projected,
                 matchup=matchup_rank(defense, position, game.opponent if game else None),
-                stat_line=lines.get(pid),
+                stat_line=lines[pid].text if pid in lines else None,
+                stat_line_projected=pid in lines and lines[pid].projected,
             )
         )
     bench.sort(key=lambda p: (_PARKED_ORDER.get(p.slot, 0), -(p.points or 0.0), p.name))

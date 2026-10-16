@@ -308,6 +308,8 @@ export interface RosterPlayer {
   matchup?: MatchupRank | null;
   /** How he did once his game has started, e.g. "18 car, 92 yds, 1 TD"; absent before kickoff. */
   stat_line?: string | null;
+  /** True when `stat_line` is what he is projected to do (his game has not started). */
+  stat_line_projected?: boolean;
 }
 
 export interface LineupPlayer {
@@ -329,6 +331,8 @@ export interface LineupPlayer {
   matchup?: MatchupRank | null;
   /** How he did once his game has started, e.g. "18 car, 92 yds, 1 TD"; absent before kickoff. */
   stat_line?: string | null;
+  /** True when `stat_line` is what he is projected to do (his game has not started). */
+  stat_line_projected?: boolean;
 }
 
 export interface TeamLineup {

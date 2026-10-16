@@ -7,12 +7,13 @@ from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
     NflGameRow,
+    PlayerProjectionRow,
     PlayerRow,
     PlayerWeekStatsRow,
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.stat_lines import stat_line, week_stat_lines
+from sleeper_assistant.stat_lines import projected_stat_lines, stat_line, week_stat_lines
 
 SCORING = {
     "pass_yd": 0.04, "pass_td": 4.0, "pass_int": -2.0, "rush_yd": 0.1, "rush_td": 6.0,
@@ -109,11 +110,58 @@ def test_rows_show_the_summary_once_the_game_is_over_and_live(session: Session) 
     assert [p.stat_line for p in lineup.bench] == [None]  # did not play
 
 
-def test_nothing_is_shown_before_kickoff(session: Session) -> None:
+def test_nothing_real_is_shown_before_kickoff_only_the_projection(session: Session) -> None:
     league = _setup(session, "pre_game")
     assert all(p.stat_line is None for p in build_dashboard(session, league).rosters[0].players)
     lineup = build_lineups(session, league, 2).matchups[0].teams[0]
     assert all(p.stat_line is None for p in lineup.starters)
+
+
+def test_before_kickoff_a_player_shows_what_he_is_projected_to_do(session: Session) -> None:
+    league = _setup(session, "pre_game")
+    session.add(
+        PlayerProjectionRow(season="2026", week=2, player_id="rb", team="AAA", fetched_at=utcnow(),
+                            stats={"rush_att": 15.4, "rush_yd": 58.2, "rush_td": 0.6, "rec": 3.1,
+                                   "rec_yd": 22.0})
+    )  # fmt: skip
+    session.commit()
+    players = {p.player_id: p for p in build_dashboard(session, league).rosters[0].players}
+    assert players["rb"].stat_line == "15 car, 58 yds, 0.6 TD · 3 rec, 22 yds"
+    assert players["rb"].stat_line_projected is True
+    assert players["wr"].stat_line is None and players["wr"].stat_line_projected is False
+    lineup = build_lineups(session, league, 2).matchups[0].teams[0]
+    assert lineup.starters[0].stat_line == players["rb"].stat_line
+    assert lineup.starters[0].stat_line_projected is True
+
+
+def test_once_the_game_is_over_the_real_line_replaces_the_projection(session: Session) -> None:
+    league = _setup(session, "complete")
+    session.add(
+        PlayerProjectionRow(season="2026", week=2, player_id="rb", team="AAA", fetched_at=utcnow(),
+                            stats={"rush_att": 15.0, "rush_yd": 58.0})
+    )  # fmt: skip
+    session.commit()
+    rb = next(p for p in build_dashboard(session, league).rosters[0].players if p.player_id == "rb")
+    assert rb.stat_line == "18 car, 92 yds, 1 TD" and rb.stat_line_projected is False
+
+
+def test_projected_lines_keep_a_decimal_for_small_counts_only() -> None:
+    qb = {"pass_cmp": 21.4, "pass_att": 33.0, "pass_yd": 241.6, "pass_td": 1.6, "pass_int": 0.7}
+    assert stat_line("QB", qb, SCORING, proj=True) == "21/33, 242 yds, 1.6 TD, 0.7 INT"
+    assert stat_line("K", {"fgm": 1.8, "fga": 2.2, "xpm": 2.4}, SCORING, proj=True) == (
+        "2/2 FG, 2.4 XP"
+    )
+
+
+def test_projected_stat_lines_skip_players_with_nothing_to_say(session: Session) -> None:
+    _setup(session, "pre_game")
+    session.add(
+        PlayerProjectionRow(season="2026", week=2, player_id="dnp", team="AAA", fetched_at=utcnow(),
+                            stats={})
+    )  # fmt: skip
+    session.commit()
+    assert projected_stat_lines(session, "2026", 2, {"dnp": "WR"}, SCORING) == {}
+    assert projected_stat_lines(session, "2026", 2, {}, SCORING) == {}
 
 
 def test_week_stat_lines_skips_players_without_stats_or_who_did_not_play(session: Session) -> None:

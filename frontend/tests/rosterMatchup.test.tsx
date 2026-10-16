@@ -53,7 +53,8 @@ describe("RosterMatchup", () => {
       "href",
       "/league/9?tab=rosters&roster=2",
     );
-    expect(screen.getByText(/55.50 to 41.25/)).toBeInTheDocument();
+    expect(screen.getByText("55.50")).toBeInTheDocument();
+    expect(screen.getByText("41.25")).toBeInTheDocument();
     expect(
       screen.getByText(/Cole has a 62 percent chance to win and Dad Bods has 38 percent/),
     ).toBeInTheDocument();

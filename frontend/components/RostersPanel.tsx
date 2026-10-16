@@ -7,6 +7,7 @@ import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
+import PlayerStatLine from "./PlayerStatLine";
 import TeamLink from "./TeamLink";
 import PositionChip from "./PositionChip";
 import RosterMatchup from "./RosterMatchup";
@@ -134,12 +135,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
             conditions="compact"
           />
         </span>
-        {player.stat_line && (
-          <span className="stat-line">
-            <span className="visually-hidden">Stats this week: </span>
-            {player.stat_line}
-          </span>
-        )}
+        <PlayerStatLine line={player.stat_line} projected={player.stat_line_projected} />
       </span>
       {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with
           no value keeps its (empty) column */}
@@ -147,6 +143,14 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
         <span className="player-proj player-pts num">
           <span className="visually-hidden">Points this week </span>
           {player.points.toFixed(1)}
+          <span className="player-proj-label" aria-hidden="true">
+            pts
+          </span>
+        </span>
+      ) : player.game?.state === "upcoming" ? (
+        <span className="player-proj player-pts num">
+          <span className="visually-hidden">Not played yet</span>
+          <span aria-hidden="true">–</span>
           <span className="player-proj-label" aria-hidden="true">
             pts
           </span>

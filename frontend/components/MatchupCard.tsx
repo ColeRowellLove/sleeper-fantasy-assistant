@@ -14,6 +14,7 @@ import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
+import PlayerStatLine from "./PlayerStatLine";
 import TeamLink from "./TeamLink";
 import PositionChip from "./PositionChip";
 import WinBar from "./WinBar";
@@ -121,9 +122,11 @@ function Cell({
       </>
     );
   }
+  // a dash for anyone whose game has not started, even in a week that is under way
+  const notPlayed = state === "upcoming" || player.game?.state === "upcoming";
   const points = (
     <td className={`pts-cell pts-${side} num`}>
-      {state === "upcoming" ? "–" : formatPoints(player.points)}
+      {notPlayed ? "–" : formatPoints(player.points)}
       <Projection
         projected={player.projected}
         compareWith={player.projected_pregame}
@@ -171,12 +174,7 @@ function Cell({
               conditions="compact"
             />
           </span>
-          {player.stat_line && (
-            <span className="stat-line">
-              <span className="visually-hidden">Stats this week: </span>
-              {player.stat_line}
-            </span>
-          )}
+          <PlayerStatLine line={player.stat_line} projected={player.stat_line_projected} />
         </span>
       </div>
     </td>
