@@ -424,3 +424,38 @@ describe("a projection of zero", () => {
     expect(screen.getAllByText(/Proj 12\.40/)).toHaveLength(1); // the other side still has its number
   });
 });
+
+describe("live projection in the matchup", () => {
+  const live = (state: "played" | "current") => {
+    const a = lineup(1, "Cole", true);
+    a.points = 24.5;
+    a.projected = 24.5; // the live projection is the score once the game is over
+    a.projected_pregame = 14;
+    a.starters[0] = {
+      ...a.starters[0],
+      points: 24.5,
+      projected: 24.5,
+      projected_pregame: 14,
+    };
+    render(
+      <MatchupCard
+        matchup={{ matchup_id: 1, teams: [a, lineup(2, "Dad", true)] }}
+        state={state}
+        week={6}
+        myRosterId={1}
+      />,
+    );
+  };
+
+  it("shows the live number as Proj, and the difference against the frozen pre-game number", () => {
+    live("played");
+    expect(screen.getByText(/Proj 24\.50/)).toBeInTheDocument(); // equals the score
+    expect(screen.getAllByText(/\(\+10\.5/).length).toBeGreaterThan(0); // 24.5 against the frozen 14
+  });
+
+  it("does not compare a week that is still being played", () => {
+    live("current");
+    expect(screen.getByText(/Proj 24\.50/)).toBeInTheDocument();
+    expect(screen.queryByText(/against projection/)).not.toBeInTheDocument();
+  });
+});

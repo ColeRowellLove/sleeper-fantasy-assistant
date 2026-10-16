@@ -156,6 +156,40 @@ def window_open(
     return False
 
 
+_REGULATION_SECONDS = 3600.0  # four 15-minute quarters
+_QUARTER_SECONDS = 900.0
+
+
+def _clock_seconds(clock: str | None) -> float | None:
+    """ "2:24" is 144 seconds; anything that is not minutes:seconds is None."""
+    if not clock or ":" not in clock:
+        return None
+    minutes, _, seconds = clock.partition(":")
+    try:
+        return int(minutes) * 60.0 + float(seconds)
+    except ValueError:
+        return None
+
+
+def fraction_elapsed(game: LiveGame) -> float | None:  # noqa: PLR0911 - one early exit per state
+    """The share of a game played, 0 to 1: from the quarter and clock; None when it is unknown."""
+    if game.state == "final":
+        return 1.0
+    if game.state == "upcoming":
+        return 0.0
+    if game.detail and "half" in game.detail.lower():
+        return 0.5
+    if game.period is None:
+        return None
+    if game.period > 4:  # noqa: PLR2004 - overtime: the regulation game is over
+        return 1.0
+    left = _clock_seconds(game.clock)
+    if left is None:
+        return None
+    left = min(max(left, 0.0), _QUARTER_SECONDS)
+    return ((game.period - 1) * _QUARTER_SECONDS + (_QUARTER_SECONDS - left)) / _REGULATION_SECONDS
+
+
 def describe(game: LiveGame) -> str | None:
     """A short plain phrase for where the game is: "Q2 2:24", "Halftime", "Final", "Final, OT"."""
     if game.state == "final":

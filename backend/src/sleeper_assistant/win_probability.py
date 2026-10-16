@@ -29,7 +29,9 @@ class StarterState(NamedTuple):
 
     state: str | None  # upcoming, live, final or bye; None when the schedule is unknown
     actual: float | None
-    projected: float | None
+    projected: float | None  # the live projection: the score once final
+    pregame: float | None = None  # the projection frozen before kickoff, to weigh what is left
+    elapsed: float | None = None  # share of his game played, 0 to 1
 
 
 class Expectation(NamedTuple):
@@ -67,10 +69,16 @@ def expectation(starters: Iterable[StarterState]) -> Expectation:
             missing += 1
             continue
         total += expected
-        projected = p.projected if p.projected is not None else expected
-        projected_total += projected
+        planned = (
+            p.pregame
+            if p.pregame is not None
+            else (p.projected if p.projected is not None else expected)
+        )
+        projected_total += planned
         if p.state not in ("final", "bye"):
-            still_to_play += projected
+            # what is left of his game, by the clock when we have it
+            share_left = 1.0 if p.elapsed is None else max(0.0, 1.0 - p.elapsed)
+            still_to_play += planned * share_left
     remaining = still_to_play / projected_total if projected_total > 0 else 1.0
     return Expectation(round(total, 2), min(1.0, max(0.0, remaining)), missing, len(players))
 

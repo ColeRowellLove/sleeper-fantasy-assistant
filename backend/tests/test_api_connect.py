@@ -195,6 +195,7 @@ def test_dashboard_after_connect(client: TestClient) -> None:
         "team_score": None,  # not started: no score
         "opponent_score": None,
         "period_text": None,
+        "elapsed": 0.0,  # not started: none of the game is played
         "opponent": "CHI",
         "home": True,
     }

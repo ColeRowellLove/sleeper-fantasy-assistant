@@ -18,8 +18,9 @@ from sleeper_assistant.db import (
     SleeperUserRow,
     UserLeagueRow,
 )
-from sleeper_assistant.live import LiveGame, current_games, describe
+from sleeper_assistant.live import LiveGame, current_games, describe, fraction_elapsed
 from sleeper_assistant.live import window_open as live_window_open
+from sleeper_assistant.live_projection import live_projection
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.win_probability import StarterState, matchup_chances
 
@@ -57,6 +58,7 @@ class GameInfo(BaseModel):
     team_score: int | None = None  # live or final score, from this team's side
     opponent_score: int | None = None
     period_text: str | None = None  # where a live game is: "Q2 2:24", "Halftime"; "Final" when over
+    elapsed: float | None = None  # share of the game played, 0 to 1; None when the clock is unknown
     opponent: str | None = None
     home: bool | None = None
 
@@ -88,6 +90,7 @@ class RosterPlayer(BaseModel):
         None  # this week, scored with the league's rules; None = no projection
     )
     points: float | None = None  # this week's actual points once the game has started
+    projected_pregame: float | None = None  # the projection frozen before kickoff
 
 
 class RosterView(BaseModel):
@@ -115,7 +118,8 @@ class LineupPlayer(BaseModel):
     points: float | None
     game: GameInfo | None = None
     injury: InjuryInfo | None = None
-    projected: float | None = None  # scored with the league's rules; 0 when nothing is projected
+    projected: float | None = None  # live: equals the score once the game is over
+    projected_pregame: float | None = None  # the projection frozen before kickoff
     projection_missing: bool = False  # no projection was stored, so the 0 above is an assumption
 
 
@@ -124,7 +128,10 @@ class TeamLineup(BaseModel):
     team: str
     owner_id: str | None = None
     points: float
-    projected: float | None = None  # sum of the starters' projections; None when there are none
+    projected: float | None = (
+        None  # sum of the starters' live projections; None when there are none
+    )
+    projected_pregame: float | None = None  # the same, from the projections frozen before kickoff
     win_probability: float | None = (
         None  # chance to win from projections; None = nothing fair to say
     )
@@ -256,13 +263,18 @@ def games_for_week(session: Session, season: str, week: int) -> dict[str, GameIn
         if game_state == "upcoming":
             home_score = away_score = None
         words = describe(live) if live else ("Final" if game_state == "final" else None)
+        played = {"upcoming": 0.0, "final": 1.0}.get(game_state)
+        if live is not None and game_state == "live":
+            played = fraction_elapsed(live)
         out[g.home] = GameInfo(
             state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.away, home=True,
             team=g.home, team_score=home_score, opponent_score=away_score, period_text=words,
+            elapsed=played,
         )  # fmt: skip
         out[g.away] = GameInfo(
             state=game_state, date=g.game_date, kickoff=kickoff, opponent=g.home, home=False,
             team=g.away, team_score=away_score, opponent_score=home_score, period_text=words,
+            elapsed=played,
         )  # fmt: skip
     if week_games:  # without any games in the week we cannot tell a bye from missing data
         for team in all_teams - playing:
@@ -365,6 +377,8 @@ def _roster_players(  # noqa: PLR0913, PLR0917
     def make(pid: str, status: Status, slot: str | None = None) -> RosterPlayer:
         name, position, nfl_team = _display(players, pid)
         game = games.get(nfl_team) if nfl_team else None
+        pregame = projected.get(pid, 0.0)
+        scored = _points_so_far(game, earned.get(pid))
         return RosterPlayer(
             player_id=pid,
             name=name,
@@ -374,8 +388,9 @@ def _roster_players(  # noqa: PLR0913, PLR0917
             slot=slot,
             game=game,
             injury=_injury(players, pid),
-            projected=projected.get(pid, 0.0),
-            points=_points_so_far(game, earned.get(pid)),
+            projected=_live(pregame, scored, game),
+            projected_pregame=pregame,
+            points=scored,
         )
 
     out: list[RosterPlayer] = []
@@ -459,6 +474,8 @@ def _starter_states(team: TeamLineup) -> list[StarterState]:
             p.game.state if p.game else None,
             p.points,
             None if p.projection_missing else p.projected,
+            pregame=None if p.projection_missing else p.projected_pregame,
+            elapsed=p.game.elapsed if p.game else None,
         )
         for p in team.starters
         if p.player_id is not None  # an empty slot scores nothing and projects nothing
@@ -471,9 +488,20 @@ def _set_win_probability(a: TeamLineup, b: TeamLineup) -> None:
         a.win_probability, b.win_probability = chances
 
 
-def _team_projection(starters: list[LineupPlayer]) -> float | None:
+def _live(pregame: float, scored: float | None, game: GameInfo | None) -> float:
+    """The projection now: the pre-game one before kickoff, the score once the game is over."""
+    return live_projection(
+        pregame, scored, game.state if game else None, game.elapsed if game else None
+    )
+
+
+def _team_projection(starters: list[LineupPlayer], *, pregame: bool = False) -> float | None:
     """Sum of the starters' projections, or None when no starter has one (never a misleading 0)."""
-    values = [p.projected for p in starters if p.projected is not None]
+    values: list[float] = []
+    for p in starters:
+        value = p.projected_pregame if pregame else p.projected
+        if value is not None:
+            values.append(value)
     return round(sum(values), 2) if values else None
 
 
@@ -505,6 +533,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
             continue
         name, position, nfl_team = _display(players, pid)
         value = m.starters_points[i] if i < len(m.starters_points) else pts(pid)
+        game = games.get(nfl_team) if nfl_team else None
+        pregame = projected.get(pid, 0.0)
         starters.append(
             LineupPlayer(
                 slot=slot,
@@ -513,9 +543,10 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 position=position,
                 team=nfl_team,
                 points=None if value is None else float(value),
-                game=games.get(nfl_team) if nfl_team else None,
+                game=game,
                 injury=_injury(players, pid),
-                projected=projected.get(pid, 0.0),
+                projected=_live(pregame, None if value is None else float(value), game),
+                projected_pregame=pregame,
                 projection_missing=pid not in projected,
             )
         )
@@ -525,6 +556,8 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
         if pid in m.starters:
             continue
         name, position, nfl_team = _display(players, pid)
+        game = games.get(nfl_team) if nfl_team else None
+        pregame = projected.get(pid, 0.0)
         bench.append(
             LineupPlayer(
                 slot=parked.get(pid, "BN"),
@@ -533,9 +566,10 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 position=position,
                 team=nfl_team,
                 points=pts(pid),
-                game=games.get(nfl_team) if nfl_team else None,
+                game=game,
                 injury=_injury(players, pid),
-                projected=projected.get(pid, 0.0),
+                projected=_live(pregame, pts(pid), game),
+                projected_pregame=pregame,
                 projection_missing=pid not in projected,
             )
         )
@@ -546,6 +580,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
         owner_id=owners.get(m.roster_id),
         points=round(m.points, 2),
         projected=_team_projection(starters),
+        projected_pregame=_team_projection(starters, pregame=True),
         starters=starters,
         bench=bench,
     )
