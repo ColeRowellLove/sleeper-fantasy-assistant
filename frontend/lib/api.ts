@@ -469,6 +469,8 @@ export interface BestLineup {
   current_projected: number;
   changes: { start: StartSitCandidate; sit: StartSitCandidate; gain: number }[];
   why: string;
+  /** Everyone on the roster who can be compared, with projection, matchup and game. */
+  roster?: StartSitCandidate[];
 }
 
 /** A player in a game on the Games tab. */
