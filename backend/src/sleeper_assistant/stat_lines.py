@@ -86,7 +86,10 @@ def _kicker(stats: Mapping[str, float], scoring: Mapping[str, float], *, proj: b
     fga, fgm, xpm = _n(stats, "fga"), _n(stats, "fgm"), _n(stats, "xpm")
     parts = []
     if fga or fgm:
-        parts.append(f"{_count(fgm)}/{_count(fga)} FG")
+        # a projection's attempts are fractions, so it says how many are expected to be made
+        parts.append(
+            f"{_count(fgm, tenths=True)} FG" if proj else f"{_count(fgm)}/{_count(fga)} FG"
+        )
     if xpm and _scores(scoring, "xpm"):
         parts.append(f"{_count(xpm, tenths=proj)} XP")
     return ", ".join(parts)

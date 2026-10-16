@@ -126,3 +126,8 @@ export function projectionDelta(
   if (diff === 0) return "0.0";
   return `${diff > 0 ? "+" : "-"}${Math.abs(diff).toFixed(1)}`;
 }
+
+/** True for a player whose game has not started, so his points are a dash rather than 0. */
+export function notPlayedYet(state: WeekState, game?: { state: string } | null): boolean {
+  return state === "upcoming" || game?.state === "upcoming";
+}

@@ -837,7 +837,7 @@
   border-style: dashed; /* the words say it; the dashed edge only adds to them */
 }
 
-/* a projected line is quieter than a real one and tagged so it reads as a forecast */
+/* a projected line is italic and tagged "Proj" so it reads as a forecast, not a result */
 .stat-line-proj {
   font-style: italic;
 }

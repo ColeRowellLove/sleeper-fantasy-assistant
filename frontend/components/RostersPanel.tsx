@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { Dashboard, Lineups, RosterPlayer, RosterStatus } from "../lib/api";
+import { notPlayedYet } from "../lib/lineups";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
@@ -147,7 +148,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
             pts
           </span>
         </span>
-      ) : player.game?.state === "upcoming" ? (
+      ) : notPlayedYet("current", player.game) ? (
         <span className="player-proj player-pts num">
           <span className="visually-hidden">Not played yet</span>
           <span aria-hidden="true">–</span>

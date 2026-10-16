@@ -396,6 +396,9 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
     )
 
 
+_WONT_PLAY = {"Out", "IR", "Sus", "PUP", "NA"}
+
+
 class _Line(NamedTuple):
     text: str
     projected: bool
@@ -417,14 +420,14 @@ def _stat_lines(
             continue
         if game.state in ("live", "final"):
             started[pid] = p.position
-        elif game.state == "upcoming":
-            waiting[pid] = p.position
+        elif game.state == "upcoming" and p.injury_status not in _WONT_PLAY:
+            waiting[pid] = p.position  # a forecast for someone ruled out would only mislead
     played = week_stat_lines(session, league.season, week, started, league.scoring_settings)
     planned = projected_stat_lines(session, league.season, week, waiting, league.scoring_settings)
     return {
-        **{pid: _Line(text, True) for pid, text in planned.items()},
         **{pid: _Line(text, False) for pid, text in played.items()},
-    }
+        **{pid: _Line(text, True) for pid, text in planned.items()},
+    }  # the two sets of players never overlap: a game is either started or not
 
 
 def _week_points(session: Session, league_id: str, week: int) -> dict[int, dict[str, float]]:

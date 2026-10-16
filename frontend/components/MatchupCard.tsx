@@ -5,6 +5,7 @@ import { rosterPath } from "../lib/league";
 import {
   formatPoints,
   formatProjection,
+  notPlayedYet,
   pairRows,
   projectionDelta,
   winnerId,
@@ -123,7 +124,7 @@ function Cell({
     );
   }
   // a dash for anyone whose game has not started, even in a week that is under way
-  const notPlayed = state === "upcoming" || player.game?.state === "upcoming";
+  const notPlayed = notPlayedYet(state, player.game);
   const points = (
     <td className={`pts-cell pts-${side} num`}>
       {notPlayed ? "–" : formatPoints(player.points)}

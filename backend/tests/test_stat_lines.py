@@ -149,7 +149,7 @@ def test_projected_lines_keep_a_decimal_for_small_counts_only() -> None:
     qb = {"pass_cmp": 21.4, "pass_att": 33.0, "pass_yd": 241.6, "pass_td": 1.6, "pass_int": 0.7}
     assert stat_line("QB", qb, SCORING, proj=True) == "21/33, 242 yds, 1.6 TD, 0.7 INT"
     assert stat_line("K", {"fgm": 1.8, "fga": 2.2, "xpm": 2.4}, SCORING, proj=True) == (
-        "2/2 FG, 2.4 XP"
+        "1.8 FG, 2.4 XP"
     )
 
 
@@ -169,3 +169,21 @@ def test_week_stat_lines_skips_players_without_stats_or_who_did_not_play(session
     got = week_stat_lines(session, "2026", 2, {"rb": "RB", "dnp": "WR", "ghost": "RB"}, SCORING)
     assert got == {"rb": "18 car, 92 yds, 1 TD"}
     assert week_stat_lines(session, "2026", 2, {}, SCORING) == {}
+
+
+def test_no_forecast_for_a_player_who_is_ruled_out(session: Session) -> None:
+    league = _setup(session, "pre_game")
+    session.add(
+        PlayerProjectionRow(season="2026", week=2, player_id="rb", team="AAA", fetched_at=utcnow(),
+                            stats={"rush_att": 15.0, "rush_yd": 58.0})
+    )  # fmt: skip
+    session.get(PlayerRow, "rb").injury_status = "Out"  # type: ignore[union-attr]
+    session.commit()
+    rb = next(p for p in build_dashboard(session, league).rosters[0].players if p.player_id == "rb")
+    assert rb.stat_line is None and rb.stat_line_projected is False
+
+
+def test_a_projected_kicker_line_says_how_many_field_goals_are_expected() -> None:
+    assert stat_line("K", {"fgm": 1.4, "fga": 1.6, "xpm": 2.4}, SCORING, proj=True) == (
+        "1.4 FG, 2.4 XP"
+    )
