@@ -82,7 +82,7 @@ export default function WaiverWirePanel({
         <p className="note">The waiver wire could not be loaded. Try again in a moment.</p>
       )}
 
-      <form method="get" action={leaguePath(leagueId)} className="players-controls">
+      <form method="get" action={leaguePath(leagueId)} className="inline-form">
         <input type="hidden" name="tab" value="waiver" />
         <label>
           Team{" "}
