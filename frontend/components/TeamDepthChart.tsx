@@ -1,5 +1,5 @@
 import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
-import { depthRows, groupSlots, TEAM_NAMES } from "../lib/depth";
+import { depthRows, groupSlots, SLIDE_FROM, TEAM_NAMES } from "../lib/depth";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerLink from "./PlayerLink";
@@ -26,44 +26,64 @@ function PlayerCell({ player, myRosterId }: { player: DepthPlayer; myRosterId: n
   );
 }
 
-function SlotTable({ slots, myRosterId }: { slots: DepthSlot[]; myRosterId: number | null }) {
+function SlotTable({
+  slots,
+  myRosterId,
+  title,
+}: {
+  slots: DepthSlot[];
+  myRosterId: number | null;
+  title: string;
+}) {
   const { columns, rows } = depthRows(slots);
+  const slides = columns.length > SLIDE_FROM;
   return (
-    <div className="players-scroll">
-      <table className="players depth-table">
-        <thead>
-          <tr>
-            <th scope="col">Position</th>
-            {columns.map((c) => (
-              <th key={c.depth} scope="col">
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ slot, cells }) => (
-            <tr key={slot.slot}>
-              <th scope="row">
-                {slot.label}
-                {slot.note && <span className="depth-note">{slot.note}</span>}
-              </th>
-              {cells.map((player, i) =>
-                player ? (
-                  <td key={columns[i].depth}>
-                    <PlayerCell player={player} myRosterId={myRosterId} />
-                  </td>
-                ) : (
-                  <td key={columns[i].depth} className="muted">
-                    –
-                  </td>
-                ),
-              )}
+    <>
+      {slides && (
+        <p className="depth-slide-hint">Slide sideways to see all {columns.length} depth levels.</p>
+      )}
+      {/* a focusable, labelled scroll region so keyboard users can slide it with the arrow keys */}
+      <div
+        className="players-scroll depth-scroll"
+        role="group"
+        aria-label={`${title} depth, ${columns.length} levels${slides ? ", scrolls sideways" : ""}`}
+        tabIndex={0}
+      >
+        <table className="players depth-table">
+          <thead>
+            <tr>
+              <th scope="col">Position</th>
+              {columns.map((c) => (
+                <th key={c.depth} scope="col">
+                  {c.label}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map(({ slot, cells }) => (
+              <tr key={slot.slot}>
+                <th scope="row">
+                  {slot.label}
+                  {slot.note && <span className="depth-note">{slot.note}</span>}
+                </th>
+                {cells.map((player, i) =>
+                  player ? (
+                    <td key={columns[i].depth}>
+                      <PlayerCell player={player} myRosterId={myRosterId} />
+                    </td>
+                  ) : (
+                    <td key={columns[i].depth} className="muted">
+                      –
+                    </td>
+                  ),
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -106,13 +126,13 @@ export default function TeamDepthChart({
           {sections.skill.length > 0 && (
             <div className="card flush">
               <h3 className="depth-section-title">Fantasy positions</h3>
-              <SlotTable slots={sections.skill} myRosterId={myRosterId} />
+              <SlotTable slots={sections.skill} myRosterId={myRosterId} title="Fantasy positions" />
             </div>
           )}
           {sections.more.map((section) => (
             <details key={section.key} className="card flush depth-details">
               <summary>{section.title}</summary>
-              <SlotTable slots={section.slots} myRosterId={myRosterId} />
+              <SlotTable slots={section.slots} myRosterId={myRosterId} title={section.title} />
             </details>
           ))}
         </>

@@ -43,21 +43,28 @@ export function isTeamCode(value: string | undefined): value is string {
   return value !== undefined && value in TEAM_NAMES;
 }
 
-const COLUMN_LABELS = ["Starter", "2nd string", "3rd string", "4th string"];
+/** "Starter", "2nd string", "3rd string", ... however deep the chart goes. */
+export function depthLabel(depth: number): string {
+  if (depth <= 1) return "Starter";
+  const lastTwo = depth % 100;
+  const suffix =
+    lastTwo >= 11 && lastTwo <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[depth % 10] ?? "th");
+  return `${depth}${suffix} string`;
+}
 
-/** Most players shown per slot; anything deeper is not a chart a manager needs to read. */
-export const MAX_DEPTH = COLUMN_LABELS.length;
+/** More columns than this are more than fit on a phone, so the chart says to slide sideways. */
+export const SLIDE_FROM = 3;
 
 export interface DepthRows {
   columns: { depth: number; label: string }[];
   rows: { slot: DepthSlot; cells: (DepthPlayer | null)[] }[];
 }
 
-/** A grid with one column per depth level the slots actually use (at most four). */
+/** A grid with one column per depth level the slots actually use, however deep it goes. */
 export function depthRows(slots: DepthSlot[]): DepthRows {
-  const levels = Math.min(MAX_DEPTH, Math.max(1, ...slots.map((s) => s.players.length)));
+  const levels = Math.max(1, ...slots.map((s) => s.players.length));
   return {
-    columns: Array.from({ length: levels }, (_, i) => ({ depth: i + 1, label: COLUMN_LABELS[i] })),
+    columns: Array.from({ length: levels }, (_, i) => ({ depth: i + 1, label: depthLabel(i + 1) })),
     rows: slots.map((slot) => ({
       slot,
       cells: Array.from({ length: levels }, (_, i) => slot.players[i] ?? null),
