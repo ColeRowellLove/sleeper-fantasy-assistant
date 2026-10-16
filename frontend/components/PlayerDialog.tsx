@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { PlayerDetail } from "../lib/api";
@@ -19,6 +19,122 @@ import PlayerAvatar from "./PlayerAvatar";
 import PositionChip from "./PositionChip";
 import TeamLink from "./TeamLink";
 
+type PastSeason = NonNullable<PlayerDetail["past_seasons"]>[number];
+
+/** One past season's summary row, and (when opened) a game-by-game table under it. */
+function PastSeasonRows({
+  season,
+  position,
+  open,
+  onToggle,
+}: {
+  season: PastSeason;
+  position: string | null;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const log = season.log ?? [];
+  const columns = statColumns(
+    log.map((g) => g.stats),
+    position,
+  );
+  const totals = statTotals(log.map((g) => g.stats));
+  const panelId = `season-${season.season}-games`;
+  return (
+    <>
+      <tr>
+        <th scope="row">
+          {log.length > 0 ? (
+            <button
+              type="button"
+              className="season-toggle"
+              aria-expanded={open}
+              aria-controls={panelId}
+              onClick={onToggle}
+            >
+              <span aria-hidden="true">{open ? "▾" : "▸"}</span> {season.season}
+              <span className="visually-hidden"> game by game</span>
+            </button>
+          ) : (
+            season.season
+          )}
+        </th>
+        <td>
+          {(season.teams ?? []).length === 0
+            ? "–"
+            : (season.teams ?? []).map((team, i) => (
+                <span key={team}>
+                  {i > 0 && ", "}
+                  <TeamLink team={team}>{team}</TeamLink>
+                </span>
+              ))}
+        </td>
+        <td className="num num-col">{season.games}</td>
+        <td className="num num-col">{season.points.toFixed(1)}</td>
+        <td className="num num-col">{rankText(position, season.rank)}</td>
+      </tr>
+      {open && (
+        <tr id={panelId}>
+          <td colSpan={5} className="season-log">
+            <div className="players-scroll">
+              <table className="players pd-table pd-stats-table">
+                <caption className="visually-hidden">
+                  {season.season} game by game, with season totals
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Week</th>
+                    <th scope="col">Team</th>
+                    <th scope="col">Opponent</th>
+                    <th scope="col" className="num-col">
+                      Points
+                    </th>
+                    {columns.map((c) => (
+                      <th key={c.key} scope="col" className="num-col">
+                        {c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {log.map((g) => (
+                    <tr key={g.week}>
+                      <th scope="row">{g.week}</th>
+                      <td>{g.team ?? "–"}</td>
+                      <td>
+                        {g.opponent ? `${g.home === false ? "at" : "vs"} ${g.opponent}` : "–"}
+                      </td>
+                      <td className="num num-col">{g.points.toFixed(1)}</td>
+                      {columns.map((c) => (
+                        <td key={c.key} className="num num-col">
+                          {formatStat(g.stats[c.key])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row" colSpan={3}>
+                      Season total
+                    </th>
+                    <td className="num num-col">{season.points.toFixed(1)}</td>
+                    {columns.map((c) => (
+                      <td key={c.key} className="num num-col">
+                        {formatStat(totals[c.key])}
+                      </td>
+                    ))}
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
 const count = (n: number | null | undefined) =>
   n === null || n === undefined ? "–" : n.toLocaleString("en-US");
 
@@ -35,6 +151,7 @@ export default function PlayerDialog({
   closeHref: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [openSeason, setOpenSeason] = useState<string | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const router = useRouter();
 
@@ -196,6 +313,7 @@ export default function PlayerDialog({
                 <thead>
                   <tr>
                     <th scope="col">Week</th>
+                    <th scope="col">Team</th>
                     <th scope="col">Opponent</th>
                     <th scope="col" className="num-col">
                       Points
@@ -221,6 +339,9 @@ export default function PlayerDialog({
                   {detail.weeks.map((w) => (
                     <tr key={w.week}>
                       <th scope="row">{w.week}</th>
+                      <td>
+                        {w.team ? <TeamLink team={w.team}>{w.team}</TeamLink> : "–"}
+                      </td>
                       <td>
                         {w.opponent
                           ? `${w.home === false ? "at" : "vs"} ${w.opponent}`
@@ -253,7 +374,7 @@ export default function PlayerDialog({
                 </tbody>
                 <tfoot>
                   <tr>
-                    <th scope="row" colSpan={2}>
+                    <th scope="row" colSpan={3}>
                       Season total
                     </th>
                     <td className="num num-col">
@@ -283,7 +404,7 @@ export default function PlayerDialog({
                   </tr>
                   {detail.projected && (
                     <tr className="pd-projected-row">
-                      <th scope="row" colSpan={2}>
+                      <th scope="row" colSpan={3}>
                         Projected, week {detail.projected.week}
                       </th>
                       <td className="num num-col">
@@ -314,11 +435,13 @@ export default function PlayerDialog({
             <div className="players-scroll">
               <table className="players pd-table">
                 <caption className="visually-hidden">
-                  Season totals under this league&apos;s scoring
+                  Season totals under this league&apos;s scoring. Open a season to see it game by
+                  game.
                 </caption>
                 <thead>
                   <tr>
                     <th scope="col">Season</th>
+                    <th scope="col">Team</th>
                     <th scope="col" className="num-col">
                       Games
                     </th>
@@ -332,14 +455,15 @@ export default function PlayerDialog({
                 </thead>
                 <tbody>
                   {detail.past_seasons.map((s) => (
-                    <tr key={s.season}>
-                      <th scope="row">{s.season}</th>
-                      <td className="num num-col">{s.games}</td>
-                      <td className="num num-col">{s.points.toFixed(1)}</td>
-                      <td className="num num-col">
-                        {rankText(detail.position, s.rank)}
-                      </td>
-                    </tr>
+                    <PastSeasonRows
+                      key={s.season}
+                      season={s}
+                      position={detail.position}
+                      open={openSeason === s.season}
+                      onToggle={() =>
+                        setOpenSeason((current) => (current === s.season ? null : s.season))
+                      }
+                    />
                   ))}
                 </tbody>
               </table>

@@ -77,6 +77,8 @@ export interface PlayerDetail {
   projected?: { week: number; points: number; stats: Record<string, number> } | null;
   weeks: {
     week: number;
+    /** The NFL team he played for that week. */
+    team?: string | null;
     opponent?: string | null;
     home?: boolean | null;
     points: number;
@@ -86,7 +88,16 @@ export interface PlayerDetail {
     /** The game is over, so points can be compared with the projection. */
     final?: boolean;
   }[];
-  past_seasons: { season: string; games: number; points: number; rank?: number | null }[];
+  past_seasons: {
+    season: string;
+    games: number;
+    points: number;
+    rank?: number | null;
+    /** The teams he played for that season, in order. */
+    teams?: string[];
+    /** Game by game, with the team and opponent for each. */
+    log?: PlayerDetail["weeks"];
+  }[];
 }
 
 export interface DepthPlayer {

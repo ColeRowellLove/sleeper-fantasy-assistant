@@ -1,5 +1,7 @@
 """The player pop-up: bio, season, weekly log, projection, past seasons, and every stat counted."""
 
+# ruff: noqa: E501  (fixtures with long rows read better on one line)
+
 import json
 from typing import Any
 
@@ -69,9 +71,9 @@ def _setup(session: Session) -> LeagueRow:
                 game_date="2026-09-20", status="pre_game",
             ),
             # Nacua: week 1 catches, yards, a touchdown AND rushing yards; week 2 less
-            _stats(1, "1", {"gp": 1, "rec": 7, "rec_yd": 90.0, "rec_td": 1, "rush_yd": 25.0, "rec_tgt": 10}),  # noqa: E501
+            _stats(1, "1", {"gp": 1, "rec": 7, "rec_yd": 90.0, "rec_td": 1, "rush_yd": 25.0, "rec_tgt": 10}),
             _stats(2, "1", {"gp": 1, "rec": 3, "rec_yd": 30.0}),
-            _stats(1, "2", {"gp": 1, "rec": 10, "rec_yd": 100.0}),  # 20 points: ahead of Nacua's week 1  # noqa: E501
+            _stats(1, "2", {"gp": 1, "rec": 10, "rec_yd": 100.0}),  # 20 points: ahead of Nacua's week 1
             _stats(1, "3", {"gp": 1, "rec": 1}),  # 1 point
             PlayerTrendRow(player_id="1", adds=None, drops=120, fetched_at=utcnow()),
             PlayerProjectionRow(
@@ -184,9 +186,9 @@ def test_past_seasons_are_scored_and_ranked_with_this_leagues_rules(session: Ses
     league = _setup(session)
     session.add_all(
         [
-            PlayerSeasonStatsRow(season="2025", player_id="1", games=16, stats={"rec": 90, "rec_yd": 1100.0}),  # noqa: E501
-            PlayerSeasonStatsRow(season="2025", player_id="2", games=17, stats={"rec": 100, "rec_yd": 1300.0}),  # noqa: E501
-            PlayerSeasonStatsRow(season="2024", player_id="1", games=10, stats={"rec": 40, "rush_yd": 100.0}),  # noqa: E501
+            PlayerSeasonStatsRow(season="2025", player_id="1", games=16, stats={"rec": 90, "rec_yd": 1100.0}),
+            PlayerSeasonStatsRow(season="2025", player_id="2", games=17, stats={"rec": 100, "rec_yd": 1300.0}),
+            PlayerSeasonStatsRow(season="2024", player_id="1", games=10, stats={"rec": 40, "rush_yd": 100.0}),
         ]
     )  # fmt: skip
     session.commit()
@@ -214,25 +216,113 @@ def _history_client(by_week: dict[int, list[dict[str, Any]]]) -> SleeperClient:
     return SleeperClient(httpx.Client(base_url=BASE_URL, transport=httpx.MockTransport(handler)))
 
 
-def test_history_sums_the_weeks_and_does_not_keep_them(session: Session) -> None:
+def test_history_keeps_every_game_and_works_out_totals_and_teams(session: Session) -> None:
     week_rows = {
         1: [{"player_id": "1", "team": "LAR", "stats": {"gp": 1, "rec": 5, "rec_yd": 50.0}}],
         2: [{"player_id": "1", "team": "LAR", "stats": {"gp": 1, "rec": 3, "rec_yd": 30.0}}],
         3: [{"player_id": "1", "team": "LAR", "stats": {"gp": 0, "rec": 0.0}}],  # inactive
+        4: [
+            {"player_id": "1", "team": "SEA", "stats": {"gp": 1, "rec": 4, "rec_yd": 40.0}}
+        ],  # traded
     }
     assert sync_season_history(session, _history_client(week_rows), "2025") == 1
     row = session.get(PlayerSeasonStatsRow, ("2025", "1"))
     assert row is not None
-    assert row.games == 2  # the inactive week does not count as a game
-    assert row.stats["rec"] == 8.0 and row.stats["rec_yd"] == 80.0
-    assert session.scalars(select(PlayerWeekStatsRow)).first() is None  # weekly rows not stored
+    assert row.games == 3  # the inactive week does not count as a game
+    assert row.stats["rec"] == 12.0 and row.stats["rec_yd"] == 120.0
+    assert row.teams == ["LAR", "SEA"]  # both teams, in the order he played for them
+    games = session.scalars(
+        select(PlayerWeekStatsRow).where(PlayerWeekStatsRow.season == "2025")
+    ).all()
+    assert sorted(g.week for g in games) == [1, 2, 3, 4]  # every game is kept, not only the total
+    assert stored_history_seasons(session) == set()  # four weeks is not a whole season yet
+
+
+def test_a_season_counts_as_stored_only_when_all_its_weeks_are(session: Session) -> None:
+    full = {
+        w: [{"player_id": "1", "team": "LAR", "stats": {"gp": 1, "rec": 1}}] for w in range(1, 19)
+    }
+    sync_season_history(session, _history_client(full), "2025")
     assert stored_history_seasons(session) == {"2025"}
+    assert sync_season_history(session, _history_client(full), "2025") == 0  # not loaded twice
 
 
-def test_history_skips_a_season_that_is_already_stored(session: Session) -> None:
-    session.add(PlayerSeasonStatsRow(season="2025", player_id="1", games=1, stats={"rec": 1}))
+def test_a_season_that_failed_halfway_is_loaded_again(session: Session) -> None:
+    half = {
+        w: [{"player_id": "1", "team": "LAR", "stats": {"gp": 1, "rec": 1}}] for w in range(1, 9)
+    }
+    sync_season_history(session, _history_client(half), "2025")
+    full = {
+        w: [{"player_id": "1", "team": "LAR", "stats": {"gp": 1, "rec": 1}}] for w in range(1, 19)
+    }
+    assert sync_season_history(session, _history_client(full), "2025") == 1  # tried again
+    row = session.get(PlayerSeasonStatsRow, ("2025", "1"))
+    assert row is not None and row.games == 18  # replaced, not doubled
+
+
+def test_the_pop_up_goes_game_by_game_through_a_past_season_with_teams(session: Session) -> None:
+    league = _setup(session)
+    session.add_all(
+        [
+            NflGameRow(game_id="p1", season="2025", week=1, home="LAR", away="SEA", game_date="2025-09-07", status="complete"),
+            NflGameRow(game_id="p2", season="2025", week=4, home="SEA", away="DEN", game_date="2025-09-28", status="complete"),
+            PlayerWeekStatsRow(season="2025", week=1, player_id="1", team="LAR", stats={"gp": 1, "rec": 5, "rec_yd": 50.0}, fetched_at=utcnow()),
+            PlayerWeekStatsRow(season="2025", week=4, player_id="1", team="SEA", stats={"gp": 1, "rec": 4, "rush_yd": 20.0}, fetched_at=utcnow()),
+            PlayerSeasonStatsRow(season="2025", player_id="1", games=2, stats={"rec": 9, "rec_yd": 50.0, "rush_yd": 20.0}, teams=["LAR", "SEA"]),
+        ]
+    )  # fmt: skip
     session.commit()
-    assert sync_season_history(session, _history_client({}), "2025") == 0
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None
+    season = detail.past_seasons[0]
+    assert season.teams == ["LAR", "SEA"]
+    first, second = season.log
+    assert (first.week, first.team, first.opponent, first.home) == (1, "LAR", "SEA", True)
+    # after the trade the game names the team he was on that week and its opponent
+    assert (second.week, second.team, second.opponent, second.home) == (4, "SEA", "DEN", True)
+    assert (
+        first.points == 5.0 + 5.0 and second.points == 4.0 + 2.0
+    )  # every stat counts, rushing too
+    assert first.final and second.final  # a past game is over
+    assert sum(g.points for g in season.log) == season.points  # the games add up to the season row
+
+
+def test_a_week_he_did_not_play_is_not_listed_as_a_game(session: Session) -> None:
+    league = _setup(session)
+    session.add_all(
+        [
+            PlayerWeekStatsRow(season="2025", week=1, player_id="1", team="LAR", stats={"gp": 1, "rec": 5}, fetched_at=utcnow()),
+            PlayerWeekStatsRow(season="2025", week=2, player_id="1", team="LAR", stats={"gp": 0}, fetched_at=utcnow()),
+            PlayerSeasonStatsRow(season="2025", player_id="1", games=1, stats={"rec": 5}, teams=["LAR"]),
+        ]
+    )  # fmt: skip
+    session.commit()
+    log = build_player_detail(session, league, "1").past_seasons[0].log  # type: ignore[union-attr]
+    assert [g.week for g in log] == [1]  # the injured week is simply absent
+
+
+def test_current_season_weeks_name_the_team_for_each_week(session: Session) -> None:
+    league = _setup(session)
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None
+    assert [w.team for w in detail.weeks] == ["LAR", "LAR"]  # recorded with each game
+
+
+def test_a_past_season_with_no_stored_schedule_still_lists_its_games(session: Session) -> None:
+    league = _setup(session)
+    session.add_all(
+        [
+            PlayerWeekStatsRow(season="2024", week=2, player_id="1", team="LAR", stats={"gp": 1, "rec": 3}, fetched_at=utcnow()),
+            PlayerSeasonStatsRow(season="2024", player_id="1", games=1, stats={"rec": 3}),
+        ]
+    )  # fmt: skip
+    session.commit()
+    season = build_player_detail(session, league, "1").past_seasons[0]  # type: ignore[union-attr]
+    assert season.teams == ["LAR"]  # worked out from the games when none was stored
+    assert (season.log[0].opponent, season.log[0].home) == (
+        None,
+        None,
+    )  # no schedule: no opponent named
 
 
 def test_bio_keeps_only_what_sleeper_has() -> None:

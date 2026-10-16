@@ -39,7 +39,7 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
   syncs active leagues) and retry; a background sync-on-connect is a follow-up.
 - The worker also refreshes kickoff times from nflverse once a day (job `sync_kickoffs`), Sleeper's
   projections every 3 hours (`sync_projections`), add and drop trends and weekly stats hourly
-  (`sync_trending`, `sync_stats`), past seasons' totals once (`sync_history`) ESPN's ownership
+  (`sync_trending`, `sync_stats`), past seasons game by game once (`sync_history`: the 18 weekly stat lines of each of the last two seasons plus their schedules, about 6 MB of database per season, measured on 2024 and 2025; regular season only, playoffs are not included) ESPN's ownership
   percentages every 3 hours (`sync_ownership`) and every team's depth chart every 3 hours
   (`sync_depth_charts`). A failed download only leaves the previous numbers in place.
 - `backend/app.py` is the Vercel entrypoint; locally use `uvicorn sleeper_assistant.api:app`.

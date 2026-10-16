@@ -41,6 +41,7 @@ _VOLUME_KEYS = ("pass_att", "pass_cmp", "rush_att", "rec_tgt", "fga", "pts_allow
 
 class WeekLine(BaseModel):
     week: int
+    team: str | None = None  # the NFL team he played for that week
     opponent: str | None = None
     home: bool | None = None
     points: float
@@ -56,6 +57,8 @@ class SeasonLine(BaseModel):
     games: int
     points: float
     rank: int | None = None  # within position that season
+    teams: list[str] = []  # teams he played for that season, in order
+    log: list[WeekLine] = []  # game by game, with opponents when the schedule is stored
 
 
 class ProjectedLine(BaseModel):
@@ -87,6 +90,48 @@ class PlayerDetail(BaseModel):
     projected: ProjectedLine | None = None
     weeks: list[WeekLine]
     past_seasons: list[SeasonLine]
+
+
+def _game_log(  # noqa: PLR0913
+    session: Session,
+    season: str,
+    player_id: str,
+    scoring: Mapping[str, float],
+    projections: Mapping[int, float] | None = None,
+    *,
+    past: bool = False,
+) -> tuple[list[WeekLine], int]:
+    """One season's games for a player, each with the team he played for and the opponent.
+
+    The team is the one recorded for that week, so a player traded mid-season shows both teams
+    and each game names the right opponent. A past season's games are all final.
+    """
+    rows = session.scalars(
+        select(PlayerWeekStatsRow)
+        .where(PlayerWeekStatsRow.season == season, PlayerWeekStatsRow.player_id == player_id)
+        .order_by(PlayerWeekStatsRow.week)
+    ).all()
+    schedule: dict[str, dict[int, tuple[str, bool, bool]]] = {}
+    lines: list[WeekLine] = []
+    for row in rows:
+        if row.stats.get("gp", 1.0) <= 0:
+            continue  # he did not play that week: no game to list (not a game of zero points)
+        opponents = schedule.setdefault(row.team or "", _opponents(session, season, row.team))
+        opponent, home, over = opponents.get(row.week, (None, None, False))
+        lines.append(
+            WeekLine(
+                week=row.week,
+                team=row.team,
+                opponent=opponent,
+                home=home,
+                final=over or past,
+                points=score_stats(row.stats, scoring),
+                stats=display_stats(row.stats, scoring),
+                projected=(projections or {}).get(row.week),
+            )
+        )
+    games = sum(1 for row in rows if row.stats.get("gp", 1.0) > 0)
+    return lines, games
 
 
 def display_stats(stats: Mapping[str, float], scoring: Mapping[str, float]) -> dict[str, float]:
@@ -137,15 +182,6 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         (r.roster_id for r in rosters if player_id in [*r.players, *r.reserve, *r.taxi]), None
     )
 
-    weekly = {
-        row.week: row.stats
-        for row in session.scalars(
-            select(PlayerWeekStatsRow).where(
-                PlayerWeekStatsRow.season == season, PlayerWeekStatsRow.player_id == player_id
-            )
-        )
-    }
-    opponents = _opponents(session, season, player.team)
     expected = {
         row.week: score_projection(row.stats, scoring)
         for row in session.scalars(
@@ -154,20 +190,9 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
             )
         )
     }
-    weeks = [
-        WeekLine(
-            week=week,
-            opponent=opponents.get(week, (None, None, False))[0],
-            home=opponents.get(week, (None, None, False))[1],
-            final=opponents.get(week, (None, None, False))[2],
-            points=score_stats(stats, scoring),
-            stats=display_stats(stats, scoring),
-            projected=expected.get(week),
-        )
-        for week, stats in sorted(weekly.items())
-    ]
+    weeks, games = _game_log(session, season, player_id, scoring, expected)
     total = round(sum(w.points for w in weeks), 2)
-    games = sum(1 for stats in weekly.values() if stats.get("gp", 1.0) > 0)
+    weekly = bool(weeks)
 
     # rank among everyone at this position this season, scored with the same rules
     position_of = {
@@ -239,12 +264,15 @@ def _past_seasons(
         if mine is None:
             continue  # the player did not play that season
         peers = [pts for pid, pts in scored.items() if position_of.get(pid) == player.position]
+        log, _ = _game_log(session, season, player.player_id, scoring, past=True)
         out.append(
             SeasonLine(
                 season=season,
                 games=mine.games,
                 points=scored[player.player_id],
                 rank=_rank(scored[player.player_id], peers) if player.position else None,
+                teams=mine.teams or sorted({w.team for w in log if w.team}),
+                log=log,
             )
         )
     return out

@@ -5,10 +5,12 @@ Both are stored as pulled and scored per league when shown, because every league
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from collections.abc import Iterable
 
-from sqlalchemy import select
+import httpx
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import (
@@ -20,6 +22,7 @@ from sleeper_assistant.db import (
     utcnow,
 )
 from sleeper_assistant.espn import Ownership, SleeperPerson, match_players
+from sleeper_assistant.ingest import sync_schedule
 from sleeper_assistant.sleeper import SleeperClient
 
 
@@ -96,27 +99,50 @@ def sync_week_stats(
 
 
 HISTORY_WEEKS = 18
+log = logging.getLogger(__name__)
 
 
 def stored_history_seasons(session: Session) -> set[str]:
-    return set(session.scalars(select(PlayerSeasonStatsRow.season).distinct()))
+    """Seasons whose weeks are all stored (a half-loaded season is loaded again next time)."""
+    counts = session.execute(
+        select(
+            PlayerWeekStatsRow.season, func.count(func.distinct(PlayerWeekStatsRow.week))
+        ).group_by(PlayerWeekStatsRow.season)
+    )
+    return {season for season, weeks in counts if weeks >= HISTORY_WEEKS - 1}
 
 
 def sync_season_history(session: Session, client: SleeperClient, season: str) -> int:
-    """Load a finished season's stat totals per player. Returns how many players were stored.
+    """Load a finished season game by game. Returns how many players were stored.
 
-    The 18 weeks are summed as they arrive and not kept, because the pop-up only needs season
-    totals for past years. A season that is already stored is left alone.
+    Every week's stat line is kept (so the pop-up can go game by game), the season totals and the
+    teams each player played for are worked out from them, and that season's schedule is loaded so
+    each game can name its opponent. A season that is already stored is left alone.
     """
     if season in stored_history_seasons(session):
         return 0
+    sync_week_stats(session, client, season, range(1, HISTORY_WEEKS + 1))
+    try:
+        sync_schedule(session, client, season)  # opponents and home or away for past games
+    except (httpx.HTTPError, ValueError):
+        log.warning("could not load the %s schedule; past games will not name an opponent", season)
+        session.rollback()
+
     totals: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
     games: dict[str, int] = defaultdict(int)
-    for week in range(1, HISTORY_WEEKS + 1):
-        for line in client.get_stats(season, week):
-            for stat, value in line.stats.items():
-                totals[line.player_id][stat] += value
-            games[line.player_id] += 1 if line.stats.get("gp", 1.0) > 0 else 0
+    teams: dict[str, list[str]] = defaultdict(list)
+    weekly = session.scalars(
+        select(PlayerWeekStatsRow)
+        .where(PlayerWeekStatsRow.season == season)
+        .order_by(PlayerWeekStatsRow.week)
+    )
+    for row in weekly:
+        for stat, value in row.stats.items():
+            totals[row.player_id][stat] += value
+        games[row.player_id] += 1 if row.stats.get("gp", 1.0) > 0 else 0
+        if row.team and row.team not in teams[row.player_id]:
+            teams[row.player_id].append(row.team)
+    session.execute(delete(PlayerSeasonStatsRow).where(PlayerSeasonStatsRow.season == season))
     for player_id, stats in totals.items():
         session.add(
             PlayerSeasonStatsRow(
@@ -124,6 +150,7 @@ def sync_season_history(session: Session, client: SleeperClient, season: str) ->
                 player_id=player_id,
                 games=games[player_id],
                 stats={k: round(v, 4) for k, v in stats.items()},
+                teams=teams[player_id],
             )
         )
     session.commit()
