@@ -39,8 +39,14 @@ import { isTeamCode } from "../../../lib/depth";
 import { leaguePath, parseTab } from "../../../lib/league";
 import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
-import { USER_COOKIE, alertsSeenCookie, findMyRosterId, teamCookie } from "../../../lib/myTeam";
-import { parseSeen, unreadAlerts } from "../../../lib/alerts";
+import {
+  USER_COOKIE,
+  alertsOffCookie,
+  alertsSeenCookie,
+  findMyRosterId,
+  teamCookie,
+} from "../../../lib/myTeam";
+import { parseOff, parseSeen, unreadAlerts, visibleAlerts } from "../../../lib/alerts";
 import { withAccuracy } from "../../../lib/standingsAccuracy";
 
 export const dynamic = "force-dynamic";
@@ -189,6 +195,7 @@ export default async function LeaguePage({
   // tab shows the chosen team's. Neither may break the page, so a failure shows as no alerts.
   const seenRaw = jar.get(alertsSeenCookie(leagueId))?.value;
   const alertsSeen = parseSeen(seenRaw);
+  const alertsOff = parseOff(jar.get(alertsOffCookie(leagueId))?.value);
   const alertsTeam = linkedRosterId ?? myRosterId ?? dashboard.rosters[0]?.roster_id ?? null;
   const loadAlerts = (rosterId: number | null, limit = 20) =>
     rosterId === null
@@ -203,7 +210,10 @@ export default async function LeaguePage({
       : alertsTeam === myRosterId
         ? await loadAlerts(myRosterId, 50)
         : await loadAlerts(alertsTeam, 50);
-  const newAlerts = unreadAlerts(myAlerts?.alerts ?? [], alertsSeen).length;
+  const newAlerts = unreadAlerts(
+    visibleAlerts(myAlerts?.alerts ?? [], alertsOff),
+    alertsSeen,
+  ).length;
 
   // Waiver wire: one team's list (the linked team, else yours, else the first)
   const wireTeam = alertsTeam;
@@ -294,11 +304,13 @@ export default async function LeaguePage({
       )}
       {tab === "alerts" && (
         <AlertsPanel
+          key={alertsOff.join(",")} // new saved choices from the server start the panel afresh
           data={shownAlerts ?? { league_id: leagueId, roster_id: alertsTeam ?? 0, alerts: [] }}
           rosters={dashboard.rosters}
           leagueId={leagueId}
           myRosterId={myRosterId}
           seen={alertsSeen}
+          off={alertsOff}
         />
       )}
       {tab === "waiver" && (

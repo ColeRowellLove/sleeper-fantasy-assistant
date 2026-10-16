@@ -111,3 +111,55 @@ export function alertTime(iso: string): string {
     timeZone: "UTC",
   })} UTC`;
 }
+
+/**
+ * The alert types a person can choose between, in plain words (keep in step with the detectors
+ * in the backend: the ``kind`` is the stored alert's kind).
+ */
+export const ALERT_TYPES = [
+  {
+    kind: "injury_out",
+    title: "A player on your team is ruled out",
+    text: "We say where they start and who to start instead: a healthy bench player, the next player up on their depth chart (even if you own them), or the best free agent. It arrives soon after the app next checks for news.",
+  },
+  {
+    kind: "waiver_targets",
+    title: "Waiver targets",
+    text: "From 9 am Eastern the day before your league's waiver day: the best available pickups for your lineup, each with its projected points and what it adds over the player it would replace.",
+  },
+] as const;
+
+/** Things worth knowing that are not a choice. */
+export const ALERT_NOTES = [
+  {
+    title: "AI suggestion",
+    text: "When an AI model is connected, a ruled-out or waiver alert also carries a suggested move, labelled as AI.",
+  },
+  {
+    title: "Text messages",
+    text: "Not on yet. Alerts are shown here; texting them to your phone is planned.",
+  },
+] as const;
+
+/** The alert kinds switched off in the viewer's cookie; unknown or malformed values are ignored. */
+export function parseOff(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  let text = raw;
+  try {
+    text = decodeURIComponent(raw);
+  } catch {
+    return [];
+  }
+  const known: string[] = ALERT_TYPES.map((t) => t.kind);
+  return [...new Set(text.split(",").filter((k) => known.includes(k)))];
+}
+
+/** The cookie value for a set of switched-off kinds. */
+export function serializeOff(off: string[]): string {
+  return [...new Set(off)].sort().join(",");
+}
+
+/** The alerts the viewer wants: those whose kind they have not switched off. */
+export function visibleAlerts(alerts: AlertItem[], off: string[]): AlertItem[] {
+  return off.length === 0 ? alerts : alerts.filter((a) => !off.includes(a.kind));
+}
