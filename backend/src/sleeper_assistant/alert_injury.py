@@ -75,6 +75,7 @@ class Spot:
     roster: RosterRow
     slot: str
     out: PlayerRow
+    byes: frozenset[str] = frozenset()  # NFL teams not playing: their players cannot fill the slot
 
 
 @dataclass(frozen=True)
@@ -104,7 +105,7 @@ def _bench_options(session: Session, spot: Spot) -> list[PlayerRow]:
     return [
         p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(bench)))
-        if p.position in allowed and _can_start(p)
+        if p.position in allowed and _can_start(p) and p.team not in spot.byes
     ]
 
 

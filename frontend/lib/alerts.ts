@@ -123,6 +123,11 @@ export const ALERT_TYPES = [
     text: "We say where they start and who to start instead: a healthy bench player, the next player up on their depth chart (even if you own them), or the best free agent. It arrives soon after the app next checks for news.",
   },
   {
+    kind: "bye_week",
+    title: "A starter is on a bye",
+    text: "Once per player and week: who in your lineup has no game, the slot they leave empty and the best healthy bench player who could take it.",
+  },
+  {
     kind: "waiver_targets",
     title: "Waiver targets",
     text: "From 9 am Eastern the day before your league's waiver day: the best available pickups for your lineup, each with its projected points and what it adds over the player it would replace.",
