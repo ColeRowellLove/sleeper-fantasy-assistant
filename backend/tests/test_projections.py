@@ -181,3 +181,41 @@ def test_rosters_show_projected_points_for_the_current_week(session: Session) ->
     assert dashboard.week == 6
     projected = {p.name: p.projected for p in dashboard.rosters[0].players}
     assert projected == {"Nacua": 22.4, "Unknown": None}
+
+
+def test_every_stat_category_counts_not_just_the_positions_main_stats() -> None:
+    scoring = {
+        "pass_yd": 0.04, "pass_td": 4.0, "rush_yd": 0.1, "rush_td": 6.0, "rec": 1.0,
+        "rec_yd": 0.1, "fgm_40_49": 3.0, "xpm": 1.0, "pts_allow_14_20": 1.0, "sack": 1.0,
+        "int": 3.0, "def_td": 6.0, "fum_lost": -2.0, "pass_int": -2.0, "rec_2pt": 2.0,
+        "bonus_rec_te": 0.5, "pass_td_40p": 1.0,
+    }  # fmt: skip
+    # a quarterback who also rushes and catches a pass
+    quarterback = {
+        "pass_yd": 250.0,
+        "pass_td": 2,
+        "pass_int": 1,
+        "rush_yd": 40.0,
+        "rush_td": 1,
+        "rec": 1,
+        "rec_yd": 8.0,
+    }
+    assert score_stats(quarterback, scoring) == 10.0 + 8.0 - 2.0 + 4.0 + 6.0 + 1.0 + 0.8
+    # a receiver with rushing yards and a trick-play pass
+    receiver = {
+        "rec": 7,
+        "rec_yd": 90.0,
+        "rush_yd": 25.0,
+        "rush_td": 1,
+        "pass_yd": 30.0,
+        "pass_td": 1,
+        "pass_td_40p": 1,
+    }
+    assert score_stats(receiver, scoring) == 7.0 + 9.0 + 2.5 + 6.0 + 1.2 + 4.0 + 1.0
+    # a tight end with the position bonus, a two-point catch and a fumble lost
+    tight_end = {"rec": 5, "rec_yd": 50.0, "bonus_rec_te": 5, "rec_2pt": 1, "fum_lost": 1}
+    assert score_stats(tight_end, scoring) == 5.0 + 5.0 + 2.5 + 2.0 - 2.0
+    # a kicker by distance, and a defense's points-allowed tier plus its turnovers
+    assert score_stats({"fgm_40_49": 2, "xpm": 3}, scoring) == 9.0
+    defense = {"pts_allow_14_20": 1, "sack": 4, "int": 2, "def_td": 1}
+    assert score_stats(defense, scoring) == 1.0 + 4.0 + 6.0 + 6.0
