@@ -10,8 +10,11 @@ import {
   alertTime,
   alertsTabLabel,
   newestAlertTime,
+  parseOff,
   parseSeen,
+  serializeOff,
   unreadAlerts,
+  visibleAlerts,
   waiverTargets,
 } from "../lib/alerts";
 import { parseTab } from "../lib/league";
@@ -194,25 +197,32 @@ describe("AlertsPanel", () => {
     expect(screen.getByText(/No alerts yet for your team/)).toBeInTheDocument();
   });
 
-  it("says what alerts are sent: open when there are none, folded away when there are some", () => {
-    const empty = { ...data, alerts: [] };
-    const { rerender } = render(
-      <AlertsPanel data={empty} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />,
+  it("lists the alert types as checkboxes, all on by default, with what each sends", () => {
+    render(
+      <AlertsPanel
+        data={{ ...data, alerts: [] }}
+        rosters={rosters}
+        leagueId="1"
+        myRosterId={1}
+        seen={null}
+      />,
     );
-    const summary = screen.getByText("What alerts are sent");
-    const details = summary.closest("details") as HTMLElement;
-    expect(details).toHaveAttribute("open");
-    const items = within(details).getAllByRole("listitem");
-    expect(items.map((li) => li.querySelector("strong")?.textContent)).toEqual([
-      "A player on your team is ruled out.",
-      "Waiver targets.",
-      "AI suggestion.",
-      "Text messages.",
-    ]);
+    const details = screen.getByText("Which alerts do you want?").closest("details") as HTMLElement;
+    expect(details).toHaveAttribute("open"); // open when there are no alerts yet
+    const group = within(details).getByRole("group", { name: "Alert types to show" });
+    const boxes = within(group).getAllByRole("checkbox");
+    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([true, true]);
+    expect(within(group).getByRole("checkbox", { name: /ruled out/ })).toBeInTheDocument();
+    expect(within(group).getByText(/9 am Eastern the day before/)).toBeInTheDocument();
     expect(within(details).getByText(/Not on yet/)).toBeInTheDocument();
-    expect(within(details).getByText(/9 am Eastern the day before/)).toBeInTheDocument();
-    rerender(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
-    expect(screen.getByText("What alerts are sent").closest("details")).not.toHaveAttribute("open");
+    expect(within(details).getByText(/kept in this browser/)).toBeInTheDocument();
+  });
+
+  it("is folded away when there are alerts", () => {
+    render(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
+    expect(screen.getByText("Which alerts do you want?").closest("details")).not.toHaveAttribute(
+      "open",
+    );
   });
 
   it("has no accessibility violations", async () => {
@@ -344,10 +354,11 @@ describe("keyboard", () => {
         seen={null}
       />,
     );
-    await user.tab(); // the folded "What alerts are sent" disclosure
-    await user.tab(); // the team picker
-    await user.tab(); // its button
-    await user.tab(); // the first alert's player link
+    // summary, team picker, its button, then the alert's link (jsdom also counts the hidden checkboxes)
+    for (let i = 0; i < 8; i += 1) {
+      await user.tab();
+      if (document.activeElement === screen.getByRole("link", { name: "T. Horton" })) break;
+    }
     expect(screen.getByRole("link", { name: "T. Horton" })).toHaveFocus();
   });
 });
@@ -404,5 +415,77 @@ describe("model advice", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/He starts at RB for you/)).toBeInTheDocument();
     await expectNoA11yViolations(panel);
+  });
+});
+
+describe("alert choices", () => {
+  it("parses the cookie defensively and keeps only known kinds", () => {
+    expect(parseOff(undefined)).toEqual([]);
+    expect(parseOff("injury_out,waiver_targets,nope,injury_out")).toEqual([
+      "injury_out",
+      "waiver_targets",
+    ]);
+    expect(parseOff("%E0%A4%A")).toEqual([]); // malformed encoding is ignored, not a crash
+    expect(serializeOff(["waiver_targets", "injury_out", "injury_out"])).toBe(
+      "injury_out,waiver_targets",
+    );
+  });
+
+  it("hides the kinds that are switched off, here and in the unread count", () => {
+    expect(visibleAlerts(data.alerts, []).map((a) => a.id)).toEqual([2, 1]);
+    expect(visibleAlerts(data.alerts, ["waiver_targets"]).map((a) => a.id)).toEqual([2]);
+    expect(unreadAlerts(visibleAlerts(data.alerts, ["injury_out"]), null)).toHaveLength(1);
+  });
+
+  it("unchecking a type hides its alerts, saves the choice and refreshes the page", async () => {
+    const user = userEvent.setup();
+    render(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
+    expect(screen.getByText("J. Smith was ruled out")).toBeInTheDocument();
+    await user.click(screen.getByText("Which alerts do you want?"));
+    await user.click(screen.getByRole("checkbox", { name: /ruled out/ }));
+    expect(screen.queryByText("J. Smith was ruled out")).not.toBeInTheDocument();
+    expect(screen.getByText(/Waiver targets for Tuesday/)).toBeInTheDocument();
+    expect(document.cookie).toContain("sa_alerts_off_1=injury_out");
+    expect(refresh).toHaveBeenCalled();
+    await user.click(screen.getByRole("checkbox", { name: /ruled out/ })); // and back on
+    expect(screen.getByText("J. Smith was ruled out")).toBeInTheDocument();
+  });
+
+  it("says when every alert is hidden by the choices", () => {
+    render(
+      <AlertsPanel
+        data={data}
+        rosters={rosters}
+        leagueId="1"
+        myRosterId={1}
+        seen={null}
+        off={["injury_out", "waiver_targets"]}
+      />,
+    );
+    expect(screen.getByText(/2 alerts are hidden by your choices/)).toBeInTheDocument();
+  });
+
+  it("starts from the viewer's saved choices and has no accessibility violations", async () => {
+    render(
+      <AlertsPanel
+        data={data}
+        rosters={rosters}
+        leagueId="1"
+        myRosterId={1}
+        seen={null}
+        off={["injury_out"]}
+      />,
+    );
+    expect(screen.queryByText("J. Smith was ruled out")).not.toBeInTheDocument();
+    await expectNoA11yViolations(
+      <AlertsPanel
+        data={data}
+        rosters={rosters}
+        leagueId="1"
+        myRosterId={1}
+        seen={null}
+        off={["waiver_targets"]}
+      />,
+    );
   });
 });

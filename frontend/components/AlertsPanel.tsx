@@ -1,18 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import type { AlertItem, AlertsData, Dashboard } from "../lib/api";
 import {
+  ALERT_NOTES,
+  ALERT_TYPES,
   alertAdvice,
   alertTime,
   newestAlertTime,
+  serializeOff,
   unreadAlerts,
+  visibleAlerts,
   waiverTargets,
   type WaiverTarget,
 } from "../lib/alerts";
 import { leaguePath } from "../lib/league";
-import { alertsSeenCookie, setCookie } from "../lib/myTeam";
+import { alertsOffCookie, alertsSeenCookie, setCookie } from "../lib/myTeam";
 import PlayerLink from "./PlayerLink";
 
 const SHOWN_TARGETS = 3; // pickups shown at once; the rest are one click away
@@ -25,26 +30,6 @@ function TargetItem({ target: t }: { target: WaiverTarget }) {
     </li>
   );
 }
-
-/** What the alert engine sends today, in plain words (keep in step with the detectors). */
-const ALERT_KINDS = [
-  {
-    title: "A player on your team is ruled out",
-    text: "We say where they start and who to start instead: a healthy bench player, the next player up on their depth chart (even if you own them), or the best free agent. It arrives soon after the app next checks for news.",
-  },
-  {
-    title: "Waiver targets",
-    text: "From 9 am Eastern the day before your league's waiver day: the best available pickups for your lineup, each with its projected points and what it adds over the player it would replace.",
-  },
-  {
-    title: "AI suggestion",
-    text: "When an AI model is connected, a ruled-out or waiver alert also carries a suggested move, labelled as AI.",
-  },
-  {
-    title: "Text messages",
-    text: "Not on yet. Alerts are shown here; texting them to your phone is planned.",
-  },
-];
 
 /** One alert: title, what happened, and for a waiver alert the pickups as a linked, numbered list. */
 function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
@@ -117,6 +102,7 @@ export default function AlertsPanel({
   leagueId,
   myRosterId,
   seen,
+  off = [],
 }: {
   data: AlertsData;
   rosters: Dashboard["rosters"];
@@ -124,12 +110,24 @@ export default function AlertsPanel({
   myRosterId: number | null;
   /** When the viewer last cleared their alerts (from the cookie). */
   seen: string | null;
+  /** The alert kinds the viewer has switched off (from their cookie). */
+  off?: string[];
 }) {
   const router = useRouter();
+  const [switchedOff, setSwitchedOff] = useState<string[]>(off);
   const mine = myRosterId !== null && data.roster_id === myRosterId;
-  const unread = mine ? unreadAlerts(data.alerts, seen) : [];
+  const alerts = visibleAlerts(data.alerts, switchedOff);
+  const hidden = data.alerts.length - alerts.length;
+  const unread = mine ? unreadAlerts(alerts, seen) : [];
   const unreadIds = new Set(unread.map((a) => a.id));
   const newest = newestAlertTime(data.alerts);
+
+  const choose = (kind: string, wanted: boolean) => {
+    const next = wanted ? switchedOff.filter((k) => k !== kind) : [...switchedOff, kind];
+    setSwitchedOff(next);
+    setCookie(alertsOffCookie(leagueId), serializeOff(next));
+    router.refresh(); // the tab's new-alert count follows the choice
+  };
   const team =
     rosters.find((r) => r.roster_id === data.roster_id)?.team ?? `Team ${data.roster_id}`;
 
@@ -145,15 +143,35 @@ export default function AlertsPanel({
         Things worth knowing about {mine ? "your team" : team}, from the last 14 days.
       </p>
 
-      <details className="alert-kinds" open={data.alerts.length === 0}>
-        <summary>What alerts are sent</summary>
-        <ul>
-          {ALERT_KINDS.map((k) => (
+      <details className="alert-kinds" open={alerts.length === 0}>
+        <summary>Which alerts do you want?</summary>
+        <fieldset>
+          <legend className="visually-hidden">Alert types to show</legend>
+          <ul className="alert-choices">
+            {ALERT_TYPES.map((t) => (
+              <li key={t.kind}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!switchedOff.includes(t.kind)}
+                    onChange={(event) => choose(t.kind, event.target.checked)}
+                  />
+                  <span>
+                    <strong>{t.title}.</strong> {t.text}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+        <ul className="alert-notes">
+          {ALERT_NOTES.map((k) => (
             <li key={k.title}>
               <strong>{k.title}.</strong> {k.text}
             </li>
           ))}
         </ul>
+        <p className="muted">Your choices are kept in this browser.</p>
       </details>
 
       <form method="get" action={leaguePath(leagueId)} className="inline-form">
@@ -183,14 +201,15 @@ export default function AlertsPanel({
         </p>
       )}
 
-      {data.alerts.length === 0 ? (
+      {alerts.length === 0 ? (
         <p className="note">
-          No alerts yet for {mine ? "your team" : team}. When one is raised it appears here, and the
-          last 14 days are kept.
+          {hidden > 0
+            ? `${hidden} ${hidden === 1 ? "alert is" : "alerts are"} hidden by your choices above.`
+            : `No alerts yet for ${mine ? "your team" : team}. When one is raised it appears here, and the last 14 days are kept.`}
         </p>
       ) : (
         <ul className="alert-list">
-          {data.alerts.map((alert) => (
+          {alerts.map((alert) => (
             <AlertCard key={alert.id} alert={alert} isNew={unreadIds.has(alert.id)} />
           ))}
         </ul>

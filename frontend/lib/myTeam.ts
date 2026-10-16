@@ -36,6 +36,11 @@ export function setCookie(name: string, value: string): void {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=31536000; samesite=lax${secure}`;
 }
 
+/** The cookie holding the alert types the viewer has switched off in a league (comma separated). */
+export function alertsOffCookie(leagueId: string): string {
+  return `sa_alerts_off_${leagueId}`;
+}
+
 /** The cookie holding when the viewer last cleared their alerts in a league (an ISO time). */
 export function alertsSeenCookie(leagueId: string): string {
   return `sa_alerts_seen_${leagueId}`;
