@@ -65,6 +65,7 @@ const mineGame = card(
       owner_team: "Cole",
       points: 12.5,
       stat_line: "18 car, 92 yds, 1 TD",
+      stats: { rush_att: 18, rush_yd: 92, rush_td: 1, rec_tgt: 4, rec: 3, rec_yd: 21 },
     }),
     player("5", "My Receiver", { team: "KC", owner_roster_id: 1, owner_team: "Cole", points: 3 }),
   ],
@@ -140,25 +141,69 @@ describe("GamesPanel", () => {
     expect(first).toHaveTextContent("DEN at KC"); // the game with two of your players leads
   });
 
-  it("opens a game to its players with stats, points and who owns them, yours highlighted", () => {
+  it("lays out every stat like a box score, with your players highlighted and named", () => {
     render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
-    const table = screen.getByRole("table", { name: /Players in DEN at KC/ });
+    const table = screen.getByRole("table", { name: /KC rushing and receiving/ });
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    expect(headers).toEqual([
+      "Rushing and receiving",
+      "Fantasy team",
+      "Car",
+      "Rush yds",
+      "Rush TD",
+      "Tgt",
+      "Rec",
+      "Rec yds",
+      "Rec TD",
+      "Pts",
+    ]);
     const row = within(table).getByRole("row", { name: /My Back/ });
     expect(row).toHaveClass("mine");
-    expect(within(row).getByText("18 car, 92 yds, 1 TD")).toBeInTheDocument();
-    expect(within(row).getByText("12.5")).toBeInTheDocument();
+    const cells = within(row)
+      .getAllByRole("cell")
+      .map((c) => c.textContent);
+    expect(cells).toEqual(["You Cole", "18", "92", "1", "4", "3", "21", "–", "12.5"]);
     expect(within(row).getByText("You")).toBeInTheDocument();
+  });
+
+  it("marks other teams' players with that team's name and a lighter highlight", () => {
+    render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
+    const table = screen.getByRole("table", { name: /DEN rushing and receiving/ });
     const other = within(table).getByRole("row", { name: /Rostered Elsewhere/ });
+    expect(other).toHaveClass("owned-other");
     expect(other).not.toHaveClass("mine");
     expect(within(other).getByText("Dad Bods")).toBeInTheDocument();
   });
 
-  it("shows free agents as available and a dash before there are stats", () => {
-    render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
-    const table = screen.getByRole("table", { name: /Players in DAL at SF/ });
-    expect(within(table).getByText("Available")).toBeInTheDocument();
-    const mine = screen.getByRole("table", { name: /Players in LAR at SEA/ });
+  it("shows each team in turn with its logo and faces, and free agents as available", () => {
+    const { container } = render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
+    const blocks = screen.getAllByRole("region", { name: /KC players|DEN players/ });
+    expect(blocks.map((b) => b.getAttribute("aria-label"))).toEqual(["DEN players", "KC players"]);
+    expect(container.querySelectorAll(".game-team-title .team-logo").length).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".game-players .avatar").length).toBeGreaterThan(0);
+    const free = screen.getByRole("table", { name: /SF rushing and receiving/ });
+    expect(within(free).getByText("Available")).toBeInTheDocument();
+    const mine = screen.getByRole("table", { name: /SEA rushing and receiving/ });
     expect(within(mine).getByRole("row", { name: /My Only/ })).toHaveTextContent("–");
+  });
+
+  it("shows projections, labelled, before a player has played", () => {
+    const upcoming = card("p", "KC", "DEN", [
+      player("7", "Projected Back", {
+        team: "KC",
+        points: 14.2,
+        projected: true,
+        stats: { rush_att: 15, rush_yd: 70 },
+      }),
+    ]);
+    render(<GamesPanel data={{ ...data, games: [upcoming] }} leagueId="1" myRosterId={1} />);
+    const table = screen.getByRole("table", { name: /KC rushing and receiving \(projected\)/ });
+    expect(within(table).getByRole("columnheader", { name: "Proj pts" })).toBeInTheDocument();
+    const row = within(table).getByRole("row", { name: /Projected Back/ });
+    expect(within(row).getByText("14.2")).toBeInTheDocument();
+    expect(within(row).getByText("proj")).toBeInTheDocument();
   });
 
   it("explains an empty week and offers week chips back to the games tab", () => {

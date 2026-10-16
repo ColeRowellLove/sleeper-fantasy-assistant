@@ -2,14 +2,10 @@ import type { Games } from "../lib/api";
 import { orderGames, yourPlayersText } from "../lib/games";
 import { weekState } from "../lib/lineups";
 import GameBadge from "./GameBadge";
-import InjuryBadge from "./InjuryBadge";
-import PlayerLink from "./PlayerLink";
-import PositionChip from "./PositionChip";
+import GamePlayers from "./GamePlayers";
 import TeamLink from "./TeamLink";
+import TeamLogo from "./TeamLogo";
 import WeekChips from "./WeekChips";
-
-const points = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : n.toFixed(1);
 
 const NOTES = {
   played: "Final scores for this week.",
@@ -56,8 +52,10 @@ export default function GamesPanel({
             <details className={`card game-card${mine.length > 0 ? " has-mine" : ""}`}>
               <summary>
                 <span className="game-teams">
+                  <TeamLogo team={card.away} size={28} />
                   {card.away}
                   <span className="muted"> at </span>
+                  <TeamLogo team={card.home} size={28} />
                   {card.home}
                 </span>
                 <GameBadge game={card.game} conditions="full" />
@@ -76,56 +74,7 @@ export default function GamesPanel({
                   No stats yet, and none of this league&apos;s teams have players in this game.
                 </p>
               ) : (
-                <div className="players-scroll">
-                  <table className="players pd-table game-players">
-                    <caption className="visually-hidden">
-                      Players in {card.away} at {card.home}
-                    </caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Player</th>
-                        <th scope="col">Team</th>
-                        <th scope="col">Fantasy team</th>
-                        <th scope="col">Stats</th>
-                        <th scope="col" className="num">
-                          Pts
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {card.players.map((p) => {
-                        const yours = myRosterId !== null && p.owner_roster_id === myRosterId;
-                        return (
-                          <tr key={p.player_id} className={yours ? "mine" : undefined}>
-                            <th scope="row" className="player-cell">
-                              <span className="player-name">
-                                <PlayerLink playerId={p.player_id}>{p.name}</PlayerLink>
-                              </span>
-                              <span className="player-meta">
-                                <PositionChip position={p.position} />
-                                <InjuryBadge injury={p.injury} />
-                              </span>
-                            </th>
-                            <td>{p.team}</td>
-                            <td>
-                              {yours ? (
-                                <span className="status-owned">
-                                  <span className="you">You</span> {p.owner_team}
-                                </span>
-                              ) : p.owner_team ? (
-                                <span className="muted">{p.owner_team}</span>
-                              ) : (
-                                <span className="status-available">Available</span>
-                              )}
-                            </td>
-                            <td>{p.stat_line ?? <span className="muted">–</span>}</td>
-                            <td className="num">{points(p.points)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <GamePlayers card={card} myRosterId={myRosterId} />
               )}
             </details>
           </li>

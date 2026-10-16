@@ -428,7 +428,10 @@ table.h2h {
 }
 
 .game-teams {
+  align-items: center;
+  display: inline-flex;
   font-weight: 700;
+  gap: 0.4rem;
 }
 
 .game-mine {
