@@ -87,3 +87,16 @@ describe("roster row columns", () => {
     }
   });
 });
+
+describe("compact tables", () => {
+  it("keeps the player tables narrow enough for a laptop and a phone's sideways scroll", () => {
+    expect(rule("table.players")).toContain("min-width: 36rem");
+    expect(rule(".players .player-cell")).toContain("min-width: 16rem");
+    expect(rule(".players-list tbody tr")).toContain("height: 4rem");
+  });
+
+  it("uses tighter row padding in the standings and the lineups", () => {
+    expect(css).toContain("padding: 0.6rem 0.85rem;");
+    expect(rule(".h2h th,\n.h2h td")).toContain("padding: 0.4rem 0.5rem");
+  });
+});
