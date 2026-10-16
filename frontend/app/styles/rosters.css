@@ -478,14 +478,16 @@
 }
 
 /* a group of checkboxes as compact choices that wrap */
-fieldset {
+.rank-sources fieldset,
+.startsit-compare fieldset {
   border: 0;
   margin: 0;
   min-width: 0;
   padding: 0;
 }
 
-fieldset > legend {
+.rank-sources fieldset > legend,
+.startsit-compare fieldset > legend {
   font-weight: 600;
   margin-bottom: 0.5rem;
   padding: 0;
@@ -514,7 +516,12 @@ fieldset > legend {
 }
 
 .startsit-picks label:has(input:checked) {
-  border-color: var(--focus);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-2));
+}
+
+.startsit-picks label:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .rank-sources {

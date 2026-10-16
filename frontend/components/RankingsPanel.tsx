@@ -100,13 +100,7 @@ export default function RankingsPanel({
             Update rankings
           </button>
           {data.unavailable && Object.keys(data.unavailable).length > 0 && (
-            <p className="note">
-              Not included yet:{" "}
-              {Object.values(data.unavailable)
-                .map((v) => v.replace(/\s*\(.*\)$/, ""))
-                .join(", ")}{" "}
-              (it needs a paid license).
-            </p>
+            <p className="note">Not included yet: {Object.values(data.unavailable).join(", ")}.</p>
           )}
         </form>
       )}
@@ -226,9 +220,11 @@ export default function RankingsPanel({
         </div>
         {rows.length === 0 && (
           <p className="note players-empty">
-            {data.players.length === 0
-              ? "Player projections have not loaded for this week yet. They sync every few hours; check back soon."
-              : "No players match these filters."}
+            {data.players.length > 0
+              ? "No players match these filters."
+              : data.week === null
+                ? "There is no week to rank yet."
+                : `Player projections for week ${data.week} are not in yet. Check back after the next sync.`}
           </p>
         )}
       </div>

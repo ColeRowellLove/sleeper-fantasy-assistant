@@ -58,7 +58,7 @@ SIGNAL_LABELS = {
 }
 # sources people ask for that cannot be used yet, and why
 UNAVAILABLE = {
-    "fantasypros": "FantasyPros (not connected: needs a license, see the free-tier decision)",
+    "fantasypros": "FantasyPros (needs a paid license)",
 }
 
 
