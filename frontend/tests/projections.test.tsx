@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import MatchupCard from "../components/MatchupCard";
@@ -266,6 +266,72 @@ describe("win chance in the matchup", () => {
         week={7}
         myRosterId={1}
       />,
+    );
+  });
+});
+
+describe("this week's points on rosters", () => {
+  const withPoints: Dashboard["rosters"] = [
+    {
+      roster_id: 1,
+      team: "Cole",
+      owner_id: "u1",
+      players: [
+        {
+          player_id: "1",
+          name: "Scored",
+          position: "WR",
+          team: "SF",
+          status: "starter",
+          slot: "WR",
+          points: 14.25,
+          projected: 12,
+        },
+        {
+          player_id: "2",
+          name: "Scored Zero",
+          position: "WR",
+          team: "SF",
+          status: "bench",
+          slot: null,
+          points: 0,
+        },
+        {
+          player_id: "3",
+          name: "Not Played",
+          position: "WR",
+          team: "LAR",
+          status: "bench",
+          slot: null,
+          projected: 9,
+        },
+      ],
+    },
+  ];
+
+  it("shows points for a player whose game has started, with a spoken label", () => {
+    render(<RostersPanel rosters={withPoints} myRosterId={1} />);
+    const scored = screen.getByText("Scored").closest("li") as HTMLElement;
+    expect(within(scored).getByText("14.3")).toBeInTheDocument();
+    expect(
+      within(scored).getByText("Points this week", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      within(scored).getByText("Projected", { exact: false }),
+    ).toBeInTheDocument(); // still there
+  });
+
+  it("shows a real zero but nothing for a player who has not played", () => {
+    render(<RostersPanel rosters={withPoints} myRosterId={1} />);
+    expect(
+      screen.getAllByText("Points this week", { exact: false }),
+    ).toHaveLength(2); // 14.25 and 0
+    expect(screen.getByText("0.0")).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations", async () => {
+    await expectNoA11yViolations(
+      <RostersPanel rosters={withPoints} myRosterId={1} />,
     );
   });
 });

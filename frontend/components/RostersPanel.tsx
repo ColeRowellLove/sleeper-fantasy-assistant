@@ -116,6 +116,15 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
           <GameBadge game={player.game} />
         </span>
       </span>
+      {player.points !== null && player.points !== undefined && (
+        <span className="player-proj player-pts num">
+          <span className="visually-hidden">Points this week </span>
+          {player.points.toFixed(1)}
+          <span className="player-proj-label" aria-hidden="true">
+            pts
+          </span>
+        </span>
+      )}
       {player.projected !== null && player.projected !== undefined && (
         <span className="player-proj num">
           <span className="visually-hidden">Projected </span>

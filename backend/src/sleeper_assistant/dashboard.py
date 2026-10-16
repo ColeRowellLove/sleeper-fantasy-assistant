@@ -87,6 +87,7 @@ class RosterPlayer(BaseModel):
     projected: float | None = (
         None  # this week, scored with the league's rules; None = no projection
     )
+    points: float | None = None  # this week's actual points once the game has started
 
 
 class RosterView(BaseModel):
@@ -290,6 +291,8 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
         else {}
     )
 
+    earned = _week_points(session, league.league_id, week) if week else {}
+
     ordered = sorted(rosters, key=lambda r: (-r.wins, r.losses, -r.ties, -r.points_for))
     standings = [
         StandingsRow(
@@ -313,7 +316,9 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
             roster_id=r.roster_id,
             team=team[r.roster_id],
             owner_id=owners[r.roster_id],
-            players=_roster_players(r, players, slots, games, projected),
+            players=_roster_players(
+                r, players, slots, games, projected, earned.get(r.roster_id, {})
+            ),
         )
         for r in sorted(rosters, key=lambda r: r.roster_id)
     ]
@@ -327,15 +332,38 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
     )
 
 
-def _roster_players(
+def _week_points(session: Session, league_id: str, week: int) -> dict[int, dict[str, float]]:
+    """roster_id -> player_id -> the points Sleeper credited that roster's player this week."""
+    out: dict[int, dict[str, float]] = {}
+    for m in session.scalars(
+        select(MatchupRow).where(MatchupRow.league_id == league_id, MatchupRow.week == week)
+    ):
+        out[m.roster_id] = {
+            pid: float(value)
+            for pid, value in (m.players_points or {}).items()
+            if value is not None
+        }
+    return out
+
+
+def _points_so_far(game: GameInfo | None, value: float | None) -> float | None:
+    """A player's points once his game has started; before that there is nothing to show (not 0)."""
+    if value is None or game is None or game.state not in ("live", "final"):
+        return None
+    return round(value, 2)
+
+
+def _roster_players(  # noqa: PLR0913, PLR0917
     roster: RosterRow,
     players: dict[str, PlayerRow],
     slots: list[str],
     games: dict[str, GameInfo],
     projected: dict[str, float],
+    earned: dict[str, float],
 ) -> list[RosterPlayer]:
     def make(pid: str, status: Status, slot: str | None = None) -> RosterPlayer:
         name, position, nfl_team = _display(players, pid)
+        game = games.get(nfl_team) if nfl_team else None
         return RosterPlayer(
             player_id=pid,
             name=name,
@@ -343,9 +371,10 @@ def _roster_players(
             team=nfl_team,
             status=status,
             slot=slot,
-            game=games.get(nfl_team) if nfl_team else None,
+            game=game,
             injury=_injury(players, pid),
             projected=projected.get(pid),
+            points=_points_so_far(game, earned.get(pid)),
         )
 
     out: list[RosterPlayer] = []
