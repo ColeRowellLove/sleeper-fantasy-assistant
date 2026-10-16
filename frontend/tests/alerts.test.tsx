@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import AlertsPanel from "../components/AlertsPanel";
 import LeagueTabs from "../components/LeagueTabs";
 import type { AlertsData, Dashboard } from "../lib/api";
-import { alertTime, alertsTabLabel, newestAlertTime, unreadAlerts } from "../lib/alerts";
+import { alertTime, alertsTabLabel, newestAlertTime, parseSeen, unreadAlerts } from "../lib/alerts";
 import { parseTab } from "../lib/league";
 import { expectNoA11yViolations } from "./a11y";
 
@@ -53,6 +53,15 @@ describe("alert helpers", () => {
     expect(unreadAlerts(data.alerts, "not a date")).toHaveLength(2);
     expect(unreadAlerts(data.alerts, "2026-10-16T12:00:00Z").map((a) => a.id)).toEqual([2]);
     expect(unreadAlerts(data.alerts, "2026-10-17T16:05:00Z")).toEqual([]);
+  });
+
+  it("reads the viewer's cookie safely, ignoring anything malformed", () => {
+    expect(parseSeen("2026-10-17T16:05:00.000Z")).toBe("2026-10-17T16:05:00.000Z");
+    expect(parseSeen("2026-10-17T16%3A05%3A00.000Z")).toBe("2026-10-17T16:05:00.000Z");
+    expect(parseSeen("%E0%A4%A")).toBeNull(); // would throw in decodeURIComponent
+    expect(parseSeen("garbage")).toBeNull();
+    expect(parseSeen("")).toBeNull();
+    expect(parseSeen(undefined)).toBeNull();
   });
 
   it("remembers the newest alert's own time", () => {
@@ -174,6 +183,7 @@ describe("AlertsPanel", () => {
       />,
     );
     expect(screen.getByText(/No alerts yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/ruled out|waiver/i)).not.toBeInTheDocument(); // promises nothing yet
   });
 
   it("has no accessibility violations", async () => {

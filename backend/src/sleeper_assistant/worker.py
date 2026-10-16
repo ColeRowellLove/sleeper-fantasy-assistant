@@ -75,7 +75,7 @@ DEPTH_SYNC_INTERVAL = timedelta(hours=3)  # depth charts change with injuries an
 DEPTH_FAILURE_COOLDOWN = timedelta(hours=3)
 KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
 KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
-ALERTS_INTERVAL = timedelta(minutes=10)  # alerts follow the syncs that feed them
+ALERTS_INTERVAL = timedelta(minutes=10)  # detectors run on whatever the syncs have stored
 ALERTS_FAILURE_COOLDOWN = timedelta(minutes=30)
 CYCLE_MAX_JOBS = 50
 CYCLE_BUDGET = timedelta(minutes=10)

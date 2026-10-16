@@ -1,5 +1,17 @@
 import type { AlertItem } from "./api";
 
+/** The viewer's "cleared at" time from their cookie: a valid ISO time, or null (never throws). */
+export function parseSeen(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let text = raw;
+  try {
+    text = decodeURIComponent(raw);
+  } catch {
+    return null; // a malformed cookie is ignored, not a crash
+  }
+  return Number.isFinite(Date.parse(text)) ? text : null;
+}
+
 /** The alerts created after `seen` (an ISO time from the viewer's cookie); all of them without one. */
 export function unreadAlerts(alerts: AlertItem[], seen: string | null | undefined): AlertItem[] {
   const seenAt = seen ? Date.parse(seen) : NaN;

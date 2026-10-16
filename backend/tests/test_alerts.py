@@ -134,3 +134,66 @@ def test_a_team_sees_its_own_recent_alerts_newest_first(session: Session) -> Non
     assert build_alerts(session, "L1", 2, now=now).alerts[0].title == "Alert other"
     assert build_alerts(session, "L1", 3, now=now).alerts == []
     assert len(build_alerts(session, "L1", 1, limit=1, now=now).alerts) == 1
+
+
+def test_a_run_that_overlaps_another_does_not_fail_or_lose_the_other_alerts(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    league = _league(session)
+
+    def raced(s: Session, lg: LeagueRow, now: object) -> list[NewAlert]:
+        # another worker stores one of the two events between our check and our insert
+        with s.begin_nested():
+            s.add(
+                AlertRow(
+                    league_id=lg.league_id, roster_id=1, kind="test", dedupe_key="e1",
+                    title="from the other run", why="w", data={}, created_at=utcnow(),
+                )
+            )  # fmt: skip
+        return [_alert(1, "e1"), _alert(1, "e2")]
+
+    with caplog.at_level("ERROR", logger="sleeper_assistant.alerts"):
+        made = run_alerts(session, league, {"d": raced})
+    assert caplog.text == ""  # not reported as a detector failure
+    assert made == 1  # e1 was already told; e2 is new
+    titles = {r.dedupe_key: r.title for r in session.scalars(select(AlertRow))}
+    assert titles == {"e1": "from the other run", "e2": "Alert e2"}
+
+
+def test_one_leagues_database_error_does_not_skip_the_others(
+    session: Session, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _league(session, "L1")
+    _league(session, "L2")
+    real = alerts.run_alerts
+
+    def flaky(s: Session, lg: LeagueRow, *a: object, **k: object) -> int:
+        if lg.league_id == "L1":
+            raise RuntimeError("database error")
+        return real(s, lg, *a, **k)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(alerts, "run_alerts", flaky)
+    with caplog.at_level("ERROR", logger="sleeper_assistant.alerts"):
+        made = run_all_leagues(
+            session, utcnow() - timedelta(days=1), {"d": _returns(_alert(1, "x"))}
+        )
+    assert made == 1
+    assert {r.league_id for r in session.scalars(select(AlertRow))} == {"L2"}
+    assert "alerts failed for league L1" in caplog.text
+
+
+def test_alerts_older_than_the_keep_time_are_deleted(session: Session) -> None:
+    league = _league(session)
+    now = utcnow()
+    run_alerts(session, league, {"d": _returns(_alert(1, "ancient"))}, now - timedelta(days=120))
+    run_alerts(session, league, {"d": _returns(_alert(1, "recent"))}, now - timedelta(days=5))
+    run_all_leagues(session, now - timedelta(days=1), {}, now)
+    assert [r.dedupe_key for r in session.scalars(select(AlertRow))] == ["recent"]
+
+
+def test_times_come_back_as_utc_even_when_the_database_drops_the_zone(session: Session) -> None:
+    league = _league(session)
+    run_alerts(session, league, {"d": _returns(_alert(1))})
+    alert = build_alerts(session, "L1", 1).alerts[0]
+    assert alert.created_at.tzinfo is not None
+    assert alert.model_dump_json().count("Z") == 1 or "+00:00" in alert.model_dump_json()

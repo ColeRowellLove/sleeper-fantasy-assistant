@@ -76,8 +76,8 @@ export default function AlertsPanel({
 
       {data.alerts.length === 0 ? (
         <p className="note">
-          No alerts yet. You will see a note here when one of this team&apos;s players is ruled out
-          and when the best waiver pickups are ready, the day before the waiver run.
+          No alerts yet. Alerts for this team appear here as they are raised, and the last 14 days
+          are kept.
         </p>
       ) : (
         <ul className="alert-list">

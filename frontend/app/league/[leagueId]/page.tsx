@@ -39,7 +39,7 @@ import { leaguePath, parseTab } from "../../../lib/league";
 import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
 import { USER_COOKIE, alertsSeenCookie, findMyRosterId, teamCookie } from "../../../lib/myTeam";
-import { unreadAlerts } from "../../../lib/alerts";
+import { parseSeen, unreadAlerts } from "../../../lib/alerts";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "League", robots: { index: false } };
@@ -182,15 +182,21 @@ export default async function LeaguePage({
   // Alerts: your team's feed is always fetched (for the new-alert count on the tab); the Alerts
   // tab shows the chosen team's. Neither may break the page, so a failure shows as no alerts.
   const seenRaw = jar.get(alertsSeenCookie(leagueId))?.value;
-  const alertsSeen = seenRaw ? decodeURIComponent(seenRaw) : null;
+  const alertsSeen = parseSeen(seenRaw);
   const alertsTeam = linkedRosterId ?? myRosterId ?? dashboard.rosters[0]?.roster_id ?? null;
-  const loadAlerts = (rosterId: number | null) =>
+  const loadAlerts = (rosterId: number | null, limit = 20) =>
     rosterId === null
       ? Promise.resolve(null)
-      : getJson<AlertsData>(`/api/leagues/${leagueId}/alerts?roster=${rosterId}`).catch(() => null);
+      : getJson<AlertsData>(
+          `/api/leagues/${leagueId}/alerts?roster=${rosterId}&limit=${limit}`,
+        ).catch(() => null);
   const myAlerts = await loadAlerts(myRosterId);
   const shownAlerts =
-    tab !== "alerts" ? null : alertsTeam === myRosterId ? myAlerts : await loadAlerts(alertsTeam);
+    tab !== "alerts"
+      ? null
+      : alertsTeam === myRosterId
+        ? await loadAlerts(myRosterId, 50)
+        : await loadAlerts(alertsTeam, 50);
   const newAlerts = unreadAlerts(myAlerts?.alerts ?? [], alertsSeen).length;
 
   // Start/Sit works on one team's roster: the linked team, else yours, else the first. It needs

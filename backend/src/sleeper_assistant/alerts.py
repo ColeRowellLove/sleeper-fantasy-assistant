@@ -5,6 +5,11 @@ A detector is a function ``(session, league, now) -> list[NewAlert]``. Detectors
 never lets one failing detector stop the others. An alert is stored once per (league, team, dedupe
 key), so running the engine again and again about the same event creates nothing more.
 
+A detector's dedupe key must name the *occurrence*, not just the subject:
+``injury_out:<player>:<week>`` alerts again the next time he is ruled out, whereas
+``injury_out:<player>`` would never alert that team about him a second time. Old alerts are pruned
+after ``KEEP``, so keys only need to be unique within that time.
+
 How an alert reaches a person outside the app (email, push, SMS) is a separate step on top of the
 stored alerts; this module only decides *what* is worth saying and says it once.
 """
@@ -16,14 +21,16 @@ from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import AlertRow, LeagueRow, utcnow
+from sleeper_assistant.db import AlertRow, LeagueRow, as_utc, utcnow
 
 log = logging.getLogger(__name__)
 
-RECENT = timedelta(days=14)  # the app shows alerts this recent; older ones are kept, not shown
+RECENT = timedelta(days=14)  # the app shows alerts this recent
+KEEP = timedelta(days=90)  # older alerts are deleted
 
 
 class NewAlert(BaseModel):
@@ -74,19 +81,24 @@ def store_new(session: Session, league: LeagueRow, raised: list[NewAlert], now: 
         if marker in seen:
             continue  # already told, or raised twice in the same run
         seen.add(marker)
-        session.add(
-            AlertRow(
-                league_id=league.league_id,
-                roster_id=alert.roster_id,
-                kind=alert.kind,
-                dedupe_key=alert.dedupe_key,
-                player_id=alert.player_id,
-                title=alert.title,
-                why=alert.why,
-                data=alert.data,
-                created_at=now,
-            )
-        )
+        try:
+            with session.begin_nested():  # a run that overlaps this one may insert the same event
+                session.add(
+                    AlertRow(
+                        league_id=league.league_id,
+                        roster_id=alert.roster_id,
+                        kind=alert.kind,
+                        dedupe_key=alert.dedupe_key,
+                        player_id=alert.player_id,
+                        title=alert.title,
+                        why=alert.why,
+                        data=alert.data,
+                        created_at=now,
+                    )
+                )
+                session.flush()
+        except IntegrityError:
+            continue  # someone else just told that team; not a failure
         created += 1
     return created
 
@@ -118,8 +130,20 @@ def run_all_leagues(
     now: datetime | None = None,
 ) -> int:
     """Run the engine for every league viewed since ``active_since`` (the ones the worker syncs)."""
-    leagues = session.scalars(select(LeagueRow).where(LeagueRow.last_viewed_at >= active_since))
-    return sum(run_alerts(session, league, detectors, now) for league in list(leagues))
+    moment = now or utcnow()
+    leagues = list(
+        session.scalars(select(LeagueRow).where(LeagueRow.last_viewed_at >= active_since))
+    )
+    created = 0
+    for league in leagues:
+        try:
+            created += run_alerts(session, league, detectors, moment)
+        except Exception:  # a database error on one league must not skip the others
+            session.rollback()
+            log.exception("alerts failed for league %s", league.league_id)
+    session.execute(delete(AlertRow).where(AlertRow.created_at < moment - KEEP))
+    session.commit()
+    return created
 
 
 class AlertItem(BaseModel):
@@ -163,7 +187,7 @@ def build_alerts(
                 title=r.title,
                 why=r.why,
                 player_id=r.player_id,
-                created_at=r.created_at,
+                created_at=as_utc(r.created_at),
                 data=r.data or {},
             )
             for r in rows
