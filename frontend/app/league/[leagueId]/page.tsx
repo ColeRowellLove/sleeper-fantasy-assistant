@@ -315,6 +315,7 @@ export default async function LeaguePage({
       )}
       {tab === "waiver" && (
         <WaiverWirePanel
+          key={wireTeam ?? "none"} // a different team starts at the top adds again
           data={wire}
           rosters={dashboard.rosters}
           leagueId={leagueId}

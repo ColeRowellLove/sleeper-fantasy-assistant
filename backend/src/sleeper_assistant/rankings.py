@@ -102,7 +102,7 @@ def _order(values: Mapping[str, float]) -> dict[str, int]:
     return {pid: 1 + sum(1 for v in ranked if v > value) for pid, value in values.items()}
 
 
-def _form(
+def recent_form(
     session: Session, season: str, week: int, scoring: Mapping[str, float]
 ) -> dict[str, float]:
     """Points per game over the last three games played before ``week``."""
@@ -197,7 +197,7 @@ def build_rankings(
             )
         )
     }
-    form = _form(session, season, chosen, scoring)
+    form = recent_form(session, season, chosen, scoring)
     started: dict[str, float] = {}
     if chosen == now:  # ESPN's start share describes the current week only
         started = {

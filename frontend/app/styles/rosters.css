@@ -467,10 +467,6 @@
   margin: 0 0 0.25rem;
 }
 
-.wire-numbers {
-  margin: 0 0 0.25rem;
-}
-
 .wire-signals {
   font-size: 0.9rem;
   margin: 0;
@@ -727,10 +723,73 @@
   padding-left: 1.1rem;
 }
 
+/* Waiver wire: a compact row per pick, reasons as small chips marked For / Against in words */
+.wire-entry {
+  padding: 0.6rem 0.9rem;
+}
+
 .wire-title {
   align-items: center;
   display: flex;
+  gap: 0.6rem;
+}
+
+.wire-title .player-line {
+  flex: 1;
+  min-width: 0;
+}
+
+.wire-rank {
+  color: var(--muted);
+  font-weight: 700;
+  min-width: 1.25rem;
+  text-align: right;
+}
+
+.wire-numbers {
+  align-items: baseline;
+  display: flex;
   gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.wire-gain {
+  background: color-mix(in srgb, var(--game-live) 20%, var(--surface-2));
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.05rem 0.5rem;
+}
+
+.wire-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+}
+
+.reason {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  padding: 0.1rem 0.6rem;
+}
+
+.reason-word {
+  font-weight: 700;
+}
+
+.reason-for {
+  background: color-mix(in srgb, var(--game-live) 16%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--game-live) 55%, var(--line));
+}
+
+.reason-against {
+  background: color-mix(in srgb, var(--injury-out) 16%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--injury-out) 55%, var(--line));
 }
 
 /* Start/Sit recommendation: the explanation sits inside the card, the verdict is a short chip */
