@@ -38,6 +38,7 @@ export default async function LeaguePage({
 }: {
   params: Promise<{ leagueId: string }>;
   searchParams: Promise<{
+    roster?: string;
     tab?: string;
     week?: string;
     player?: string;
@@ -46,7 +47,7 @@ export default async function LeaguePage({
   }>;
 }) {
   const { leagueId } = await params;
-  const { tab: tabParam, week, player, team, depth: depthParam } = await searchParams;
+  const { tab: tabParam, week, player, team, depth: depthParam, roster } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
   const weekNumber = Number(week);
@@ -94,12 +95,18 @@ export default async function LeaguePage({
     userId: jar.get(USER_COOKIE)?.value,
   });
 
+  // a link from a team name to that team's roster; anything that is not one of this league's teams is ignored
+  const linkedRosterId = dashboard.rosters.some((r) => String(r.roster_id) === roster)
+    ? Number(roster)
+    : null;
+
   return (
     <main id="main" className="container">
       <LeagueHeader data={dashboard} myRosterId={myRosterId} />
       <LeagueTabs leagueId={leagueId} active={tab} />
       {tab === "standings" && (
         <StandingsTable
+          leagueId={leagueId}
           standings={dashboard.standings}
           playoffTeams={dashboard.rules.playoff_teams}
           myRosterId={myRosterId}
@@ -107,7 +114,8 @@ export default async function LeaguePage({
       )}
       {tab === "rosters" && (
         <RostersPanel
-          key={myRosterId ?? "none"} // reset the selection when the user changes their team
+          key={`${myRosterId ?? "none"}-${linkedRosterId ?? "none"}`} // reset the selection when the team or the link changes
+          initialRosterId={linkedRosterId}
           rosters={dashboard.rosters}
           myRosterId={myRosterId}
           week={dashboard.week ?? null}
@@ -116,7 +124,9 @@ export default async function LeaguePage({
       {tab === "lineups" && lineups && (
         <WeeklyLineups data={lineups} leagueId={leagueId} myRosterId={myRosterId} />
       )}
-      {tab === "players" && players && <PlayersTable data={players} myRosterId={myRosterId} />}
+      {tab === "players" && players && (
+        <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />
+      )}
       {tab === "teams" && (
         <>
           <TeamPicker leagueId={leagueId} selected={isTeamCode(team) ? team : null} />

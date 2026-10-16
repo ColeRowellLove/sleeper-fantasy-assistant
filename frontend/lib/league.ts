@@ -39,6 +39,11 @@ export function leaguePath(leagueId: string, query = ""): string {
   return `/league/${encodeURIComponent(leagueId)}${query}`;
 }
 
+/** Link to one team's roster in a league (the Rosters tab, starting on that team). */
+export function rosterPath(leagueId: string, rosterId: number): string {
+  return leaguePath(leagueId, `?tab=rosters&roster=${rosterId}`);
+}
+
 export function formatRecord(wins: number, losses: number, ties: number): string {
   return ties > 0 ? `${wins}-${losses}-${ties}` : `${wins}-${losses}`;
 }

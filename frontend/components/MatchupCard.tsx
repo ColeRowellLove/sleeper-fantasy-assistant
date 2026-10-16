@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import type { LineupPlayer, Lineups, TeamLineup } from "../lib/api";
+import { rosterPath } from "../lib/league";
 import {
   formatPoints,
   formatProjection,
@@ -23,6 +26,8 @@ interface Props {
   week: number | null;
   myRosterId: number | null;
   mine?: boolean;
+  /** When given, each team's name links to that team's roster. */
+  leagueId?: string;
   /** Eager-load avatars (use for the first card on the page). */
   priority?: boolean;
 }
@@ -105,16 +110,24 @@ function TeamScore({
   state,
   isWinner,
   isMe,
+  leagueId,
 }: {
   team: TeamLineup;
   state: WeekState;
   isWinner: boolean;
   isMe: boolean;
+  leagueId?: string;
 }) {
   return (
     <div className={`team-score${isWinner ? " winner" : ""}`}>
       <span className="team-name">
-        {team.team}
+        {leagueId ? (
+          <Link href={rosterPath(leagueId, team.roster_id)} className="member-link">
+            {team.team}
+          </Link>
+        ) : (
+          team.team
+        )}
         {isMe && <span className="you">You</span>}
       </span>
       <span className="score num">{state === "upcoming" ? "–" : team.points.toFixed(2)}</span>
@@ -207,6 +220,7 @@ export default function MatchupCard({
   week,
   myRosterId,
   mine = false,
+  leagueId,
   priority = false,
 }: Props) {
   const [a, b] = matchup.teams;
@@ -232,11 +246,13 @@ export default function MatchupCard({
           {a.team} versus {b.team}
         </h3>
         <div className="score-row">
-          <TeamScore team={a} state={state} isWinner={winner === a.roster_id} isMe={a.roster_id === myRosterId} />
+          <TeamScore team={a} state={state} isWinner={winner === a.roster_id} isMe={a.roster_id === myRosterId}
+            leagueId={leagueId} />
           <span className="vs" aria-hidden="true">
             vs
           </span>
-          <TeamScore team={b} state={state} isWinner={winner === b.roster_id} isMe={b.roster_id === myRosterId} />
+          <TeamScore team={b} state={state} isWinner={winner === b.roster_id} isMe={b.roster_id === myRosterId}
+            leagueId={leagueId} />
         </div>
         <WinBar a={a} b={b} state={state} />
       </header>

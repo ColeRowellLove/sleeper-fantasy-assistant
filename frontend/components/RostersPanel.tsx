@@ -24,16 +24,20 @@ export default function RostersPanel({
   rosters,
   myRosterId,
   week = null,
+  initialRosterId = null,
 }: {
   rosters: Roster[];
   myRosterId: number | null;
   week?: number | null;
+  /** The team to start on (from a link); your own team when absent or unknown. */
+  initialRosterId?: number | null;
 }) {
   const ordered = [
     ...rosters.filter((r) => r.roster_id === myRosterId),
     ...rosters.filter((r) => r.roster_id !== myRosterId),
   ];
-  const [selectedId, setSelectedId] = useState(ordered[0]?.roster_id ?? null);
+  const linked = ordered.find((r) => r.roster_id === initialRosterId);
+  const [selectedId, setSelectedId] = useState(linked?.roster_id ?? ordered[0]?.roster_id ?? null);
   const selected = ordered.find((r) => r.roster_id === selectedId) ?? ordered[0];
 
   if (!selected) return <p className="note">No rosters have been synced yet.</p>;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { PlayersData } from "../lib/api";
@@ -17,6 +18,7 @@ import {
   type PositionFilter,
   type SortKey,
 } from "../lib/playersFilter";
+import { rosterPath } from "../lib/league";
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
@@ -52,9 +54,12 @@ const percent = (n: number | null | undefined) =>
 export default function PlayersTable({
   data,
   myRosterId,
+  leagueId,
 }: {
   data: PlayersData;
   myRosterId: number | null;
+  /** When given, an owner's team name links to that team's roster. */
+  leagueId?: string;
 }) {
   const [filters, setFilters] = useState<PlayerFilters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<PlayerSort>(DEFAULT_SORT);
@@ -182,7 +187,18 @@ export default function PlayersTable({
                         <span className="status-available">Available</span>
                       ) : (
                         <span className="status-owned" title={p.owner_team}>
-                          <span className="status-team">{p.owner_team}</span>
+                          <span className="status-team">
+                            {leagueId && p.owner_roster_id !== null ? (
+                              <Link
+                                href={rosterPath(leagueId, p.owner_roster_id)}
+                                className="member-link"
+                              >
+                                {p.owner_team}
+                              </Link>
+                            ) : (
+                              p.owner_team
+                            )}
+                          </span>
                           {mine && <span className="you">You</span>}
                         </span>
                       )}

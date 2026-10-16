@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { StandingsRow } from "../lib/api";
-import { formatRecord } from "../lib/league";
+import { formatRecord, rosterPath } from "../lib/league";
 import {
   DEFAULT_SORT,
   nextSort,
@@ -60,10 +61,13 @@ export default function StandingsTable({
   standings,
   playoffTeams,
   myRosterId,
+  leagueId,
 }: {
   standings: StandingsRow[];
   playoffTeams: number | null;
   myRosterId: number | null;
+  /** When given, each team name links to that team's roster. */
+  leagueId?: string;
 }) {
   const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
   const rows = sortStandings(standings, sort);
@@ -130,7 +134,13 @@ export default function StandingsTable({
                     {inPlayoffs && <span className="visually-hidden"> (playoff position)</span>}
                   </td>
                   <th scope="row">
-                    {row.team}
+                    {leagueId ? (
+                      <Link href={rosterPath(leagueId, row.roster_id)} className="member-link">
+                        {row.team}
+                      </Link>
+                    ) : (
+                      row.team
+                    )}
                     {mine && <span className="you">You</span>}
                     {row.manager && row.manager !== row.team && (
                       <span className="manager">
