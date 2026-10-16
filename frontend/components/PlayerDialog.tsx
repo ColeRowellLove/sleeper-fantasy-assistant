@@ -20,6 +20,7 @@ import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PositionChip from "./PositionChip";
 import TeamLink from "./TeamLink";
+import TeamStatsTable from "./TeamStatsTable";
 
 type PastSeason = NonNullable<PlayerDetail["past_seasons"]>[number];
 
@@ -314,6 +315,15 @@ export default function PlayerDialog({
             </p>
             <p className="note">{describeStats(detail.projected.stats, detail.position)}</p>
           </section>
+        )}
+
+        {detail.team && detail.team_stats && (
+          <TeamStatsTable
+            stats={detail.team_stats}
+            team={detail.team}
+            headingId="pd-team-stats"
+            title={`${detail.team} team stats`}
+          />
         )}
 
         <section aria-labelledby="pd-weeks">

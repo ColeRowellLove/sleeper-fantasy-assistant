@@ -7,7 +7,7 @@ import TeamDepthChart from "../components/TeamDepthChart";
 import TeamDialog from "../components/TeamDialog";
 import TeamLink from "../components/TeamLink";
 import TeamPicker from "../components/TeamPicker";
-import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
+import type { DepthPlayer, DepthSlot, TeamDepth, TeamStat } from "../lib/api";
 import { depthLabel, depthRows, groupSlots, isTeamCode, TEAM_CODES } from "../lib/depth";
 import { parseTab } from "../lib/league";
 import { expectNoA11yViolations } from "./a11y";
@@ -346,5 +346,45 @@ describe("deep charts slide sideways", () => {
   it("does not suggest sliding for a short chart", () => {
     render(<TeamDepthChart data={data} myRosterId={null} />);
     expect(screen.queryByText(/Slide sideways/)).not.toBeInTheDocument();
+  });
+});
+
+describe("team stats with league ranks", () => {
+  const stats: TeamStat[] = [
+    {
+      key: "rush_yd",
+      label: "Rush yards per game",
+      side: "offense",
+      value: 142.5,
+      rank: 2,
+      teams: 32,
+      games: 5,
+    },
+    {
+      key: "pts_allow",
+      label: "Points allowed per game",
+      side: "defense",
+      value: 17.2,
+      rank: 1,
+      teams: 32,
+      games: 5,
+    },
+  ];
+
+  it("shows each stat per game with its rank on the team page", async () => {
+    render(<TeamDepthChart data={{ ...data, stats }} myRosterId={null} />);
+    const table = screen.getByRole("table", {
+      name: /SEA per-game stats and league rank, over 5 games/,
+    });
+    const row = within(table).getByRole("row", { name: /Rush yards per game/ });
+    expect(within(row).getByText("142.5")).toBeInTheDocument();
+    expect(within(row).getByText("2nd of 32")).toBeInTheDocument();
+    expect(within(table).getByText("1st of 32")).toBeInTheDocument();
+    await expectNoA11yViolations(<TeamDepthChart data={{ ...data, stats }} myRosterId={null} />);
+  });
+
+  it("shows no stats section without data", () => {
+    render(<TeamDepthChart data={data} myRosterId={null} />);
+    expect(screen.queryByRole("heading", { name: "Team stats" })).not.toBeInTheDocument();
   });
 });

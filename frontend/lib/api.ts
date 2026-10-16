@@ -70,6 +70,8 @@ export interface PlayerDetail {
   game?: GameInfo | null;
   /** This week's opponent against his position. */
   matchup?: MatchupRank | null;
+  /** His team's numbers that matter for his position, ranked. */
+  team_stats?: TeamStat[];
   bio?: Record<string, unknown> | null;
   owner_roster_id?: number | null;
   owner_team?: string | null;
@@ -138,6 +140,8 @@ export interface TeamDepth {
   source?: string | null;
   updated_at?: string | null;
   game?: GameInfo | null;
+  /** The team's per-game numbers with league ranks. */
+  stats?: TeamStat[];
   groups: DepthGroup[];
 }
 
@@ -221,6 +225,17 @@ export interface MatchupRank {
   /** "offense" for a team defense: ranked by the points the opposing offense scores. */
   side?: "defense" | "offense";
   /** Completed games counted. */
+  games: number;
+}
+
+/** One team stat per game and where it ranks of the teams; rank 1 is best. */
+export interface TeamStat {
+  key: string;
+  label: string;
+  side: "offense" | "defense";
+  value: number;
+  rank: number;
+  teams: number;
   games: number;
 }
 

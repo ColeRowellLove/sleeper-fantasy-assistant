@@ -36,6 +36,7 @@ from sleeper_assistant.db import (
 from sleeper_assistant.matchup_rank import MatchupRank, build_defense_table, matchup_rank
 from sleeper_assistant.players_view import _name
 from sleeper_assistant.projections import score_projection, score_stats
+from sleeper_assistant.team_stats import TeamStat, build_team_stats, stats_for_position
 
 # volume numbers worth showing even when the league does not score them directly
 _VOLUME_KEYS = ("pass_att", "pass_cmp", "rush_att", "rec_tgt", "fga", "pts_allow")
@@ -84,6 +85,7 @@ class PlayerDetail(BaseModel):
     injury: InjuryInfo | None = None
     game: GameInfo | None = None
     matchup: MatchupRank | None = None  # this week's opponent against his position
+    team_stats: list[TeamStat] = []  # his team's numbers that matter for his position, ranked
     bio: dict[str, Any] | None = None
     owner_roster_id: int | None = None
     owner_team: str | None = None
@@ -238,6 +240,9 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         team=player.team,
         injury=_injury({player_id: player}, player_id),
         game=game,
+        team_stats=stats_for_position(
+            build_team_stats(session, season), player.team, player.position
+        ),
         matchup=matchup_rank(
             build_defense_table(session, season, scoring),
             player.position,

@@ -60,6 +60,17 @@ const detail: PlayerDetail = {
   owner_team: "Cole",
   owner_manager: "colerowell",
   league_id: "L1",
+  team_stats: [
+    {
+      key: "rec_tgt",
+      label: "Targets per game",
+      side: "offense",
+      value: 34.2,
+      rank: 3,
+      teams: 32,
+      games: 5,
+    },
+  ],
   owned_pct: 99.9,
   started_pct: 25.9,
   adds: null,
@@ -253,6 +264,14 @@ describe("PlayerDialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
     expect(dialog).toHaveAttribute("open");
     expect(within(dialog).getByText(/^On/)).toHaveTextContent("On Cole (colerowell)");
+  });
+
+  it("shows the player's team stats with their league rank", () => {
+    renderDialog();
+    const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
+    expect(within(dialog).getByRole("heading", { name: "LAR team stats" })).toBeInTheDocument();
+    const row = within(dialog).getByRole("row", { name: /Targets per game/ });
+    expect(within(row).getByText("3rd of 32")).toBeInTheDocument();
   });
 
   it("shows ESPN's ownership and start percentages, labelled as ESPN's", () => {
