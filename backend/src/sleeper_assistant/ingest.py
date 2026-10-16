@@ -115,6 +115,7 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
                     points_against=float(rs.get("fpts_against", 0))
                     + float(rs.get("fpts_against_decimal", 0)) / 100,
                     streak=_streak(roster.metadata),
+                    potential_points=_potential(rs),
                 )
             )
 
@@ -153,6 +154,13 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
         session.rollback()
         raise
     return row
+
+
+def _potential(settings: dict[str, Any]) -> float | None:
+    """Sleeper's potential points (``ppts``): what the best lineups would score; None if absent."""
+    if "ppts" not in settings:
+        return None
+    return float(settings["ppts"]) + float(settings.get("ppts_decimal", 0)) / 100
 
 
 def _bio(p: SleeperPlayer) -> dict[str, Any] | None:

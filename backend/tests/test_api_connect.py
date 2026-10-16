@@ -359,6 +359,17 @@ def test_rankings_endpoint(client: TestClient) -> None:
     assert client.get("/api/leagues/1/rankings?week=99").status_code == 422
 
 
+def test_lineup_accuracy_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/accuracy").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/accuracy").json()
+    assert body["league_id"] == "1"
+    assert [t["roster_id"] for t in body["teams"]] == [1, 2]
+    assert body["teams"][0]["points"] == 120.42
+    assert body["teams"][0]["potential"] is None  # the recorded league has no potential points
+    assert body["teams"][0]["accuracy"] is None
+
+
 def test_team_depth_endpoint(client: TestClient) -> None:
     assert client.get("/api/leagues/1/teams/SF").status_code == 404  # league not connected yet
     assert client.post("/api/leagues/1/connect").status_code == 200

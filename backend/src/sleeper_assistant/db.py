@@ -91,6 +91,7 @@ class RosterRow(Base):
     points_for: Mapped[float] = mapped_column(default=0.0)
     points_against: Mapped[float] = mapped_column(default=0.0)
     streak: Mapped[str | None] = mapped_column(String)  # current run as Sleeper reports it: 3W, 2L
+    potential_points: Mapped[float | None]  # Sleeper's ppts: points the best lineups would score
 
 
 class MatchupRow(Base):

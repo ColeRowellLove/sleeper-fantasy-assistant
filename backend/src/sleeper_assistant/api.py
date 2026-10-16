@@ -31,6 +31,7 @@ from sleeper_assistant.db import (
 )
 from sleeper_assistant.depth import TEAM_IDS
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
+from sleeper_assistant.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
 from sleeper_assistant.players_view import PlayersResponse, build_players
 from sleeper_assistant.rankings import Rankings, build_rankings
@@ -400,6 +401,18 @@ def get_rankings(
         raise HTTPException(status_code=404, detail="League not connected yet")
     response.headers["Cache-Control"] = READ_CACHE
     return build_rankings(session, row, week)
+
+
+@app.get("/api/leagues/{league_id}/accuracy")
+def get_lineup_accuracy(
+    league_id: LeagueId, session: SessionDep, response: Response
+) -> LineupAccuracy:
+    """Sit vs start accuracy per team: actual points against the best lineup, finished weeks."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = READ_CACHE
+    return build_lineup_accuracy(session, row)
 
 
 def _connected(row: LeagueRow) -> ConnectedLeague:
