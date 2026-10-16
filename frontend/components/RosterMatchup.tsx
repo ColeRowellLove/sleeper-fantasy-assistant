@@ -3,7 +3,14 @@ import { useId } from "react";
 
 import type { Lineups } from "../lib/api";
 import { rosterPath } from "../lib/league";
-import { formatPoints, matchupFor, winPercent, winnerId, type WeekState } from "../lib/lineups";
+import {
+  formatPoints,
+  formatProjection,
+  matchupFor,
+  winPercent,
+  winnerId,
+  type WeekState,
+} from "../lib/lineups";
 import WinBar from "./WinBar";
 
 function resultText(
@@ -57,12 +64,20 @@ export default function RosterMatchup({
         <Link href={rosterPath(leagueId, opponent.roster_id)} className="member-link">
           {opponent.team}
         </Link>
-        {state !== "upcoming" && (
-          <>
-            : {formatPoints(team.points)} to {formatPoints(opponent.points)}
-          </>
-        )}
       </p>
+      <dl className="roster-matchup-scores">
+        {[team, opponent].map((t) => (
+          <div key={t.roster_id}>
+            <dt>{t.team}</dt>
+            <dd className="num">
+              {state === "upcoming" ? "–" : formatPoints(t.points)}
+              {formatProjection(t.projected) !== null && (
+                <span className="muted"> · proj {formatProjection(t.projected)}</span>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
       {hasChance && state !== "played" ? (
         <WinBar a={team} b={opponent} state={state} />
       ) : (
