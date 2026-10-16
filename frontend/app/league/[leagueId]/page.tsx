@@ -6,12 +6,13 @@ import LeagueHeader from "../../../components/LeagueHeader";
 import LeagueTabs from "../../../components/LeagueTabs";
 import RostersPanel from "../../../components/RostersPanel";
 import SettingsPanel from "../../../components/SettingsPanel";
+import PlayerDialog from "../../../components/PlayerDialog";
 import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
-import type { Dashboard, LeagueSettings, Lineups, PlayersData } from "../../../lib/api";
+import type { Dashboard, LeagueSettings, Lineups, PlayerDetail, PlayersData } from "../../../lib/api";
 import { resolveApiUrl } from "../../../lib/apiUrl";
-import { parseTab } from "../../../lib/league";
+import { leaguePath, parseTab } from "../../../lib/league";
 import { USER_COOKIE, findMyRosterId, teamCookie } from "../../../lib/myTeam";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +33,10 @@ export default async function LeaguePage({
   searchParams,
 }: {
   params: Promise<{ leagueId: string }>;
-  searchParams: Promise<{ tab?: string; week?: string }>;
+  searchParams: Promise<{ tab?: string; week?: string; player?: string }>;
 }) {
   const { leagueId } = await params;
-  const { tab: tabParam, week } = await searchParams;
+  const { tab: tabParam, week, player } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
   const weekNumber = Number(week);
@@ -44,7 +45,7 @@ export default async function LeaguePage({
     Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18 ? `?week=${weekNumber}` : "";
 
   // the header needs the dashboard on every tab; lineups are only fetched for their own tab
-  const [dashboard, lineups, leagueSettings, players] = await Promise.all([
+  const [dashboard, lineups, leagueSettings, players, playerDetail] = await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
     tab === "lineups"
       ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
@@ -55,7 +56,18 @@ export default async function LeaguePage({
     tab === "players"
       ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
       : Promise.resolve(null),
+    // an unknown or malformed ?player= simply opens nothing
+    player && /^[A-Za-z0-9]{1,12}$/.test(player)
+      ? getJson<PlayerDetail>(`/api/leagues/${leagueId}/players/${player}`).catch(() => null)
+      : Promise.resolve(null),
   ]);
+
+  // closing the pop-up returns to this same page without ?player
+  const closeParams = new URLSearchParams();
+  if (tabParam) closeParams.set("tab", tabParam);
+  if (weekQuery) closeParams.set("week", String(weekNumber));
+  const closeQuery = closeParams.toString();
+  const closeHref = `${leaguePath(leagueId)}${closeQuery ? `?${closeQuery}` : ""}`;
 
   const jar = await cookies();
   const myRosterId = findMyRosterId(dashboard.standings, {
@@ -87,6 +99,7 @@ export default async function LeaguePage({
       )}
       {tab === "players" && players && <PlayersTable data={players} myRosterId={myRosterId} />}
       {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
+      {playerDetail && <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />}
       <p className="back">
         <Link href="/">Connect another league</Link>
       </p>

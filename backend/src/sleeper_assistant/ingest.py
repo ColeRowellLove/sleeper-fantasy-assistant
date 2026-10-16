@@ -155,6 +155,23 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
     return row
 
 
+def _bio(p: SleeperPlayer) -> dict[str, Any] | None:
+    """The pop-up's bio fields that Sleeper actually has for this player."""
+    bio = {
+        "age": p.age,
+        "birth_date": p.birth_date,
+        "height": p.height,
+        "weight": p.weight,
+        "college": p.college,
+        "years_exp": p.years_exp,
+        "number": p.number,
+        "depth_chart_position": p.depth_chart_position,
+        "depth_chart_order": p.depth_chart_order,
+    }
+    present = {k: v for k, v in bio.items() if v not in (None, "")}
+    return present or None
+
+
 def _player_row(p: SleeperPlayer) -> PlayerRow:
     external = {
         "gsis": p.gsis_id,
@@ -174,6 +191,7 @@ def _player_row(p: SleeperPlayer) -> PlayerRow:
         injury_status=p.injury_status,
         injury_body_part=p.injury_body_part,
         external_ids={k: v for k, v in external.items() if v is not None},
+        bio=_bio(p),
     )
 
 
@@ -196,6 +214,7 @@ def sync_players(session: Session, client: SleeperClient) -> int:
         row.injury_status = new.injury_status
         row.injury_body_part = new.injury_body_part
         row.external_ids = new.external_ids
+        row.bio = new.bio
     session.commit()
     return len(players)
 

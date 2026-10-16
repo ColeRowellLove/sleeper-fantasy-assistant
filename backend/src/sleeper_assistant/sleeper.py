@@ -115,6 +115,16 @@ class SleeperPlayer(BaseModel):
     rotowire_id: int | str | None = None
     fantasy_data_id: int | str | None = None
     stats_id: int | str | None = None
+    # bio fields for the player pop-up (Sleeper sends some of these as numbers, some as text)
+    age: int | str | None = None
+    birth_date: str | None = None
+    height: int | str | None = None
+    weight: int | str | None = None
+    college: str | None = None
+    years_exp: int | str | None = None
+    number: int | str | None = None
+    depth_chart_position: str | None = None
+    depth_chart_order: int | str | None = None
 
 
 class SleeperClient:

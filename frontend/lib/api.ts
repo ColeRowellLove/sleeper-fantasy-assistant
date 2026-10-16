@@ -58,6 +58,30 @@ export interface PlayersData {
   players: PlayerListing[];
 }
 
+export interface PlayerDetail {
+  player_id: string;
+  name: string;
+  position: string | null;
+  team: string | null;
+  injury?: InjuryInfo | null;
+  game?: GameInfo | null;
+  bio?: Record<string, unknown> | null;
+  owner_roster_id?: number | null;
+  owner_team?: string | null;
+  adds?: number | null;
+  drops?: number | null;
+  season: { points: number; games: number; average?: number | null; rank?: number | null };
+  projected?: { week: number; points: number; stats: Record<string, number> } | null;
+  weeks: {
+    week: number;
+    opponent?: string | null;
+    home?: boolean | null;
+    points: number;
+    stats: Record<string, number>;
+  }[];
+  past_seasons: { season: string; games: number; points: number; rank?: number | null }[];
+}
+
 export class ApiError extends Error {}
 
 const USERNAME_RE = /^[A-Za-z0-9_.]{1,40}$/;

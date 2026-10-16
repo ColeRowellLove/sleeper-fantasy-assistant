@@ -44,3 +44,19 @@ describe("stylesheets", () => {
     expect([...STYLE_FILES].sort()).toEqual(onDisk);
   });
 });
+
+describe("player pop-up", () => {
+  // table.players sets a 46rem minimum for the Players tab; inside the dialog it must not apply or
+  // the dialog's content grows wider than the dialog and the values fall off the right edge
+  it("keeps its tables from inheriting the Players tab's minimum width", () => {
+    const players = css.indexOf("\ntable.players {");
+    const override = css.indexOf("\ntable.players.pd-table {");
+    expect(players).toBeGreaterThan(-1);
+    expect(override).toBeGreaterThan(players);
+    expect(rule("table.players.pd-table")).toContain("min-width: 0");
+  });
+
+  it("lets the dialog body shrink to its container", () => {
+    expect(rule(".player-dialog-body")).toContain("minmax(0, 1fr)");
+  });
+});

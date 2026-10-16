@@ -5,12 +5,13 @@ Both are stored as pulled and scored per league when shown, because every league
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Iterable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import PlayerTrendRow, PlayerWeekStatsRow, utcnow
+from sleeper_assistant.db import PlayerSeasonStatsRow, PlayerTrendRow, PlayerWeekStatsRow, utcnow
 from sleeper_assistant.sleeper import SleeperClient
 
 
@@ -84,3 +85,38 @@ def sync_week_stats(
             written += 1
         session.commit()
     return written
+
+
+HISTORY_WEEKS = 18
+
+
+def stored_history_seasons(session: Session) -> set[str]:
+    return set(session.scalars(select(PlayerSeasonStatsRow.season).distinct()))
+
+
+def sync_season_history(session: Session, client: SleeperClient, season: str) -> int:
+    """Load a finished season's stat totals per player. Returns how many players were stored.
+
+    The 18 weeks are summed as they arrive and not kept, because the pop-up only needs season
+    totals for past years. A season that is already stored is left alone.
+    """
+    if season in stored_history_seasons(session):
+        return 0
+    totals: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    games: dict[str, int] = defaultdict(int)
+    for week in range(1, HISTORY_WEEKS + 1):
+        for line in client.get_stats(season, week):
+            for stat, value in line.stats.items():
+                totals[line.player_id][stat] += value
+            games[line.player_id] += 1 if line.stats.get("gp", 1.0) > 0 else 0
+    for player_id, stats in totals.items():
+        session.add(
+            PlayerSeasonStatsRow(
+                season=season,
+                player_id=player_id,
+                games=games[player_id],
+                stats={k: round(v, 4) for k, v in stats.items()},
+            )
+        )
+    session.commit()
+    return len(totals)

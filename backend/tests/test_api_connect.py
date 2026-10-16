@@ -318,3 +318,15 @@ def test_players_endpoint_lists_who_is_rostered_in_this_league(client: TestClien
     assert any(
         p["owner_roster_id"] == 1 for p in body["players"]
     )  # the roster's players are listed
+
+
+def test_player_detail_endpoint(client: TestClient) -> None:
+    assert client.get("/api/leagues/1/players/4034").status_code == 404  # league not connected
+    assert client.post("/api/leagues/1/connect").status_code == 200
+    body = client.get("/api/leagues/1/players/4034").json()
+    assert body["player_id"] == "4034"
+    assert body["owner_roster_id"] == 1  # on the first roster
+    assert client.get("/api/leagues/1/players/doesnotexist").status_code == 404
+    assert (
+        client.get("/api/leagues/1/players/bad id!").status_code == 422
+    )  # rejected, not looked up

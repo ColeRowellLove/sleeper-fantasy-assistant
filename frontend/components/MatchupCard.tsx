@@ -10,6 +10,7 @@ import {
 import GameBadge from "./GameBadge";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
+import PlayerLink from "./PlayerLink";
 import PositionChip from "./PositionChip";
 
 type Matchup = Lineups["matchups"][number];
@@ -115,7 +116,13 @@ function Cell({
           />
         ) : null}
         <span className="cell-text">
-          <span className="cell-name">{player.name}</span>
+          <span className="cell-name">
+            {player.player_id ? (
+              <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
+            ) : (
+              player.name
+            )}
+          </span>
           <span className="cell-meta">
             <PositionChip position={player.position} />
             {/* the designation is the current one, so it is not shown against weeks already played */}

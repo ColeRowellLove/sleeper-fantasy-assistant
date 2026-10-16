@@ -237,8 +237,10 @@ def test_run_cycle_enqueues_and_drains(engine: Engine) -> None:
         },
     )
 
-    assert result.enqueued == 7  # league, players, schedule, kickoffs, projections, trending, stats
-    assert result.ran == 7
+    assert (
+        result.enqueued == 8
+    )  # league, players, schedule, kickoffs, projections, trending, stats, history
+    assert result.ran == 8
     assert sorted(ran) == ["L1", "players"]
     assert (
         run_cycle(

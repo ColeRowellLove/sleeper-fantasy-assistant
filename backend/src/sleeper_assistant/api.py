@@ -30,6 +30,7 @@ from sleeper_assistant.db import (
     utcnow,
 )
 from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
+from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
 from sleeper_assistant.players_view import PlayersResponse, build_players
 from sleeper_assistant.rules import LeagueRules, derive_rules
 from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFoundError
@@ -288,6 +289,24 @@ def get_league_players(
         raise HTTPException(status_code=404, detail="League not connected yet")
     response.headers["Cache-Control"] = READ_CACHE
     return build_players(session, row)
+
+
+PlayerId = Annotated[str, Path(pattern=r"^[A-Za-z0-9]{1,12}$")]
+
+
+@app.get("/api/leagues/{league_id}/players/{player_id}")
+def get_player_detail(
+    league_id: LeagueId, player_id: PlayerId, session: SessionDep, response: Response
+) -> PlayerDetail:
+    """One player's bio, season, weekly points, projection and past seasons in this league."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    detail = build_player_detail(session, row, player_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+    response.headers["Cache-Control"] = READ_CACHE
+    return detail
 
 
 @app.get("/api/leagues/{league_id}/lineups")
