@@ -88,10 +88,18 @@ describe("Players list rows", () => {
 
 describe("roster row columns", () => {
   // each trailing column has a fixed width so numbers, slot and position line up from row to row
-  it("fixes the width of the points, projection, slot and position columns", () => {
-    for (const selector of [".player-proj", ".slot", ".player-chip"]) {
+  it("fixes the width of the points, projection and slot columns", () => {
+    for (const selector of [".player-proj", ".slot"]) {
       expect(rule(selector)).toMatch(/flex: 0 0 [\d.]+rem/);
     }
+  });
+
+  it("keeps the position out of the columns, in the name's line, so a phone leaves the name room", () => {
+    expect(css).not.toContain(".player-chip");
+    // on a phone the three number columns together stay under 8rem (2.4 + 2.4 + 2.4)
+    const phone = css.slice(css.indexOf("@media (max-width: 40rem) {\n  .player {"));
+    expect(phone).toContain(".player-proj {\n    flex-basis: 2.4rem;");
+    expect(phone).toContain(".slot {\n    flex-basis: 2.4rem;");
   });
 });
 

@@ -125,6 +125,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
           <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
         </span>
         <span className="player-sub">
+          <PositionChip position={player.position} />
           {player.team ? <TeamLink team={player.team}>{player.team}</TeamLink> : "No team"}
           <InjuryBadge injury={player.injury} />
         </span>
@@ -178,9 +179,6 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
       ) : (
         <span className="slot" aria-hidden="true" />
       )}
-      <span className="player-chip">
-        <PositionChip position={player.position} />
-      </span>
     </li>
   );
 }
