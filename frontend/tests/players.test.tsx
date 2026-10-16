@@ -14,7 +14,12 @@ import {
 } from "../lib/playersFilter";
 import { expectNoA11yViolations } from "./a11y";
 
-const player = (id: string, name: string, position: string, extra: Partial<PlayerListing> = {}) => ({
+const player = (
+  id: string,
+  name: string,
+  position: string,
+  extra: Partial<PlayerListing> = {},
+) => ({
   player_id: id,
   name,
   position,
@@ -30,11 +35,38 @@ const player = (id: string, name: string, position: string, extra: Partial<Playe
 });
 
 const players: PlayerListing[] = [
-  player("1", "Puka Nacua", "WR", { owner_roster_id: 1, owner_team: "Cole", total_points: 90, rank: 1, projected: 20 }),
-  player("2", "Free Receiver", "WR", { adds: 900, total_points: 60, rank: 2, projected: 12.5 }),
-  player("3", "Patrick Mahomes", "QB", { owner_roster_id: 2, owner_team: "Dad Bods", total_points: 120, rank: 1 }),
-  player("4", "José Ramírez", "RB", { adds: 50, drops: 700, total_points: 30, rank: 1, projected: 8 }),
-  player("5", "D'Andre Swift", "RB", { owner_roster_id: 1, owner_team: "Cole", total_points: 80, rank: 2 }),
+  player("1", "Puka Nacua", "WR", {
+    owner_roster_id: 1,
+    owner_team: "Cole",
+    total_points: 90,
+    rank: 1,
+    projected: 20,
+  }),
+  player("2", "Free Receiver", "WR", {
+    adds: 900,
+    total_points: 60,
+    rank: 2,
+    projected: 12.5,
+  }),
+  player("3", "Patrick Mahomes", "QB", {
+    owner_roster_id: 2,
+    owner_team: "Dad Bods",
+    total_points: 120,
+    rank: 1,
+  }),
+  player("4", "José Ramírez", "RB", {
+    adds: 50,
+    drops: 700,
+    total_points: 30,
+    rank: 1,
+    projected: 8,
+  }),
+  player("5", "D'Andre Swift", "RB", {
+    owner_roster_id: 1,
+    owner_team: "Cole",
+    total_points: 80,
+    rank: 2,
+  }),
   player("6", "Nobody Kicker", "K", { total_points: 0 }),
 ];
 
@@ -43,22 +75,32 @@ const data: PlayersData = { league_id: "1", week: 6, players };
 
 describe("filterPlayers", () => {
   it("filters by position, with FLEX meaning RB, WR and TE", () => {
-    expect(names(filterPlayers(players, { ...DEFAULT_FILTERS, position: "QB" }))).toEqual([
-      "Patrick Mahomes",
-    ]);
-    expect(filterPlayers(players, { ...DEFAULT_FILTERS, position: "FLEX" })).toHaveLength(4);
+    expect(
+      names(filterPlayers(players, { ...DEFAULT_FILTERS, position: "QB" })),
+    ).toEqual(["Patrick Mahomes"]);
+    expect(
+      filterPlayers(players, { ...DEFAULT_FILTERS, position: "FLEX" }),
+    ).toHaveLength(4);
     expect(filterPlayers(players, DEFAULT_FILTERS)).toHaveLength(6);
   });
 
   it("filters by availability in this league", () => {
     expect(
-      names(filterPlayers(players, { ...DEFAULT_FILTERS, availability: "available" })),
+      names(
+        filterPlayers(players, {
+          ...DEFAULT_FILTERS,
+          availability: "available",
+        }),
+      ),
     ).toEqual(["Free Receiver", "José Ramírez", "Nobody Kicker"]);
-    expect(filterPlayers(players, { ...DEFAULT_FILTERS, availability: "rostered" })).toHaveLength(3);
+    expect(
+      filterPlayers(players, { ...DEFAULT_FILTERS, availability: "rostered" }),
+    ).toHaveLength(3);
   });
 
   it("searches names and teams ignoring case, accents and punctuation", () => {
-    const find = (search: string) => names(filterPlayers(players, { ...DEFAULT_FILTERS, search }));
+    const find = (search: string) =>
+      names(filterPlayers(players, { ...DEFAULT_FILTERS, search }));
     expect(find("jose ramirez")).toEqual(["José Ramírez"]);
     expect(find("dandre")).toEqual(["D'Andre Swift"]);
     expect(find("  PUKA ")).toEqual(["Puka Nacua"]);
@@ -67,14 +109,20 @@ describe("filterPlayers", () => {
   });
 
   it("combines the filters", () => {
-    const got = filterPlayers(players, { position: "WR", availability: "available", search: "" });
+    const got = filterPlayers(players, {
+      position: "WR",
+      availability: "available",
+      search: "",
+    });
     expect(names(got)).toEqual(["Free Receiver"]);
   });
 });
 
 describe("sortPlayers", () => {
-  const sorted = (key: Parameters<typeof nextSort>[1], direction: "asc" | "desc") =>
-    names(sortPlayers(players, { key, direction }));
+  const sorted = (
+    key: Parameters<typeof nextSort>[1],
+    direction: "asc" | "desc",
+  ) => names(sortPlayers(players, { key, direction }));
 
   it("sorts by adds and drops, with players off Sleeper's list always last", () => {
     expect(sorted("adds", "desc")).toEqual([
@@ -85,7 +133,10 @@ describe("sortPlayers", () => {
       "D'Andre Swift",
       "Nobody Kicker",
     ]);
-    expect(sorted("adds", "asc").slice(0, 2)).toEqual(["José Ramírez", "Free Receiver"]);
+    expect(sorted("adds", "asc").slice(0, 2)).toEqual([
+      "José Ramírez",
+      "Free Receiver",
+    ]);
     expect(sorted("adds", "asc").slice(2)).toEqual([
       "Puka Nacua",
       "Patrick Mahomes",
@@ -147,10 +198,18 @@ describe("sort direction and description", () => {
   });
 
   it("describes the sort in words", () => {
-    expect(describeSort({ key: "rank", direction: "asc" })).toBe("Sorted by Position rank, best first");
-    expect(describeSort({ key: "status", direction: "asc" })).toBe("Sorted by Status, available first");
-    expect(describeSort({ key: "adds", direction: "desc" })).toBe("Sorted by Adds, high to low");
-    expect(describeSort({ key: "name", direction: "desc" })).toBe("Sorted by Player, Z to A");
+    expect(describeSort({ key: "rank", direction: "asc" })).toBe(
+      "Sorted by Position rank, best first",
+    );
+    expect(describeSort({ key: "status", direction: "asc" })).toBe(
+      "Sorted by Status, available first",
+    );
+    expect(describeSort({ key: "adds", direction: "desc" })).toBe(
+      "Sorted by Adds, high to low",
+    );
+    expect(describeSort({ key: "name", direction: "desc" })).toBe(
+      "Sorted by Player, Z to A",
+    );
   });
 });
 
@@ -186,19 +245,32 @@ describe("PlayersTable", () => {
     await user.click(screen.getByRole("button", { name: "WR" }));
     await user.click(screen.getByRole("button", { name: "Available" }));
     expect(rowNames()).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "WR" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "QB" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("status")).toHaveTextContent("Showing 1 of 1 players");
+    expect(screen.getByRole("button", { name: "WR" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "QB" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Showing 1 of 1 players",
+    );
   });
 
   it("searches as you type and explains an empty result", async () => {
     const user = userEvent.setup();
     render(<PlayersTable data={data} myRosterId={null} />);
-    await user.type(screen.getByRole("searchbox", { name: /search players/i }), "ramirez");
+    await user.type(
+      screen.getByRole("searchbox", { name: /search players/i }),
+      "ramirez",
+    );
     expect(rowNames()).toHaveLength(1);
     await user.clear(screen.getByRole("searchbox"));
     await user.type(screen.getByRole("searchbox"), "nobody-here");
-    expect(screen.getByText("No players match these filters.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No players match these filters."),
+    ).toBeInTheDocument();
   });
 
   it("sorts from the column buttons and announces it", async () => {
@@ -210,7 +282,9 @@ describe("PlayersTable", () => {
       "aria-sort",
       "descending",
     );
-    expect(screen.getByRole("status")).toHaveTextContent("Sorted by Adds, high to low");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Sorted by Adds, high to low",
+    );
     await user.click(screen.getByRole("button", { name: /^Adds/ }));
     expect(rowNames()[0]).toContain("José Ramírez");
   });
@@ -218,15 +292,21 @@ describe("PlayersTable", () => {
   it("pages a long list and returns to the top when a filter changes", async () => {
     const user = userEvent.setup();
     const many = Array.from({ length: 120 }, (_, i) =>
-      player(`p${i}`, `Player ${String(i).padStart(3, "0")}`, "WR", { total_points: 200 - i }),
+      player(`p${i}`, `Player ${String(i).padStart(3, "0")}`, "WR", {
+        total_points: 200 - i,
+      }),
     );
-    render(<PlayersTable data={{ ...data, players: many }} myRosterId={null} />);
+    render(
+      <PlayersTable data={{ ...data, players: many }} myRosterId={null} />,
+    );
     expect(rowNames()).toHaveLength(50);
     await user.click(screen.getByRole("button", { name: "Show more players" }));
     expect(rowNames()).toHaveLength(100);
     await user.click(screen.getByRole("button", { name: "Show more players" }));
     expect(rowNames()).toHaveLength(120);
-    expect(screen.queryByRole("button", { name: "Show more players" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Show more players" }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "WR" }));
     expect(rowNames()).toHaveLength(50); // a new filter starts from the top again
   });
@@ -239,5 +319,90 @@ describe("PlayersTable", () => {
 describe("players tab", () => {
   it("is a known tab", () => {
     expect(parseTab("players")).toBe("players");
+  });
+});
+
+describe("ESPN ownership columns", () => {
+  const withOwnership: PlayerListing[] = [
+    player("1", "Rarely Started", "RB", {
+      owned_pct: 80.25,
+      started_pct: 12.3,
+    }),
+    player("2", "Always Started", "QB", {
+      owned_pct: 99.9,
+      started_pct: 99.04,
+    }),
+    player("3", "No ESPN Match", "WR"),
+    player("4", "Barely Owned", "WR", { owned_pct: 0.4, started_pct: 0 }),
+  ];
+
+  it("sorts by owned and started with players ESPN has no number for always last", () => {
+    const sorted = (key: "owned" | "started", direction: "asc" | "desc") =>
+      names(sortPlayers(withOwnership, { key, direction }));
+    expect(sorted("owned", "desc")).toEqual([
+      "Always Started",
+      "Rarely Started",
+      "Barely Owned",
+      "No ESPN Match",
+    ]);
+    expect(sorted("owned", "asc")).toEqual([
+      "Barely Owned",
+      "Rarely Started",
+      "Always Started",
+      "No ESPN Match",
+    ]);
+    expect(sorted("started", "desc")[0]).toBe("Always Started");
+    expect(sorted("started", "asc").at(-1)).toBe("No ESPN Match");
+    expect(sorted("started", "asc")[0]).toBe("Barely Owned"); // a real 0 percent is data, not missing
+  });
+
+  it("starts both columns high to low and describes them as ESPN's numbers", () => {
+    const base = { key: "total", direction: "desc" } as const;
+    expect(nextSort(base, "owned")).toEqual({
+      key: "owned",
+      direction: "desc",
+    });
+    expect(nextSort(base, "started")).toEqual({
+      key: "started",
+      direction: "desc",
+    });
+    expect(describeSort({ key: "owned", direction: "desc" })).toBe(
+      "Sorted by Owned % (ESPN), high to low",
+    );
+  });
+
+  it("shows percentages, a dash when ESPN has none, and says the numbers are ESPN's", async () => {
+    const user = userEvent.setup();
+    render(
+      <PlayersTable
+        data={{ ...data, players: withOwnership }}
+        myRosterId={null}
+      />,
+    );
+    const rarely = screen.getByRole("row", { name: /Rarely Started/ });
+    expect(within(rarely).getByText("80.3%")).toBeInTheDocument();
+    expect(within(rarely).getByText("12.3%")).toBeInTheDocument();
+    const missing = screen.getByRole("row", { name: /No ESPN Match/ });
+    expect(within(missing).queryByText(/%/)).not.toBeInTheDocument();
+    expect(screen.getByText(/ESPN-wide/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Start %/ }));
+    expect(
+      screen.getByRole("columnheader", { name: /Start %/ }),
+    ).toHaveAttribute("aria-sort", "descending");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Sorted by Start % (ESPN), high to low",
+    );
+    expect(screen.getAllByRole("row").slice(1)[0].textContent).toContain(
+      "Always Started",
+    );
+  });
+
+  it("has no accessibility violations", async () => {
+    await expectNoA11yViolations(
+      <PlayersTable
+        data={{ ...data, players: withOwnership }}
+        myRosterId={null}
+      />,
+    );
   });
 });

@@ -7,7 +7,16 @@ export type PositionFilter = "ALL" | (typeof POSITION_FILTERS)[number] | "FLEX";
 
 export type Availability = "all" | "available" | "rostered";
 
-export type SortKey = "name" | "status" | "adds" | "drops" | "rank" | "total" | "projected";
+export type SortKey =
+  | "name"
+  | "status"
+  | "adds"
+  | "drops"
+  | "owned"
+  | "started"
+  | "rank"
+  | "total"
+  | "projected";
 export type SortDirection = "asc" | "desc";
 
 export interface PlayerSort {
@@ -73,6 +82,10 @@ function value(p: PlayerListing, key: SortKey): number | string | null {
       return p.adds ?? null;
     case "drops":
       return p.drops ?? null;
+    case "owned":
+      return p.owned_pct ?? null;
+    case "started":
+      return p.started_pct ?? null;
     case "rank":
       return p.rank ?? null;
     case "total":
@@ -108,6 +121,8 @@ export function describeSort(sort: PlayerSort): string {
     status: "Status",
     adds: "Adds",
     drops: "Drops",
+    owned: "Owned % (ESPN)",
+    started: "Start % (ESPN)",
     rank: "Position rank",
     total: "Total points",
     projected: "Projected points",

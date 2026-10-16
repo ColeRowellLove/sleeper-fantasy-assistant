@@ -30,6 +30,8 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "status", label: "Status" },
   { key: "adds", label: "Adds", numeric: true },
   { key: "drops", label: "Drops", numeric: true },
+  { key: "owned", label: "Owned %", numeric: true },
+  { key: "started", label: "Start %", numeric: true },
   { key: "rank", label: "Rank", numeric: true },
   { key: "total", label: "Points", numeric: true },
   { key: "projected", label: "Proj", numeric: true },
@@ -42,6 +44,8 @@ const AVAILABILITY: { value: Availability; label: string }[] = [
 ];
 
 const count = (n: number | null) => (n === null ? "–" : n.toLocaleString("en-US"));
+const percent = (n: number | null | undefined) =>
+  n === null || n === undefined ? "–" : `${n.toFixed(1)}%`;
 
 /** Every relevant NFL player through this league: filter, search and sort by the numbers that matter. */
 export default function PlayersTable({
@@ -180,6 +184,8 @@ export default function PlayersTable({
                     </td>
                     <td className="num num-col">{count(p.adds)}</td>
                     <td className="num num-col">{count(p.drops)}</td>
+                    <td className="num num-col">{percent(p.owned_pct)}</td>
+                    <td className="num num-col">{percent(p.started_pct)}</td>
                     <td className="num num-col">{p.rank === null ? "–" : `${p.position}${p.rank}`}</td>
                     <td className="num num-col">{p.total_points.toFixed(1)}</td>
                     <td className="num num-col">
@@ -199,8 +205,9 @@ export default function PlayersTable({
       </p>
       <p className="note">
         Showing {visible.length} of {rows.length} players. Adds and drops are Sleeper&apos;s top 100
-        over the last 24 hours; a dash means not on that list. Points are this season under this
-        league&apos;s scoring.
+        over the last 24 hours; a dash means not on that list. Owned % and Start % are ESPN-wide
+        (the share of ESPN leagues that roster and start the player), not Sleeper&apos;s. Points are
+        this season under this league&apos;s scoring.
       </p>
       {visible.length < rows.length && (
         <button type="button" className="btn btn-quiet" onClick={() => setShown((n) => n + PAGE)}>

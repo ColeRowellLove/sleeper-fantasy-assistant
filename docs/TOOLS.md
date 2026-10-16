@@ -56,6 +56,20 @@ check each provider's pricing page before relying on a number.
 - **Why:** it is public, covers what the app needs, and never requires users' credentials.
 - **Trade-offs:** it has no projections or live game state; those come from other sources later (issues #109, #131).
 
+### ESPN fantasy API (ownership and start percentages)
+
+- **What it is:** ESPN's public fantasy football API. It is undocumented, needs no key, and is the one free
+  source we found for "what share of leagues roster and start this player".
+- **What it does here:** every few hours the worker pulls the top 900 players' `percentOwned` and
+  `percentStarted` (about 4 MB compressed) and the Players tab shows them as ESPN-wide numbers, never as
+  Sleeper's. ESPN players are matched to Sleeper players by ESPN id where Sleeper has one, otherwise by
+  name, team and position; a name that matches two players is left out rather than guessed (97% of players
+  with points, and every rostered or high-scoring one, matched on real data).
+- **Why:** Sleeper publishes no such numbers, and this is free.
+- **Trade-offs:** it can change without notice, so the parser is tested against a recorded shape and a
+  failed or empty pull leaves the previous numbers in place. Personal, non-commercial use only; revisit if
+  the project ever charges or runs ads.
+
 ### nflverse (kickoff times)
 
 - **What it is:** an open-source project that publishes NFL data, including the full schedule, under CC BY 4.0.
