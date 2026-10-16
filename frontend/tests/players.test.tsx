@@ -75,12 +75,10 @@ const data: PlayersData = { league_id: "1", week: 6, players };
 
 describe("filterPlayers", () => {
   it("filters by position, with FLEX meaning RB, WR and TE", () => {
-    expect(
-      names(filterPlayers(players, { ...DEFAULT_FILTERS, position: "QB" })),
-    ).toEqual(["Patrick Mahomes"]);
-    expect(
-      filterPlayers(players, { ...DEFAULT_FILTERS, position: "FLEX" }),
-    ).toHaveLength(4);
+    expect(names(filterPlayers(players, { ...DEFAULT_FILTERS, position: "QB" }))).toEqual([
+      "Patrick Mahomes",
+    ]);
+    expect(filterPlayers(players, { ...DEFAULT_FILTERS, position: "FLEX" })).toHaveLength(4);
     expect(filterPlayers(players, DEFAULT_FILTERS)).toHaveLength(6);
   });
 
@@ -93,14 +91,13 @@ describe("filterPlayers", () => {
         }),
       ),
     ).toEqual(["Free Receiver", "José Ramírez", "Nobody Kicker"]);
-    expect(
-      filterPlayers(players, { ...DEFAULT_FILTERS, availability: "rostered" }),
-    ).toHaveLength(3);
+    expect(filterPlayers(players, { ...DEFAULT_FILTERS, availability: "rostered" })).toHaveLength(
+      3,
+    );
   });
 
   it("searches names and teams ignoring case, accents and punctuation", () => {
-    const find = (search: string) =>
-      names(filterPlayers(players, { ...DEFAULT_FILTERS, search }));
+    const find = (search: string) => names(filterPlayers(players, { ...DEFAULT_FILTERS, search }));
     expect(find("jose ramirez")).toEqual(["José Ramírez"]);
     expect(find("dandre")).toEqual(["D'Andre Swift"]);
     expect(find("  PUKA ")).toEqual(["Puka Nacua"]);
@@ -119,10 +116,8 @@ describe("filterPlayers", () => {
 });
 
 describe("sortPlayers", () => {
-  const sorted = (
-    key: Parameters<typeof nextSort>[1],
-    direction: "asc" | "desc",
-  ) => names(sortPlayers(players, { key, direction }));
+  const sorted = (key: Parameters<typeof nextSort>[1], direction: "asc" | "desc") =>
+    names(sortPlayers(players, { key, direction }));
 
   it("sorts by adds and drops, with players off Sleeper's list always last", () => {
     expect(sorted("adds", "desc")).toEqual([
@@ -133,10 +128,7 @@ describe("sortPlayers", () => {
       "D'Andre Swift",
       "Nobody Kicker",
     ]);
-    expect(sorted("adds", "asc").slice(0, 2)).toEqual([
-      "José Ramírez",
-      "Free Receiver",
-    ]);
+    expect(sorted("adds", "asc").slice(0, 2)).toEqual(["José Ramírez", "Free Receiver"]);
     expect(sorted("adds", "asc").slice(2)).toEqual([
       "Puka Nacua",
       "Patrick Mahomes",
@@ -204,12 +196,8 @@ describe("sort direction and description", () => {
     expect(describeSort({ key: "status", direction: "asc" })).toBe(
       "Sorted by Status, available first",
     );
-    expect(describeSort({ key: "adds", direction: "desc" })).toBe(
-      "Sorted by Adds, high to low",
-    );
-    expect(describeSort({ key: "name", direction: "desc" })).toBe(
-      "Sorted by Player, Z to A",
-    );
+    expect(describeSort({ key: "adds", direction: "desc" })).toBe("Sorted by Adds, high to low");
+    expect(describeSort({ key: "name", direction: "desc" })).toBe("Sorted by Player, Z to A");
   });
 });
 
@@ -245,32 +233,19 @@ describe("PlayersTable", () => {
     await user.click(screen.getByRole("button", { name: "WR" }));
     await user.click(screen.getByRole("button", { name: "Available" }));
     expect(rowNames()).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "WR" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByRole("button", { name: "QB" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Showing 1 of 1 players",
-    );
+    expect(screen.getByRole("button", { name: "WR" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "QB" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("status")).toHaveTextContent("Showing 1 of 1 players");
   });
 
   it("searches as you type and explains an empty result", async () => {
     const user = userEvent.setup();
     render(<PlayersTable data={data} myRosterId={null} />);
-    await user.type(
-      screen.getByRole("searchbox", { name: /search players/i }),
-      "ramirez",
-    );
+    await user.type(screen.getByRole("searchbox", { name: /search players/i }), "ramirez");
     expect(rowNames()).toHaveLength(1);
     await user.clear(screen.getByRole("searchbox"));
     await user.type(screen.getByRole("searchbox"), "nobody-here");
-    expect(
-      screen.getByText("No players match these filters."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No players match these filters.")).toBeInTheDocument();
   });
 
   it("sorts from the column buttons and announces it", async () => {
@@ -282,9 +257,7 @@ describe("PlayersTable", () => {
       "aria-sort",
       "descending",
     );
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Sorted by Adds, high to low",
-    );
+    expect(screen.getByRole("status")).toHaveTextContent("Sorted by Adds, high to low");
     await user.click(screen.getByRole("button", { name: /^Adds/ }));
     expect(rowNames()[0]).toContain("José Ramírez");
   });
@@ -296,17 +269,13 @@ describe("PlayersTable", () => {
         total_points: 200 - i,
       }),
     );
-    render(
-      <PlayersTable data={{ ...data, players: many }} myRosterId={null} />,
-    );
+    render(<PlayersTable data={{ ...data, players: many }} myRosterId={null} />);
     expect(rowNames()).toHaveLength(50);
     await user.click(screen.getByRole("button", { name: "Show more players" }));
     expect(rowNames()).toHaveLength(100);
     await user.click(screen.getByRole("button", { name: "Show more players" }));
     expect(rowNames()).toHaveLength(120);
-    expect(
-      screen.queryByRole("button", { name: "Show more players" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show more players" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "WR" }));
     expect(rowNames()).toHaveLength(50); // a new filter starts from the top again
   });
@@ -373,12 +342,7 @@ describe("ESPN ownership columns", () => {
 
   it("shows percentages, a dash when ESPN has none, and says the numbers are ESPN's", async () => {
     const user = userEvent.setup();
-    render(
-      <PlayersTable
-        data={{ ...data, players: withOwnership }}
-        myRosterId={null}
-      />,
-    );
+    render(<PlayersTable data={{ ...data, players: withOwnership }} myRosterId={null} />);
     const rarely = screen.getByRole("row", { name: /Rarely Started/ });
     expect(within(rarely).getByText("80.3%")).toBeInTheDocument();
     expect(within(rarely).getByText("12.3%")).toBeInTheDocument();
@@ -386,23 +350,17 @@ describe("ESPN ownership columns", () => {
     expect(within(missing).queryByText(/%/)).not.toBeInTheDocument();
     expect(screen.getByText(/ESPN-wide/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Start %/ }));
-    expect(
-      screen.getByRole("columnheader", { name: /Start %/ }),
-    ).toHaveAttribute("aria-sort", "descending");
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Sorted by Start % (ESPN), high to low",
+    expect(screen.getByRole("columnheader", { name: /Start %/ })).toHaveAttribute(
+      "aria-sort",
+      "descending",
     );
-    expect(screen.getAllByRole("row").slice(1)[0].textContent).toContain(
-      "Always Started",
-    );
+    expect(screen.getByRole("status")).toHaveTextContent("Sorted by Start % (ESPN), high to low");
+    expect(screen.getAllByRole("row").slice(1)[0].textContent).toContain("Always Started");
   });
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(
-      <PlayersTable
-        data={{ ...data, players: withOwnership }}
-        myRosterId={null}
-      />,
+      <PlayersTable data={{ ...data, players: withOwnership }} myRosterId={null} />,
     );
   });
 });

@@ -37,7 +37,11 @@ const GROUPS: { title: string; specs: Spec[] }[] = [
       { key: "start_week", label: "First week of the season", format: "week" },
       { key: "leg", label: "Current week", format: "week" },
       { key: "last_scored_leg", label: "Last scored week", format: "week" },
-      { key: "league_average_match", label: "Also play the league average each week", format: "flag" },
+      {
+        key: "league_average_match",
+        label: "Also play the league average each week",
+        format: "flag",
+      },
     ],
   },
   {
@@ -104,11 +108,19 @@ const GROUPS: { title: string; specs: Spec[] }[] = [
     specs: [
       { key: "playoff_teams", label: "Playoff teams" },
       { key: "playoff_week_start", label: "Playoffs start", format: "week" },
-      { key: "playoff_type", label: "Bracket", format: { 0: "Single elimination", 1: "Two-week rounds" } },
+      {
+        key: "playoff_type",
+        label: "Bracket",
+        format: { 0: "Single elimination", 1: "Two-week rounds" },
+      },
       {
         key: "playoff_round_type",
         label: "Round length",
-        format: { 0: "One week per round", 1: "Two weeks per round", 2: "Two-week championship only" },
+        format: {
+          0: "One week per round",
+          1: "Two weeks per round",
+          2: "Two-week championship only",
+        },
       },
       { key: "playoff_seed_type", label: "Seeding", format: { 0: "By record", 1: "By points" } },
     ],

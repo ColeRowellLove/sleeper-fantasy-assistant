@@ -207,7 +207,9 @@ export default function PlayersTable({
                     <td className="num num-col">{count(p.drops)}</td>
                     <td className="num num-col">{percent(p.owned_pct)}</td>
                     <td className="num num-col">{percent(p.started_pct)}</td>
-                    <td className="num num-col">{p.rank === null ? "–" : `${p.position}${p.rank}`}</td>
+                    <td className="num num-col">
+                      {p.rank === null ? "–" : `${p.position}${p.rank}`}
+                    </td>
                     <td className="num num-col">{p.total_points.toFixed(1)}</td>
                     <td className="num num-col">
                       {p.projected === null ? "–" : p.projected.toFixed(1)}

@@ -50,7 +50,12 @@ export default function TeamDialog({
             Close
           </button>
         </div>
-        <TeamDepthChart data={data} myRosterId={myRosterId} headingId="team-dialog-title" landmark={false} />
+        <TeamDepthChart
+          data={data}
+          myRosterId={myRosterId}
+          headingId="team-dialog-title"
+          landmark={false}
+        />
       </div>
     </dialog>
   );

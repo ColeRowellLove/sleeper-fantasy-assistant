@@ -131,19 +131,17 @@ describe("player detail helpers", () => {
       { label: "Experience", value: "3 seasons" },
       { label: "Jersey", value: "#12" },
     ]);
-    expect(bioRows({ years_exp: 0 })).toEqual([
-      { label: "Experience", value: "Rookie" },
+    expect(bioRows({ years_exp: 0 })).toEqual([{ label: "Experience", value: "Rookie" }]);
+    expect(bioRows({ depth_chart_position: "RWR", depth_chart_order: 1 })).toEqual([
+      { label: "Depth chart", value: "RWR 1" },
     ]);
-    expect(
-      bioRows({ depth_chart_position: "RWR", depth_chart_order: 1 }),
-    ).toEqual([{ label: "Depth chart", value: "RWR 1" }]);
     expect(bioRows(null)).toEqual([]);
   });
 
   it("writes every counted stat in words, including a receiver's rushing yards", () => {
-    expect(
-      describeStats({ rush_yd: 25, rec_td: 1.5, rec_yd: 90, rec: 7 }, "WR"),
-    ).toBe("Catches 7, Rec yds 90, Rec TD 1.5, Rush yds 25");
+    expect(describeStats({ rush_yd: 25, rec_td: 1.5, rec_yd: 90, rec: 7 }, "WR")).toBe(
+      "Catches 7, Rec yds 90, Rec TD 1.5, Rush yds 25",
+    );
     expect(describeStats({})).toBe("No scoring stats");
   });
 
@@ -162,15 +160,11 @@ describe("player detail helpers", () => {
     expect(describeStats(line, "RB")).toBe(
       "Carries 18, Rush yds 80, Catches 2, Rec yds 20, Pass yds 250, Pass TD 2",
     );
-    expect(describeStats({ fgm: 2, xpm: 3, fga: 3 }, "K")).toBe(
-      "FG att 3, FG made 2, XP made 3",
-    );
+    expect(describeStats({ fgm: 2, xpm: 3, fga: 3 }, "K")).toBe("FG att 3, FG made 2, XP made 3");
   });
 
   it("leaves out amounts too small to show, such as a 0.03 projected fumble", () => {
-    expect(
-      describeStats({ rec: 6.6, fum_lost: 0.03, rec_2pt: 0.04 }, "WR"),
-    ).toBe("Catches 6.6");
+    expect(describeStats({ rec: 6.6, fum_lost: 0.03, rec_2pt: 0.04 }, "WR")).toBe("Catches 6.6");
   });
 
   it("writes rank as position plus number, and a dash when there is none", () => {
@@ -242,10 +236,7 @@ describe("PlayerLink", () => {
   it("replaces an earlier player rather than stacking", () => {
     search = "tab=lineups&player=111";
     render(<PlayerLink playerId="222">Next</PlayerLink>);
-    expect(screen.getByRole("link")).toHaveAttribute(
-      "href",
-      "/league/1?tab=lineups&player=222",
-    );
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/league/1?tab=lineups&player=222");
   });
 });
 
@@ -266,9 +257,7 @@ describe("PlayerDialog", () => {
     expect(screen.getByText("BYU")).toBeInTheDocument();
     expect(screen.getByText("WR1")).toBeInTheDocument(); // position rank
     expect(screen.getAllByText("146.6").length).toBeGreaterThan(0); // the summary and the totals row
-    expect(
-      screen.getByRole("heading", { name: "Projected, week 6" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Projected, week 6" })).toBeInTheDocument();
     expect(screen.getAllByText(/22\.5/).length).toBeGreaterThan(0); // the section and the table row
     expect(
       screen.getByText("Targets 10, Catches 6.6, Rec yds 106.8, Rec TD 0.8"),
@@ -345,26 +334,14 @@ describe("PlayerDialog", () => {
         { ...detail.weeks[1], projected: 9.5, final: false }, // still being played: no comparison
       ],
     };
-    render(
-      <PlayerDialog
-        detail={withProjections}
-        closeHref="/league/1?tab=players"
-      />,
-    );
+    render(<PlayerDialog detail={withProjections} closeHref="/league/1?tab=players" />);
     const table = screen.getByRole("table", {
       name: /points and stats by week/i,
     });
     const headers = within(table)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headers.slice(0, 6)).toEqual([
-      "Week",
-      "Team",
-      "Opponent",
-      "Points",
-      "Proj",
-      "+/-",
-    ]);
+    expect(headers.slice(0, 6)).toEqual(["Week", "Team", "Opponent", "Points", "Proj", "+/-"]);
     const week1 = within(table).getByRole("row", { name: /^1 LAR vs SEA/ });
     expect(
       within(week1)
@@ -415,19 +392,11 @@ describe("PlayerDialog", () => {
       owner_team: null,
       season: { points: 0, games: 0, average: null, rank: null },
     });
-    expect(
-      screen.queryByRole("heading", { name: "Bio" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: /Projected/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByText("No games played yet this season."),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Bio" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Projected/ })).not.toBeInTheDocument();
+    expect(screen.getByText("No games played yet this season.")).toBeInTheDocument();
     expect(screen.getByText("Available in this league")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "Past seasons" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Past seasons" })).not.toBeInTheDocument();
   });
 
   it("closes from the button, returning to the page without the player", async () => {
@@ -473,10 +442,7 @@ describe("past seasons, game by game", () => {
     const row = within(seasons).getByRole("row", { name: /2025/ });
     const links = within(row).getAllByRole("link");
     expect(links.map((l) => l.textContent)).toEqual(["LAR", "SEA"]);
-    expect(links[0]).toHaveAttribute(
-      "href",
-      expect.stringContaining("depth=LAR"),
-    );
+    expect(links[0]).toHaveAttribute("href", expect.stringContaining("depth=LAR"));
   });
 
   it("names the team for each week of this season too", async () => {
@@ -496,9 +462,7 @@ describe("past seasons, game by game", () => {
     const { user, seasons } = await open();
     const toggle = within(seasons).getByRole("button", { name: /2025/ });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(
-      screen.queryByRole("table", { name: /2025 game by game/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: /2025 game by game/i })).not.toBeInTheDocument();
     await user.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     const games = screen.getByRole("table", { name: /2025 game by game/i });
@@ -506,15 +470,7 @@ describe("past seasons, game by game", () => {
       within(games)
         .getAllByRole("columnheader")
         .map((h) => h.textContent),
-    ).toEqual([
-      "Week",
-      "Team",
-      "Opponent",
-      "Points",
-      "Catches",
-      "Rec yds",
-      "Rush yds",
-    ]);
+    ).toEqual(["Week", "Team", "Opponent", "Points", "Catches", "Rec yds", "Rush yds"]);
     const traded = within(games).getByRole("row", { name: /^4 SEA at DEN/ }); // after the trade
     expect(
       within(traded)
@@ -536,29 +492,21 @@ describe("past seasons, game by game", () => {
     await user.click(toggle);
     await user.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(
-      screen.queryByRole("table", { name: /2025 game by game/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: /2025 game by game/i })).not.toBeInTheDocument();
   });
 
   it("has no toggle for a season with no stored games, and no accessibility violations", async () => {
     const bare = {
       ...detail,
-      past_seasons: [
-        { season: "2024", games: 8, points: 90, rank: 12, teams: [] },
-      ],
+      past_seasons: [{ season: "2024", games: 8, points: 90, rank: 12, teams: [] }],
     };
-    const { container, unmount } = render(
-      <PlayerDialog detail={bare} closeHref="/x" />,
-    );
+    const { container, unmount } = render(<PlayerDialog detail={bare} closeHref="/x" />);
     const seasons = within(container).getByRole("table", {
       name: /season totals under this league/i,
     });
     expect(within(seasons).queryByRole("button")).not.toBeInTheDocument();
     expect(within(seasons).getByText("–")).toBeInTheDocument(); // no teams known
     unmount();
-    await expectNoA11yViolations(
-      <PlayerDialog detail={detail} closeHref="/x" />,
-    );
+    await expectNoA11yViolations(<PlayerDialog detail={detail} closeHref="/x" />);
   });
 });

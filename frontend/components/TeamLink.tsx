@@ -19,7 +19,11 @@ function Inner({
   params.delete("player");
   params.set("depth", team);
   return (
-    <Link href={`${pathname}?${params.toString()}`} className={className ?? "player-link"} scroll={false}>
+    <Link
+      href={`${pathname}?${params.toString()}`}
+      className={className ?? "player-link"}
+      scroll={false}
+    >
       {children}
     </Link>
   );

@@ -83,7 +83,14 @@ describe("injury status on rosters and lineups", () => {
           slot: "RB",
           injury: injury("Questionable", "Hamstring"),
         },
-        { player_id: "2", name: "Healthy QB", position: "QB", team: "HOU", status: "bench", slot: null },
+        {
+          player_id: "2",
+          name: "Healthy QB",
+          position: "QB",
+          team: "HOU",
+          status: "bench",
+          slot: null,
+        },
       ],
     },
   ];

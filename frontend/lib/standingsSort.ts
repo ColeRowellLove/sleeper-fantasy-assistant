@@ -1,12 +1,6 @@
 import type { StandingsRow } from "./api";
 
-export type SortKey =
-  | "rank"
-  | "team"
-  | "record"
-  | "streak"
-  | "points_for"
-  | "points_against";
+export type SortKey = "rank" | "team" | "record" | "streak" | "points_for" | "points_against";
 type SortDirection = "asc" | "desc";
 
 export interface SortState {
@@ -70,7 +64,8 @@ export function sortStandings(rows: StandingsRow[], sort: SortState): StandingsR
   return [...rows].sort((a, b) => {
     const x = value(a);
     const y = value(b);
-    const order = typeof x === "string" ? x.localeCompare(y as string) : (x as number) - (y as number);
+    const order =
+      typeof x === "string" ? x.localeCompare(y as string) : (x as number) - (y as number);
     return order * sign || a.rank - b.rank;
   });
 }

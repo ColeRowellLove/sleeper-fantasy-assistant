@@ -19,7 +19,11 @@ function Inner({
   params.delete("depth"); // only one pop-up is open at a time
   params.set("player", playerId);
   return (
-    <Link href={`${pathname}?${params.toString()}`} className={className ?? "player-link"} scroll={false}>
+    <Link
+      href={`${pathname}?${params.toString()}`}
+      className={className ?? "player-link"}
+      scroll={false}
+    >
       {children}
     </Link>
   );

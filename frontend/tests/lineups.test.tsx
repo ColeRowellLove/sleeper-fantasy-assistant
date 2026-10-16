@@ -246,7 +246,12 @@ describe("lineup helpers", () => {
     const b = team(2, "B", 9, [player("QB", "B QB", 9)]);
     render(
       <WeeklyLineups
-        data={{ week: 5, current_week: 6, weeks: [5], matchups: [{ matchup_id: 1, teams: [a, b] }] }}
+        data={{
+          week: 5,
+          current_week: 6,
+          weeks: [5],
+          matchups: [{ matchup_id: 1, teams: [a, b] }],
+        }}
         leagueId="9"
         myRosterId={null}
       />,

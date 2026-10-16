@@ -119,7 +119,11 @@ export default function ConnectForm() {
               </li>
             ))}
           </ul>
-          <button type="button" className="btn btn-quiet" onClick={() => setStep({ kind: "username" })}>
+          <button
+            type="button"
+            className="btn btn-quiet"
+            onClick={() => setStep({ kind: "username" })}
+          >
             Use a different username
           </button>
         </div>

@@ -46,7 +46,9 @@ describe("LeagueHeader", () => {
     render(<LeagueHeader data={data} myRosterId={1} />);
     expect(screen.getByRole("heading", { level: 1, name: "Love League" })).toBeInTheDocument();
     expect(screen.getByText("2026 season")).toBeInTheDocument();
-    const chips = within(screen.getByRole("list", { name: "League rules" })).getAllByRole("listitem");
+    const chips = within(screen.getByRole("list", { name: "League rules" })).getAllByRole(
+      "listitem",
+    );
     expect(chips.map((c) => c.textContent)).toEqual([
       "Full PPR",
       "Priority waivers",
@@ -65,7 +67,14 @@ describe("LeagueTabs", () => {
     render(<LeagueTabs leagueId="9" active="rosters" />);
     const nav = screen.getByRole("navigation", { name: "League sections" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Standings", "Rosters", "Lineups", "Players", "Teams", "Settings"]);
+    expect(links.map((l) => l.textContent)).toEqual([
+      "Standings",
+      "Rosters",
+      "Lineups",
+      "Players",
+      "Teams",
+      "Settings",
+    ]);
     expect(links[1]).toHaveAttribute("aria-current", "page");
     expect(links[0]).not.toHaveAttribute("aria-current");
     expect(links[2]).toHaveAttribute("href", "/league/9?tab=lineups");
@@ -80,7 +89,9 @@ describe("league helpers", () => {
   });
 
   it("words the rules in plain language for every scoring and waiver type", () => {
-    expect(ruleChips({ ...rules, reception_scoring: "half", uses_faab: true })).toContain("Half PPR");
+    expect(ruleChips({ ...rules, reception_scoring: "half", uses_faab: true })).toContain(
+      "Half PPR",
+    );
     expect(ruleChips({ ...rules, reception_scoring: "none" })[0]).toBe("Standard scoring");
     expect(ruleChips({ ...rules, uses_faab: true })[1]).toBe("FAAB waivers");
     const bare = ruleChips({ ...rules, trade_deadline_week: null, playoff_teams: null });

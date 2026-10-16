@@ -29,7 +29,9 @@ export function ruleChips(rules: Rules): string[] {
   return [
     SCORING[rules.reception_scoring] ?? rules.reception_scoring,
     rules.uses_faab ? "FAAB waivers" : "Priority waivers",
-    rules.trade_deadline_week ? `Trade deadline: week ${rules.trade_deadline_week}` : "No trade deadline",
+    rules.trade_deadline_week
+      ? `Trade deadline: week ${rules.trade_deadline_week}`
+      : "No trade deadline",
     rules.playoff_teams ? `${rules.playoff_teams} playoff teams` : "Playoffs not set",
   ];
 }

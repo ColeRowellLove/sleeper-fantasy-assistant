@@ -21,7 +21,9 @@ export default function Home() {
               </li>
             ))}
           </ul>
-          <p className="legend-note">Every position has its own color, so lineups read at a glance.</p>
+          <p className="legend-note">
+            Every position has its own color, so lineups read at a glance.
+          </p>
         </div>
         <ConnectForm />
       </div>

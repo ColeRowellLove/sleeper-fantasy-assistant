@@ -171,6 +171,9 @@ describe("ConnectForm", () => {
     await user.click(screen.getByRole("button", { name: "Looking…" }));
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Looking…" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Looking…" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 });

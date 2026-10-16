@@ -8,15 +8,7 @@ export type PositionFilter = "ALL" | (typeof POSITION_FILTERS)[number] | "FLEX";
 export type Availability = "all" | "available" | "rostered";
 
 export type SortKey =
-  | "name"
-  | "status"
-  | "adds"
-  | "drops"
-  | "owned"
-  | "started"
-  | "rank"
-  | "total"
-  | "projected";
+  "name" | "status" | "adds" | "drops" | "owned" | "started" | "rank" | "total" | "projected";
 export type SortDirection = "asc" | "desc";
 
 export interface PlayerSort {

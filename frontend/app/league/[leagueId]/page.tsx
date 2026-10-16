@@ -13,7 +13,14 @@ import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
 import StandingsTable from "../../../components/StandingsTable";
 import WeeklyLineups from "../../../components/WeeklyLineups";
-import type { Dashboard, LeagueSettings, Lineups, PlayerDetail, PlayersData, TeamDepth } from "../../../lib/api";
+import type {
+  Dashboard,
+  LeagueSettings,
+  Lineups,
+  PlayerDetail,
+  PlayersData,
+  TeamDepth,
+} from "../../../lib/api";
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
 import { leaguePath, parseTab } from "../../../lib/league";
@@ -53,33 +60,35 @@ export default async function LeaguePage({
   const weekNumber = Number(week);
   // ignore anything outside the weeks the API accepts instead of failing the whole page
   const weekQuery =
-    Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18 ? `?week=${weekNumber}` : "";
+    Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18
+      ? `?week=${weekNumber}`
+      : "";
 
   // the header needs the dashboard on every tab; lineups are only fetched for their own tab
   const [dashboard, lineups, leagueSettings, players, playerDetail, depth, depthDialog] =
     await Promise.all([
-    getJson<Dashboard>(`/api/leagues/${leagueId}`),
-    tab === "lineups"
-      ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
-      : Promise.resolve(null),
-    tab === "settings"
-      ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
-      : Promise.resolve(null),
-    tab === "players"
-      ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
-      : Promise.resolve(null),
-    // an unknown or malformed ?player= simply opens nothing
-    player && /^[A-Za-z0-9]{1,12}$/.test(player)
-      ? getJson<PlayerDetail>(`/api/leagues/${leagueId}/players/${player}`).catch(() => null)
-      : Promise.resolve(null),
-    tab === "teams" && isTeamCode(team)
-      ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${team}`)
-      : Promise.resolve(null),
-    // a team opened as a pop-up from any team code; an unknown code opens nothing
-    isTeamCode(depthParam)
-      ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${depthParam}`).catch(() => null)
-      : Promise.resolve(null),
-  ]);
+      getJson<Dashboard>(`/api/leagues/${leagueId}`),
+      tab === "lineups"
+        ? getJson<Lineups>(`/api/leagues/${leagueId}/lineups${weekQuery}`)
+        : Promise.resolve(null),
+      tab === "settings"
+        ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
+        : Promise.resolve(null),
+      tab === "players"
+        ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
+        : Promise.resolve(null),
+      // an unknown or malformed ?player= simply opens nothing
+      player && /^[A-Za-z0-9]{1,12}$/.test(player)
+        ? getJson<PlayerDetail>(`/api/leagues/${leagueId}/players/${player}`).catch(() => null)
+        : Promise.resolve(null),
+      tab === "teams" && isTeamCode(team)
+        ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${team}`)
+        : Promise.resolve(null),
+      // a team opened as a pop-up from any team code; an unknown code opens nothing
+      isTeamCode(depthParam)
+        ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${depthParam}`).catch(() => null)
+        : Promise.resolve(null),
+    ]);
 
   // closing the pop-up returns to this same page without ?player
   const closeParams = new URLSearchParams();
@@ -146,7 +155,9 @@ export default async function LeaguePage({
           myRosterId={myRosterId}
         />
       )}
-      {!depthDialog && playerDetail && <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />}
+      {!depthDialog && playerDetail && (
+        <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />
+      )}
       <p className="back">
         <Link href="/">Connect another league</Link>
       </p>

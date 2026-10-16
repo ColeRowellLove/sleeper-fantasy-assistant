@@ -20,11 +20,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("tab=teams&team=SEA"),
 }));
 
-const p = (
-  name: string,
-  depth: number,
-  extra: Partial<DepthPlayer> = {},
-): DepthPlayer => ({
+const p = (name: string, depth: number, extra: Partial<DepthPlayer> = {}): DepthPlayer => ({
   name,
   depth,
   label: depth === 1 ? "Starter" : `${depth}th string`,
@@ -118,10 +114,7 @@ describe("depth helpers", () => {
       slot("a", "A", [p("Only", 1)]),
       slot("b", "B", [p("X", 1), p("Y", 2)]),
     ]);
-    expect(rows[0].cells).toEqual([
-      expect.objectContaining({ name: "Only" }),
-      null,
-    ]); // padded
+    expect(rows[0].cells).toEqual([expect.objectContaining({ name: "Only" }), null]); // padded
   });
 
   it("puts the fantasy slots up front and the rest into their own sections", () => {
@@ -157,9 +150,7 @@ describe("TeamDepthChart", () => {
     expect(screen.getByText("On your team")).toBeInTheDocument();
     expect(screen.getAllByText("Available").length).toBeGreaterThan(0);
     expect(screen.getByText("Jake Bobo")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Jake Bobo" }),
-    ).not.toBeInTheDocument(); // not matched: no pop-up
+    expect(screen.queryByRole("link", { name: "Jake Bobo" })).not.toBeInTheDocument(); // not matched: no pop-up
     expect(screen.getByRole("link", { name: "Sam Darnold" })).toHaveAttribute(
       "href",
       "/league/1?tab=teams&team=SEA&player=id-SamDarnold",
@@ -167,23 +158,19 @@ describe("TeamDepthChart", () => {
   });
 
   it("keeps the offensive line, defense and special teams in sections that open", () => {
-    const { container } = render(
-      <TeamDepthChart data={data} myRosterId={null} />,
-    );
+    const { container } = render(<TeamDepthChart data={data} myRosterId={null} />);
     const sections = [...container.querySelectorAll("details")];
-    expect(
-      sections.map((d) => d.querySelector("summary")?.textContent),
-    ).toEqual(["Offensive line", "Defense", "Special teams"]);
+    expect(sections.map((d) => d.querySelector("summary")?.textContent)).toEqual([
+      "Offensive line",
+      "Defense",
+      "Special teams",
+    ]);
     expect(sections.every((d) => !d.open)).toBe(true);
   });
 
   it("explains an empty chart instead of showing an empty table", () => {
-    render(
-      <TeamDepthChart data={{ team: "KC", groups: [] }} myRosterId={null} />,
-    );
-    expect(
-      screen.getByText("No depth chart is available for this team yet."),
-    ).toBeInTheDocument();
+    render(<TeamDepthChart data={{ team: "KC", groups: [] }} myRosterId={null} />);
+    expect(screen.getByText("No depth chart is available for this team yet.")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
@@ -199,9 +186,7 @@ describe("TeamPicker", () => {
     expect(form).toHaveAttribute("method", "get");
     expect(form).toHaveAttribute("action", "/league/123");
     expect(container.querySelector("input[name=tab]")).toHaveValue("teams");
-    expect(screen.getByRole("combobox", { name: "NFL team" })).toHaveValue(
-      "SEA",
-    );
+    expect(screen.getByRole("combobox", { name: "NFL team" })).toHaveValue("SEA");
     expect(screen.getAllByRole("option")).toHaveLength(33); // the prompt plus 32 teams
   });
 
@@ -237,10 +222,11 @@ describe("team pop-up", () => {
 
   it("opening a team replaces an open player pop-up, and opening a player replaces a team", () => {
     // the mocked page already has a player open; a team link drops it
-    const { unmount } = render(
-      <TeamLink team="DEN">DEN</TeamLink>,
+    const { unmount } = render(<TeamLink team="DEN">DEN</TeamLink>);
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      expect.not.stringContaining("player="),
     );
-    expect(screen.getByRole("link")).toHaveAttribute("href", expect.not.stringContaining("player="));
     unmount();
   });
 
@@ -301,6 +287,9 @@ describe("team codes in rows open the pop-up", () => {
         myRosterId={null}
       />,
     );
-    expect(screen.getByRole("link", { name: "LAR" })).toHaveAttribute("href", expect.stringContaining("depth=LAR"));
+    expect(screen.getByRole("link", { name: "LAR" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("depth=LAR"),
+    );
   });
 });
