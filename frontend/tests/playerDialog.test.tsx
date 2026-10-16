@@ -69,6 +69,7 @@ const detail: PlayerDetail = {
   weeks: [
     {
       week: 1,
+      team: "LAR",
       opponent: "SEA",
       home: true,
       points: 24.5,
@@ -76,13 +77,40 @@ const detail: PlayerDetail = {
     },
     {
       week: 2,
+      team: "LAR",
       opponent: "SF",
       home: false,
       points: 6,
       stats: { rec: 3, rec_yd: 30 },
     },
   ],
-  past_seasons: [{ season: "2025", games: 16, points: 200, rank: 2 }],
+  past_seasons: [
+    {
+      season: "2025",
+      games: 16,
+      points: 200,
+      rank: 2,
+      teams: ["LAR", "SEA"],
+      log: [
+        {
+          week: 1,
+          team: "LAR",
+          opponent: "HOU",
+          home: true,
+          points: 23.1,
+          stats: { rec: 6, rec_yd: 85, rush_yd: 4 },
+        },
+        {
+          week: 4,
+          team: "SEA",
+          opponent: "DEN",
+          home: false,
+          points: 10.4,
+          stats: { rec: 4, rec_yd: 64 },
+        },
+      ],
+    },
+  ],
 };
 
 describe("player detail helpers", () => {
@@ -265,6 +293,7 @@ describe("PlayerDialog", () => {
     // a receiver: targets and catches first, then yards, touchdowns, then the rushing yards he earned
     expect(headers).toEqual([
       "Week",
+      "Team",
       "Opponent",
       "Points",
       "Targets",
@@ -273,18 +302,18 @@ describe("PlayerDialog", () => {
       "Rec TD",
       "Rush yds",
     ]);
-    const week1 = within(table).getByRole("row", { name: /^1 vs SEA/ });
+    const week1 = within(table).getByRole("row", { name: /^1 LAR vs SEA/ });
     expect(
       within(week1)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["vs SEA", "24.5", "–", "7", "90", "–", "25"]);
-    const week2 = within(table).getByRole("row", { name: /^2 at SF/ });
+    ).toEqual(["LAR", "vs SEA", "24.5", "–", "7", "90", "–", "25"]);
+    const week2 = within(table).getByRole("row", { name: /^2 LAR at SF/ });
     expect(
       within(week2)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["at SF", "6.0", "–", "3", "30", "–", "–"]);
+    ).toEqual(["LAR", "at SF", "6.0", "–", "3", "30", "–", "–"]);
   });
 
   it("adds a season totals row that matches the season points, and a projection row", () => {
@@ -328,25 +357,26 @@ describe("PlayerDialog", () => {
     const headers = within(table)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headers.slice(0, 5)).toEqual([
+    expect(headers.slice(0, 6)).toEqual([
       "Week",
+      "Team",
       "Opponent",
       "Points",
       "Proj",
       "+/-",
     ]);
-    const week1 = within(table).getByRole("row", { name: /^1 vs SEA/ });
+    const week1 = within(table).getByRole("row", { name: /^1 LAR vs SEA/ });
     expect(
       within(week1)
         .getAllByRole("cell")
-        .slice(1, 4)
+        .slice(2, 5)
         .map((c) => c.textContent),
     ).toEqual(["24.5", "14.0", "+10.5"]);
-    const week2 = within(table).getByRole("row", { name: /^2 at SF/ });
+    const week2 = within(table).getByRole("row", { name: /^2 LAR at SF/ });
     expect(
       within(week2)
         .getAllByRole("cell")
-        .slice(1, 4)
+        .slice(2, 5)
         .map((c) => c.textContent),
     ).toEqual([
       "6.0",
@@ -424,6 +454,111 @@ describe("PlayerDialog", () => {
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(
       <PlayerDialog detail={detail} closeHref="/league/1?tab=players" />,
+    );
+  });
+});
+
+describe("past seasons, game by game", () => {
+  const open = async () => {
+    const user = userEvent.setup();
+    render(<PlayerDialog detail={detail} closeHref="/league/1?tab=players" />);
+    const seasons = screen.getByRole("table", {
+      name: /season totals under this league/i,
+    });
+    return { user, seasons };
+  };
+
+  it("lists every team he played for that season, in order, as links to the depth charts", async () => {
+    const { seasons } = await open();
+    const row = within(seasons).getByRole("row", { name: /2025/ });
+    const links = within(row).getAllByRole("link");
+    expect(links.map((l) => l.textContent)).toEqual(["LAR", "SEA"]);
+    expect(links[0]).toHaveAttribute(
+      "href",
+      expect.stringContaining("depth=LAR"),
+    );
+  });
+
+  it("names the team for each week of this season too", async () => {
+    await open();
+    const table = screen.getByRole("table", {
+      name: /points and stats by week/i,
+    });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent)
+        .slice(0, 3),
+    ).toEqual(["Week", "Team", "Opponent"]);
+  });
+
+  it("opens a season into a game-by-game table with the team and opponent for each game", async () => {
+    const { user, seasons } = await open();
+    const toggle = within(seasons).getByRole("button", { name: /2025/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("table", { name: /2025 game by game/i }),
+    ).not.toBeInTheDocument();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const games = screen.getByRole("table", { name: /2025 game by game/i });
+    expect(
+      within(games)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual([
+      "Week",
+      "Team",
+      "Opponent",
+      "Points",
+      "Catches",
+      "Rec yds",
+      "Rush yds",
+    ]);
+    const traded = within(games).getByRole("row", { name: /^4 SEA at DEN/ }); // after the trade
+    expect(
+      within(traded)
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["SEA", "at DEN", "10.4", "4", "64", "–"]);
+    // the games add up to the season row
+    const total = within(games).getByRole("row", { name: /Season total/ });
+    expect(
+      within(total)
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["200.0", "10", "149", "4"]);
+  });
+
+  it("closes again and shows only one season at a time", async () => {
+    const { user, seasons } = await open();
+    const toggle = within(seasons).getByRole("button", { name: /2025/ });
+    await user.click(toggle);
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("table", { name: /2025 game by game/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("has no toggle for a season with no stored games, and no accessibility violations", async () => {
+    const bare = {
+      ...detail,
+      past_seasons: [
+        { season: "2024", games: 8, points: 90, rank: 12, teams: [] },
+      ],
+    };
+    const { container, unmount } = render(
+      <PlayerDialog detail={bare} closeHref="/x" />,
+    );
+    const seasons = within(container).getByRole("table", {
+      name: /season totals under this league/i,
+    });
+    expect(within(seasons).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(seasons).getByText("–")).toBeInTheDocument(); // no teams known
+    unmount();
+    await expectNoA11yViolations(
+      <PlayerDialog detail={detail} closeHref="/x" />,
     );
   });
 });

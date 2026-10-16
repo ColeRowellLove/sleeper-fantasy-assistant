@@ -209,7 +209,7 @@ class PlayerOwnershipRow(Base):
 
 
 class PlayerSeasonStatsRow(Base):
-    """A player's stat totals for a past season (summed from its weeks; the weeks are not kept)."""
+    """A player's stat totals for a past season; the weeks are in player_week_stats."""
 
     __tablename__ = "player_season_stats"
 
@@ -217,6 +217,7 @@ class PlayerSeasonStatsRow(Base):
     player_id: Mapped[str] = mapped_column(String, primary_key=True)
     games: Mapped[int]
     stats: Mapped[dict[str, float]] = mapped_column(JSON)
+    teams: Mapped[list[str] | None] = mapped_column(JSON)  # teams he played for, in order
 
 
 class PlayerTrendRow(Base):

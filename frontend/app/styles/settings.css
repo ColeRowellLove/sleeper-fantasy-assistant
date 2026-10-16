@@ -473,3 +473,24 @@ dialog.team-dialog {
 .member-link:focus-visible {
   text-decoration: underline;
 }
+
+/* A past season opens into its game-by-game table */
+.season-toggle {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.2rem 0.3rem;
+  text-align: left;
+}
+
+.season-toggle:hover {
+  text-decoration: underline;
+}
+
+td.season-log {
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  padding: 0.5rem 0.75rem 1rem;
+}
