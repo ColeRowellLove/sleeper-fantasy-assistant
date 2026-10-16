@@ -1,6 +1,14 @@
 import type { StandingsRow } from "./api";
 
-export type SortKey = "rank" | "team" | "record" | "streak" | "points_for" | "points_against";
+export type SortKey =
+  | "rank"
+  | "team"
+  | "record"
+  | "streak"
+  | "points_for"
+  | "points_against"
+  | "accuracy"
+  | "left_on_bench";
 type SortDirection = "asc" | "desc";
 
 export interface SortState {
@@ -42,6 +50,8 @@ const VALUE: Record<SortKey, (row: StandingsRow) => number | string> = {
   streak: streakValue,
   points_for: (row) => row.points_for,
   points_against: (row) => row.points_against,
+  accuracy: (row) => row.accuracy ?? -1, // a team Sleeper reports nothing for sorts below the rest
+  left_on_bench: (row) => row.left_on_bench ?? -1,
 };
 
 /** What a first click on a column does: names run A to Z, rank best first, numbers high first. */

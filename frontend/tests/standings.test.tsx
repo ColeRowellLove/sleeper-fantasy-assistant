@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import StandingsTable from "../components/StandingsTable";
-import type { StandingsRow } from "../lib/api";
+import type { LineupAccuracy, StandingsRow } from "../lib/api";
+import { TABS, parseTab } from "../lib/league";
+import { withAccuracy } from "../lib/standingsAccuracy";
 import { expectNoA11yViolations } from "./a11y";
 
 const row = (
@@ -237,5 +239,83 @@ describe("team names", () => {
     expect(screen.getByText("MatthewOtto")).toBeInTheDocument();
     expect(screen.getByText("Manager:", { exact: false })).toBeInTheDocument();
     expect(screen.getAllByText("NickOtto")).toHaveLength(1); // not repeated under itself
+  });
+});
+
+describe("sit vs start accuracy in the standings", () => {
+  const accuracy: LineupAccuracy = {
+    league_id: "1",
+    teams: [
+      {
+        roster_id: 3,
+        team: "Dad",
+        points: 700,
+        potential: 800,
+        accuracy: 0.875,
+        left_on_bench: 100,
+      },
+      {
+        roster_id: 1,
+        team: "Cole",
+        points: 750,
+        potential: 760,
+        accuracy: 0.9868,
+        left_on_bench: 10,
+      },
+      {
+        roster_id: 2,
+        team: "Sis",
+        points: 600,
+        potential: null,
+        accuracy: null,
+        left_on_bench: null,
+      },
+    ],
+  };
+  const merged = withAccuracy(standings, accuracy);
+
+  it("adds Sleeper's accuracy and bench points beside the record", () => {
+    render(<StandingsTable standings={merged} playoffTeams={2} myRosterId={1} />);
+    const table = screen.getByRole("table", { name: /standings/i });
+    expect(within(table).getByRole("columnheader", { name: /Accuracy/ })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: /Bench pts/ })).toBeInTheDocument();
+    const dad = within(table).getByRole("row", { name: /Dad/ });
+    expect(within(dad).getByText("87.5%")).toBeInTheDocument();
+    expect(within(dad).getByText("100.0")).toBeInTheDocument();
+    const sis = within(table).getByRole("row", { name: /Sis/ });
+    expect(within(sis).getAllByText("–").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/potential points/)).toBeInTheDocument();
+  });
+
+  it("leaves the table as it was when Sleeper reports nothing", () => {
+    render(
+      <StandingsTable standings={withAccuracy(standings, null)} playoffTeams={2} myRosterId={1} />,
+    );
+    expect(screen.queryByRole("columnheader", { name: /Accuracy/ })).not.toBeInTheDocument();
+    const noPotential = withAccuracy(standings, {
+      league_id: "1",
+      teams: accuracy.teams.map((t) => ({ ...t, accuracy: null, left_on_bench: null })),
+    });
+    render(<StandingsTable standings={noPotential} playoffTeams={2} myRosterId={1} />);
+    expect(screen.queryByRole("columnheader", { name: /Accuracy/ })).not.toBeInTheDocument();
+  });
+
+  it("sorts by accuracy, best first, with unreported teams last", async () => {
+    const user = userEvent.setup();
+    render(<StandingsTable standings={merged} playoffTeams={2} myRosterId={null} />);
+    await user.click(screen.getByRole("button", { name: /Accuracy/ }));
+    const names = within(screen.getByRole("table", { name: /standings/i }))
+      .getAllByRole("row")
+      .slice(1)
+      .map((r) => within(r).getAllByRole("rowheader")[0].textContent);
+    expect(names).toEqual(["Cole", "Dad", "Sis"]);
+    await expectNoA11yViolations(
+      <StandingsTable standings={merged} playoffTeams={2} myRosterId={1} />,
+    );
+  });
+
+  it("has no separate Accuracy tab, and an old link lands on Standings", () => {
+    expect(TABS.map((t) => t.key)).not.toContain("accuracy");
+    expect(parseTab("accuracy")).toBe("standings");
   });
 });
