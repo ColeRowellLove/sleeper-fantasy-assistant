@@ -190,3 +190,26 @@ def test_a_zero_in_a_stat_line_is_kept(session: Session) -> None:
     early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
     defense = next(p for p in early.players if p.player_id == "shutout")
     assert defense.stats == {"sack": 3.0, "pts_allow": 0.0}
+
+
+def test_a_null_or_text_value_in_a_stat_line_is_dropped_not_fatal(session: Session) -> None:
+    league = _setup(session)
+    session.add(_player("odd", "DEF", "AAA", "Odd Defense"))
+    session.add(_stats("odd", "AAA", {"gp": 1, "sack": 2.0, "pts_allow": None, "int": "x"}))  # type: ignore[dict-item]
+    session.commit()
+    early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
+    odd = next(p for p in early.players if p.player_id == "odd")
+    assert odd.stats == {"sack": 2.0}
+
+
+def test_a_finished_week_ignores_projections_altogether(session: Session) -> None:
+    league = _setup(session)
+    session.query(NflGameRow).filter(NflGameRow.game_id == "late").update({"status": "complete"})
+    session.add(
+        PlayerProjectionRow(season="2026", week=2, player_id="owned", team="CCC",
+                            stats={"rec": 5.0}, fetched_at=utcnow())
+    )  # fmt: skip
+    session.commit()
+    late = next(g for g in build_games(session, league, 2).games if g.game_id == "late")
+    owned = next(p for p in late.players if p.player_id == "owned")
+    assert owned.projected is False and owned.points is None and owned.stats == {}

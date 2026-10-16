@@ -670,3 +670,9 @@
   margin: 0.5rem 0 0;
   padding-left: 1.1rem;
 }
+
+.pick-out {
+  color: var(--danger);
+  display: block;
+  font-weight: 600;
+}

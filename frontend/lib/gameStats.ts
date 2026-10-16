@@ -2,19 +2,25 @@ import type { GamePlayer } from "./api";
 
 export interface StatColumn {
   label: string;
-  /** Reads the cell's text from a player's stat line; null when there is nothing to show. */
-  get: (stats: Record<string, number>) => string | null;
+  /** Reads the cell's text from a player's stat line (one decimal for projections); null when empty. */
+  get: (stats: Record<string, number>, projected?: boolean) => string | null;
 }
+
+const fmt = (n: number, projected: boolean) => (projected ? n.toFixed(1) : String(Math.round(n)));
 
 // A stat that is present is shown even when it is 0 (a shutout, no interceptions); only a stat the
 // player has no line for is empty. The server sends the keys below (games_view.STAT_KEYS).
-const num = (key: string) => (stats: Record<string, number>) =>
-  key in stats ? String(Math.round(stats[key])) : null;
+const num =
+  (key: string) =>
+  (stats: Record<string, number>, projected = false) =>
+    key in stats ? fmt(stats[key], projected) : null;
 
-const pair = (made: string, tried: string) => (stats: Record<string, number>) =>
-  made in stats || tried in stats
-    ? `${Math.round(stats[made] ?? 0)}/${Math.round(stats[tried] ?? 0)}`
-    : null;
+const pair =
+  (made: string, tried: string) =>
+  (stats: Record<string, number>, projected = false) =>
+    made in stats || tried in stats
+      ? `${fmt(stats[made] ?? 0, projected)}/${fmt(stats[tried] ?? 0, projected)}`
+      : null;
 
 export type GroupKey = "passing" | "scrimmage" | "kicking" | "defense";
 

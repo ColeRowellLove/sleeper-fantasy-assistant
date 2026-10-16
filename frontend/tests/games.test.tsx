@@ -195,7 +195,7 @@ describe("GamesPanel", () => {
         team: "KC",
         points: 14.2,
         projected: true,
-        stats: { rush_att: 15, rush_yd: 70 },
+        stats: { rush_att: 14.5, rush_yd: 61.7 },
       }),
     ]);
     render(<GamesPanel data={{ ...data, games: [upcoming] }} leagueId="1" myRosterId={1} />);
@@ -204,6 +204,9 @@ describe("GamesPanel", () => {
     const row = within(table).getByRole("row", { name: /Projected Back/ });
     expect(within(row).getByText("14.2")).toBeInTheDocument();
     expect(within(row).getByText("proj")).toBeInTheDocument();
+    // projections keep a decimal, so 14.5 carries does not read as 15 and 61.7 yards not as 62
+    expect(within(row).getByText("14.5")).toBeInTheDocument();
+    expect(within(row).getByText("61.7")).toBeInTheDocument();
   });
 
   it("explains an empty week and offers week chips back to the games tab", () => {

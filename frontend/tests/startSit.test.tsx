@@ -121,7 +121,17 @@ describe("Start/Sit tool", () => {
     expect(within(group).getByText("No projection yet")).toBeInTheDocument();
     expect(container.querySelectorAll(".pick-row .avatar")).toHaveLength(2);
     expect(rows[0]).toBeChecked();
+    expect(within(group).queryByText(/Can't start/)).not.toBeInTheDocument();
     await expectNoA11yViolations(ui);
+  });
+
+  it("says why a player cannot be started, in words", () => {
+    const withOut: BestLineup = {
+      ...best,
+      roster: [cand({ player_id: "9", name: "Hurt Back", projected: 12.3, out: "listed Out" })],
+    };
+    render(<StartSitTool {...props} best={withOut} />);
+    expect(screen.getByText(/Can't start: listed Out/)).toBeInTheDocument();
   });
 
   it("shows the best lineup with the swaps and why", () => {
