@@ -13,7 +13,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.team_avatar import avatar_id, team_avatar_url
+from sleeper_assistant.core.league.team_avatar import avatar_id, team_avatar_url
+from sleeper_assistant.core.sources.sleeper import SleeperClient, SleeperPlayer
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -26,7 +27,6 @@ from sleeper_assistant.db import (
     UserLeagueRow,
     utcnow,
 )
-from sleeper_assistant.sources.sleeper import SleeperClient, SleeperPlayer
 from sleeper_assistant.sync.crosswalk import build_crosswalk
 
 log = logging.getLogger(__name__)

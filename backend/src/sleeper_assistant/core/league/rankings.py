@@ -26,24 +26,23 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import FANTASY_POSITIONS, FLEX_POSITIONS
-from sleeper_assistant.core.matchup_rank import MatchupRank, build_defense_table, matchup_rank
-from sleeper_assistant.core.nfl_games import GameInfo, current_week, games_for_week
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.projections import score_projection, score_stats
-from sleeper_assistant.core.rosters import league_rosters
-from sleeper_assistant.core.team_names import team_names
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.team_names import team_names
+from sleeper_assistant.core.nfl.injury_status import InjuryInfo, injury_info
+from sleeper_assistant.core.nfl.matchup_rank import MatchupRank, build_defense_table, matchup_rank
+from sleeper_assistant.core.nfl.nfl_games import GameInfo, current_week, games_for_week
+from sleeper_assistant.core.scoring.form import FORM_GAMES, recent_form
+from sleeper_assistant.core.scoring.projections import score_projection
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
     PlayerOwnershipRow,
     PlayerProjectionRow,
     PlayerRow,
-    PlayerWeekStatsRow,
 )
 from sleeper_assistant.utils.text import ordinal
-from sleeper_assistant.views.roster_players import InjuryInfo, injury_info
 
-FORM_GAMES = 3
 SIGNALS = ("projection", "form", "start", "vegas")
 SIGNAL_LABELS = {
     "projection": "Sleeper projection",
@@ -95,27 +94,6 @@ def _order[V: (float, tuple[float, ...])](values: Mapping[str, V]) -> dict[str, 
     """1 for the highest value; tied values share a rank. A tuple breaks ties left to right."""
     ranked = sorted(values.values(), reverse=True)
     return {pid: 1 + sum(1 for v in ranked if v > value) for pid, value in values.items()}
-
-
-def recent_form(
-    session: Session, season: str, week: int, scoring: Mapping[str, float]
-) -> dict[str, float]:
-    """Points per game over the last three games played before ``week``."""
-    games: dict[str, list[tuple[int, float]]] = defaultdict(list)
-    for pid, wk, stats in session.execute(
-        select(
-            PlayerWeekStatsRow.player_id, PlayerWeekStatsRow.week, PlayerWeekStatsRow.stats
-        ).where(PlayerWeekStatsRow.season == season, PlayerWeekStatsRow.week < week)
-    ):
-        played = stats.get("gp")
-        if played is not None and played <= 0:
-            continue
-        games[pid].append((wk, score_stats(stats, scoring)))
-    out: dict[str, float] = {}
-    for pid, rows in games.items():
-        last = [points for _, points in sorted(rows)[-FORM_GAMES:]]
-        out[pid] = round(sum(last) / len(last), 2)
-    return out
 
 
 def _why(p: RankedPlayer, pool: int) -> str:

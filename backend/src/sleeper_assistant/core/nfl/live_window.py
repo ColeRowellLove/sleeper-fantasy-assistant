@@ -16,8 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_LIVE
+from sleeper_assistant.core.sources.live import WINDOW_AFTER, WINDOW_BEFORE, window_open
 from sleeper_assistant.db import NflGameRow
-from sleeper_assistant.sources.live import WINDOW_AFTER, WINDOW_BEFORE, window_open
 
 # a game still marked in progress this long after kickoff is stale (a missed sync, a suspended game)
 STALE_IN_GAME = timedelta(hours=8)

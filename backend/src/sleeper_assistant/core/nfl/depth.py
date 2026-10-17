@@ -13,7 +13,7 @@ from typing import Any, NamedTuple
 
 import httpx
 
-from sleeper_assistant.sources.espn import TEAMS, normalize_name
+from sleeper_assistant.core.sources.espn import TEAMS, normalize_name
 
 TEAM_IDS = {abbr: espn_id for espn_id, abbr in TEAMS.items()}
 DEPTH_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/{team_id}/depthcharts"

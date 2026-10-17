@@ -18,15 +18,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant.alerts import detectors  # noqa: F401  registers the alert detectors
 from sleeper_assistant.alerts.engine import run_all_leagues
-from sleeper_assistant.core.live_window import live_window_open
-from sleeper_assistant.core.projections import sync_projections
+from sleeper_assistant.core.nfl.live_window import live_window_open
+from sleeper_assistant.core.scoring.projections import sync_projections
+from sleeper_assistant.core.sources.espn import fetch_ownership
+from sleeper_assistant.core.sources.sleeper import SleeperClient
 from sleeper_assistant.db import (
     make_engine,
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.sources.espn import fetch_ownership
-from sleeper_assistant.sources.sleeper import SleeperClient
 from sleeper_assistant.sync import jobs
 from sleeper_assistant.sync.crosswalk import build_crosswalk
 from sleeper_assistant.sync.depth_sync import sync_depth_charts

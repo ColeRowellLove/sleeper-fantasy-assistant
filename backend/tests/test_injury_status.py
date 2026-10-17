@@ -1,4 +1,4 @@
-from sleeper_assistant.core.injury_status import UNLIKELY_TO_PLAY, WILL_NOT_PLAY
+from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY, WILL_NOT_PLAY
 
 
 def test_doubtful_is_unlikely_but_not_ruled_out() -> None:

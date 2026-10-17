@@ -15,20 +15,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import EMPTY_SLOT, FANTASY_POSITIONS
-from sleeper_assistant.core.injury_status import WILL_NOT_PLAY
-from sleeper_assistant.core.lineup_slots import assign_lineup, starter_slots
-from sleeper_assistant.core.matchup_rank import (
+from sleeper_assistant.core.league.lineup_slots import assign_lineup, starter_slots
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.league.rankings import RankedPlayer, Rankings, build_rankings
+from sleeper_assistant.core.nfl.injury_status import WILL_NOT_PLAY, InjuryInfo, injury_info
+from sleeper_assistant.core.nfl.matchup_rank import (
     DefenseTable,
     MatchupRank,
     build_defense_table,
     matchup_rank,
 )
-from sleeper_assistant.core.nfl_games import GameInfo, games_for_week
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.projections import projected_points
+from sleeper_assistant.core.nfl.nfl_games import GameInfo, games_for_week
+from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow
-from sleeper_assistant.views.rankings import RankedPlayer, Rankings, build_rankings
-from sleeper_assistant.views.roster_players import InjuryInfo, injury_info
 
 # designations that mean a player will not play
 CLOSE_CALL = 1.5  # projected points apart, or fewer, is a close call

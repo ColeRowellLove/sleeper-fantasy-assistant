@@ -9,17 +9,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_COMPLETE, GAME_LIVE, GAME_PRE
-from sleeper_assistant.db import (
-    NflGameRow,
-)
-from sleeper_assistant.sources.live import (
+from sleeper_assistant.core.sources.live import (
     LiveGame,
     Situation,
     current_games,
     describe,
     fraction_elapsed,
 )
-from sleeper_assistant.sources.live import window_open as live_window_open
+from sleeper_assistant.core.sources.live import window_open as live_window_open
+from sleeper_assistant.db import (
+    NflGameRow,
+)
 from sleeper_assistant.utils.clock import utc_iso
 
 GameState = Literal["upcoming", "live", "final", "bye"]

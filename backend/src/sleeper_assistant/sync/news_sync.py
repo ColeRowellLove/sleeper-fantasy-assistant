@@ -12,10 +12,10 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import PLAYER_POSITIONS
-from sleeper_assistant.core.nfl_teams import NICKNAMES
+from sleeper_assistant.core.nfl.nfl_teams import NICKNAMES
+from sleeper_assistant.core.sources.espn import normalize_name
+from sleeper_assistant.core.sources.news_feed import NewsEntry, configured_feeds, fetch_feed
 from sleeper_assistant.db import NewsItemRow, PlayerRow, RawSnapshotRow, utcnow
-from sleeper_assistant.sources.espn import normalize_name
-from sleeper_assistant.sources.news_feed import NewsEntry, configured_feeds, fetch_feed
 
 log = logging.getLogger(__name__)
 

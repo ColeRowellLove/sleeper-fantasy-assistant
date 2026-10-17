@@ -15,9 +15,9 @@ from sqlalchemy.orm import Session
 
 from sleeper_assistant.alerts.engine import NewAlert, register
 from sleeper_assistant.alerts.helpers import alert_key, lineup_week
-from sleeper_assistant.core.rosters import league_rosters
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.start_sit import Candidate, best_lineup, candidate_line
 from sleeper_assistant.db import LeagueRow
-from sleeper_assistant.views.start_sit import Candidate, best_lineup, candidate_line
 
 MIN_GAIN = 3.0  # projected points a swap must add, so small differences are not noise
 KIND = "lineup_move"

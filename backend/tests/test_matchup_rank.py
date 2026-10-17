@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.matchup_rank import build_defense_table, matchup_rank
+from sleeper_assistant.core.nfl.matchup_rank import build_defense_table, matchup_rank
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,

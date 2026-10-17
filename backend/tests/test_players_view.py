@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.sources.sleeper import BASE_URL, SleeperClient
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -18,7 +19,6 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.sources.sleeper import BASE_URL, SleeperClient
 from sleeper_assistant.sync.player_data import stored_weeks, sync_trending, sync_week_stats
 from sleeper_assistant.views.players import build_players
 

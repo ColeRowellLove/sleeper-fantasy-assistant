@@ -65,7 +65,7 @@ def test_the_sample_has_a_week_in_progress_a_bye_and_standings(client: TestClien
 def test_the_box_score_route_answers_and_says_so_when_espn_has_nothing(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from sleeper_assistant.sources import box_score as module  # noqa: PLC0415
+    from sleeper_assistant.core.sources import box_score as module  # noqa: PLC0415
 
     def ok(season: str, week: int, home: str, away: str) -> module.BoxScore:
         return module.BoxScore(home=home, away=away, final=True, teams=[])

@@ -2,8 +2,8 @@ from typing import Any
 
 import pytest
 
-from sleeper_assistant.core.rules import ReceptionScoring, derive_rules
-from sleeper_assistant.sources.sleeper import SleeperLeague
+from sleeper_assistant.core.league.rules import ReceptionScoring, derive_rules
+from sleeper_assistant.core.sources.sleeper import SleeperLeague
 
 
 def _league(**overrides: Any) -> SleeperLeague:

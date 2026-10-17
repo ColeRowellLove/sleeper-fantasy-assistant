@@ -10,9 +10,9 @@ from fastapi import Depends, HTTPException, Path, Response
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from sleeper_assistant.core.live_window import live_window_cached
+from sleeper_assistant.core.nfl.live_window import live_window_cached
+from sleeper_assistant.core.sources.sleeper import SleeperClient
 from sleeper_assistant.db import LeagueRow, make_engine, make_session_factory
-from sleeper_assistant.sources.sleeper import SleeperClient
 
 # Read endpoints are identical for everyone and only change when a sync runs, so let the CDN
 # serve them briefly instead of hitting the database on every page view.

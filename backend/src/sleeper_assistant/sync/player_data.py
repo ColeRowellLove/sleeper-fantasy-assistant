@@ -13,6 +13,8 @@ import httpx
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.sources.espn import Ownership, SleeperPerson, match_players
+from sleeper_assistant.core.sources.sleeper import SleeperClient
 from sleeper_assistant.db import (
     PlayerOwnershipRow,
     PlayerRow,
@@ -21,8 +23,6 @@ from sleeper_assistant.db import (
     PlayerWeekStatsRow,
     utcnow,
 )
-from sleeper_assistant.sources.espn import Ownership, SleeperPerson, match_players
-from sleeper_assistant.sources.sleeper import SleeperClient
 from sleeper_assistant.sync.ingest import sync_schedule
 
 

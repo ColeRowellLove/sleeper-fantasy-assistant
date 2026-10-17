@@ -16,14 +16,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_COMPLETE
-from sleeper_assistant.core.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
-from sleeper_assistant.core.injury_status import WILL_NOT_PLAY
-from sleeper_assistant.core.nfl_games import GameInfo, current_week, games_for_week
-from sleeper_assistant.core.rosters import league_rosters
-from sleeper_assistant.core.team_names import team_names
-from sleeper_assistant.core.team_stats import TeamStat, all_team_stats, build_team_stats
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.team_names import team_names
+from sleeper_assistant.core.nfl.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
+from sleeper_assistant.core.nfl.injury_status import WILL_NOT_PLAY, InjuryInfo, injury_info
+from sleeper_assistant.core.nfl.nfl_games import GameInfo, current_week, games_for_week
+from sleeper_assistant.core.nfl.team_stats import TeamStat, all_team_stats, build_team_stats
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, TeamDepthChartRow
-from sleeper_assistant.views.roster_players import InjuryInfo, injury_info
 
 # designations that mean a player will not play
 _ORDINAL = {1: "Starter", 2: "2nd string", 3: "3rd string"}

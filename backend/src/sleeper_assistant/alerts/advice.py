@@ -19,11 +19,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.alerts.engine import register_pre_run
-from sleeper_assistant.core.injury_status import UNLIKELY_TO_PLAY
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.projections import projected_points
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY
+from sleeper_assistant.core.scoring.projections import projected_points
+from sleeper_assistant.core.sources import llm
 from sleeper_assistant.db import LeagueRow, PlayerProjectionRow, PlayerRow, RosterRow
-from sleeper_assistant.sources import llm
 
 log = logging.getLogger(__name__)
 

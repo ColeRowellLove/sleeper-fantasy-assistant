@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from sleeper_assistant import worker
 from sleeper_assistant.api import deps as api_deps
-from sleeper_assistant.core import live_window
-from sleeper_assistant.core.live_window import live_window_cached, live_window_open
+from sleeper_assistant.core.nfl import live_window
+from sleeper_assistant.core.nfl.live_window import live_window_cached, live_window_open
 from sleeper_assistant.db import JobRow, NflGameRow, make_session_factory, utcnow
 from sleeper_assistant.sync.job_schedule import (
     STATS_SYNC_INTERVAL,

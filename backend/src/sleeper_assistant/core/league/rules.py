@@ -6,8 +6,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel
 
-from sleeper_assistant.core.lineup_slots import starter_slots
-from sleeper_assistant.sources.sleeper import SleeperLeague
+from sleeper_assistant.core.league.lineup_slots import starter_slots
+from sleeper_assistant.core.sources.sleeper import SleeperLeague
 
 # Sleeper waiver_type: 0 = rolling priority, 1 = reverse standings priority, 2 = FAAB
 FAAB_WAIVER_TYPE = 2

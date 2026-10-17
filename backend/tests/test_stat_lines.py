@@ -2,7 +2,11 @@
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.stat_lines import projected_stat_lines, stat_line, week_stat_lines
+from sleeper_assistant.core.scoring.stat_lines import (
+    projected_stat_lines,
+    stat_line,
+    week_stat_lines,
+)
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,

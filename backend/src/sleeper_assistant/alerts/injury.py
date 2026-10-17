@@ -23,14 +23,14 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.alerts import advice as alert_advice
 from sleeper_assistant.alerts.engine import NewAlert, needs_advice, register, register_pre_run
 from sleeper_assistant.alerts.helpers import alert_key, player_tag
-from sleeper_assistant.core.injury_status import UNLIKELY_TO_PLAY
-from sleeper_assistant.core.lineup_slots import eligible_positions, starter_slots
-from sleeper_assistant.core.nfl_games import current_week, games_for_week
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.projections import projected_points
-from sleeper_assistant.core.rosters import league_rosters
+from sleeper_assistant.core.league.lineup_slots import eligible_positions, starter_slots
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY
+from sleeper_assistant.core.nfl.nfl_games import current_week, games_for_week
+from sleeper_assistant.core.nfl.team_depth import build_team_depth
+from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import LeagueRow, PlayerInjuryRow, PlayerRow, RosterRow, as_utc
-from sleeper_assistant.views.team_depth import build_team_depth
 
 KIND = "injury_out"
 OUT = "Out"

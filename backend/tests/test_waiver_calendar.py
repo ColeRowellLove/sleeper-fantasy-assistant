@@ -2,8 +2,8 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.lineup_slots import starter_slots
-from sleeper_assistant.core.waiver_calendar import (
+from sleeper_assistant.core.league.lineup_slots import starter_slots
+from sleeper_assistant.core.nfl.waiver_calendar import (
     coming_week,
     day_name,
     waiver_date_if_tomorrow,

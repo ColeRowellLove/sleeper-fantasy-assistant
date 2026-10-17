@@ -5,8 +5,13 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.sources.news_feed import (
+    FeedError,
+    configured_feeds,
+    fetch_feed,
+    parse_feed,
+)
 from sleeper_assistant.db import LeagueRow, NewsItemRow, PlayerRow, RosterRow
-from sleeper_assistant.sources.news_feed import FeedError, configured_feeds, fetch_feed, parse_feed
 from sleeper_assistant.sync.news_sync import match_entry, name_index, sync_news
 from sleeper_assistant.views.news import build_news, player_news
 

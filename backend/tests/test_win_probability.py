@@ -7,7 +7,7 @@ import math
 import pytest
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.win_probability import (
+from sleeper_assistant.core.scoring.win_probability import (
     BASE_SPREAD,
     FLOOR,
     StarterState,

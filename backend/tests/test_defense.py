@@ -4,13 +4,13 @@ import math
 
 import pytest
 
-from sleeper_assistant.core.defense import (
+from sleeper_assistant.core.nfl.defense import (
     SCORE_SPREAD,
     parse_tier,
     points_allowed_score,
     tier_probability,
 )
-from sleeper_assistant.core.projections import score_projection, score_stats
+from sleeper_assistant.core.scoring.projections import score_projection, score_stats
 
 # the family league's points-allowed tiers
 TIERS = {

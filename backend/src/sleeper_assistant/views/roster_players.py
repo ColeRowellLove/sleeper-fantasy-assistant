@@ -9,15 +9,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import EMPTY_SLOT
-from sleeper_assistant.core.injury_status import WILL_NOT_PLAY
-from sleeper_assistant.core.live_projection import live_projection
-from sleeper_assistant.core.matchup_rank import (
+from sleeper_assistant.core.nfl.injury_status import WILL_NOT_PLAY, InjuryInfo, injury_info
+from sleeper_assistant.core.nfl.matchup_rank import (
     DefenseTable,
     MatchupRank,
     matchup_rank,
 )
-from sleeper_assistant.core.nfl_games import GameInfo
-from sleeper_assistant.core.stat_lines import projected_stat_lines, week_stat_lines
+from sleeper_assistant.core.nfl.nfl_games import GameInfo
+from sleeper_assistant.core.scoring.live_projection import live_projection
+from sleeper_assistant.core.scoring.stat_lines import projected_stat_lines, week_stat_lines
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -26,13 +26,6 @@ from sleeper_assistant.db import (
 )
 
 Status = Literal["starter", "bench", "ir", "taxi"]
-
-
-class InjuryInfo(BaseModel):
-    """Injury designation from Sleeper (Out, Doubtful, Questionable, IR, PUP, ...)."""
-
-    status: str
-    body_part: str | None = None
 
 
 class RosterPlayer(BaseModel):
@@ -59,17 +52,6 @@ class RosterPlayer(BaseModel):
 def load_players(session: Session, player_ids: set[str]) -> dict[str, PlayerRow]:
     rows = session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(player_ids)))
     return {p.player_id: p for p in rows}
-
-
-# Designations that carry no information for a fantasy manager are hidden.
-_HIDDEN_INJURY_STATUSES = {"", "NA"}
-
-
-def injury_info(players: dict[str, PlayerRow], pid: str) -> InjuryInfo | None:
-    p = players.get(pid)
-    if p is None or not p.injury_status or p.injury_status in _HIDDEN_INJURY_STATUSES:
-        return None
-    return InjuryInfo(status=p.injury_status, body_part=p.injury_body_part or None)
 
 
 def display(players: dict[str, PlayerRow], pid: str) -> tuple[str, str | None, str | None]:

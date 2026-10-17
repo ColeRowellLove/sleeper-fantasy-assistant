@@ -14,8 +14,8 @@ from sqlalchemy.pool import StaticPool
 from sleeper_assistant.api import app
 from sleeper_assistant.api import deps as api_deps
 from sleeper_assistant.api.deps import get_session, get_sleeper
+from sleeper_assistant.core.sources.sleeper import BASE_URL, SleeperClient
 from sleeper_assistant.db import Base, LeagueRow, make_session_factory
-from sleeper_assistant.sources.sleeper import BASE_URL, SleeperClient
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parent / "fixtures" / "sleeper_league.json").read_text()

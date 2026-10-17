@@ -16,11 +16,11 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.alerts.engine import NewAlert, register
 from sleeper_assistant.alerts.helpers import alert_key, lineup_week, player_tag
 from sleeper_assistant.alerts.injury import Spot, suggested_switch
-from sleeper_assistant.core.lineup_slots import starter_slots
-from sleeper_assistant.core.nfl_games import games_for_week
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.projections import projected_points
-from sleeper_assistant.core.rosters import league_rosters
+from sleeper_assistant.core.league.lineup_slots import starter_slots
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.nfl.nfl_games import games_for_week
+from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import LeagueRow, PlayerRow
 
 KIND = "bye_week"

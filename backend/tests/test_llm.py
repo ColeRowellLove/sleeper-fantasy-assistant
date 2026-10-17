@@ -6,8 +6,8 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
-from sleeper_assistant.sources import llm
-from sleeper_assistant.sources.llm import (
+from sleeper_assistant.core.sources import llm
+from sleeper_assistant.core.sources.llm import (
     AnthropicClient,
     Budget,
     OpenAICompatibleClient,

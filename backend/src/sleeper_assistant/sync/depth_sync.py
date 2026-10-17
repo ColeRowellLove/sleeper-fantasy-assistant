@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.depth import (
+from sleeper_assistant.core.nfl.depth import (
     TEAM_IDS,
     Entry,
     RosterPlayer,
