@@ -4,99 +4,43 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from datetime import timedelta
-from functools import lru_cache
-from typing import Annotated, Any
+from typing import Annotated
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
-from pydantic import BaseModel, StringConstraints, ValidationError
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant import __version__
-from sleeper_assistant.alerts import AlertsView, build_alerts
-from sleeper_assistant.dashboard import Dashboard, Lineups, build_dashboard, build_lineups
+from sleeper_assistant.api_deps import (
+    LeagueDep,
+    LeagueId,
+    SessionDep,
+    SleeperDep,
+    get_engine_factory,
+)
+from sleeper_assistant.dashboard import Dashboard, build_dashboard
 from sleeper_assistant.db import (
     LeagueRow,
-    RosterRow,
     as_utc,
-    make_engine,
-    make_session_factory,
     utcnow,
 )
-from sleeper_assistant.depth import TEAM_IDS
-from sleeper_assistant.games_view import Games, build_games
 from sleeper_assistant.ingest import finish_connect, sync_league
-from sleeper_assistant.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
-from sleeper_assistant.live_window import live_window_cached
-from sleeper_assistant.news_view import NewsView, build_news
-from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
-from sleeper_assistant.players_view import PlayersResponse, build_players
-from sleeper_assistant.rankings import Rankings, build_rankings
+from sleeper_assistant.routes_league import router
 from sleeper_assistant.rules import LeagueRules, derive_rules
-from sleeper_assistant.sleeper import SleeperClient, SleeperLeague, SleeperNotFoundError
-from sleeper_assistant.start_sit import (
-    MAX_COMPARE,
-    BestLineup,
-    Comparison,
-    best_lineup,
-    compare_players,
-)
-from sleeper_assistant.team_depth import TeamDepth, build_team_depth
-from sleeper_assistant.transactions_view import TransactionsView, build_transactions
-from sleeper_assistant.waiver_wire import WaiverWire, build_waiver_wire
+from sleeper_assistant.sleeper import SleeperLeague, SleeperNotFoundError
 
 log = logging.getLogger(__name__)
 
 RESYNC_COOLDOWN = timedelta(seconds=60)  # connect reuses a sync newer than this
 VIEW_TOUCH_INTERVAL = timedelta(hours=1)  # last_viewed_at is refreshed at most this often
-# Read endpoints are identical for everyone and only change when a sync runs, so let the CDN
-# serve them briefly instead of hitting the database on every page view.
-READ_CACHE = "public, s-maxage=30, stale-while-revalidate=120"
-# while a game is on, answers are only trusted for a few seconds so scores and stats stay fresh
-READ_CACHE_LIVE = "public, s-maxage=10, stale-while-revalidate=5"
-
 app = FastAPI(title="Sleeper Fantasy Assistant", version=__version__)
+app.include_router(router)
 
 Username = Annotated[str, Path(pattern=r"^[A-Za-z0-9_.]{1,40}$")]
-LeagueId = Annotated[str, Path(pattern=r"^\d{1,25}$")]
-
-
-@lru_cache
-def _engine() -> Engine:
-    return make_engine()
-
-
-@lru_cache
-def _session_factory() -> sessionmaker[Session]:
-    return make_session_factory(_engine())
-
-
-def get_engine_factory() -> Callable[[], Engine]:
-    """Returns the engine builder without calling it, so callers can handle its errors."""
-    return _engine
-
-
-def get_session() -> Iterator[Session]:
-    with _session_factory()() as session:
-        yield session
-
-
-@lru_cache
-def get_sleeper() -> SleeperClient:
-    return SleeperClient()
-
-
-SessionDep = Annotated[Session, Depends(get_session)]
-SleeperDep = Annotated[SleeperClient, Depends(get_sleeper)]
-
-
-def read_cache(session: Session, season: str) -> str:
-    """The Cache-Control for a read: a few seconds while a game is on, longer otherwise."""
-    return READ_CACHE_LIVE if live_window_cached(session, season) else READ_CACHE
 
 
 class LeagueSummary(BaseModel):
@@ -212,253 +156,15 @@ class DashboardResponse(Dashboard):
 
 
 @app.get("/api/leagues/{league_id}")
-def get_league_dashboard(
-    league_id: LeagueId, session: SessionDep, response: Response
-) -> DashboardResponse:
+def get_league_dashboard(row: LeagueDep, session: SessionDep) -> DashboardResponse:
     """Standings, rosters and the league rules card for a connected league (read-only)."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
     now = utcnow()
     # throttled: refreshing the page must not cost a database write every time
     if row.last_viewed_at is None or as_utc(row.last_viewed_at) < now - VIEW_TOUCH_INTERVAL:
         row.last_viewed_at = now
         session.commit()
     connected = _connected(row)
-    response.headers["Cache-Control"] = read_cache(session, row.season)
     return DashboardResponse(**build_dashboard(session, row).model_dump(), rules=connected.rules)
-
-
-class LeagueSettings(BaseModel):
-    """Everything Sleeper reports about how the league is set up, as stored (read-only)."""
-
-    league_id: str
-    name: str
-    season: str
-    total_rosters: int
-    settings: dict[str, Any]
-    scoring_settings: dict[str, float]
-    roster_positions: list[str]
-
-
-@app.get("/api/leagues/{league_id}/settings")
-def get_league_settings(
-    league_id: LeagueId, session: SessionDep, response: Response
-) -> LeagueSettings:
-    """The league's rules, scoring and roster positions exactly as Sleeper provides them."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return LeagueSettings(
-        league_id=row.league_id,
-        name=row.name,
-        season=row.season,
-        total_rosters=row.total_rosters,
-        settings=row.settings,
-        scoring_settings={k: float(v) for k, v in row.scoring_settings.items()},
-        roster_positions=row.roster_positions,
-    )
-
-
-@app.get("/api/leagues/{league_id}/players")
-def get_league_players(
-    league_id: LeagueId, session: SessionDep, response: Response
-) -> PlayersResponse:
-    """Every relevant NFL player as seen through this league (availability, trends, points)."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_players(session, row)
-
-
-@app.get("/api/leagues/{league_id}/transactions")
-def get_league_transactions(
-    league_id: LeagueId, session: SessionDep, response: Response
-) -> TransactionsView:
-    """The league's latest adds, drops, waiver claims and trades, newest first."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_transactions(session, row)
-
-
-@app.get("/api/leagues/{league_id}/news")
-def get_league_news(league_id: LeagueId, session: SessionDep, response: Response) -> NewsView:
-    """Recent headlines about players and teams, from the configured public feeds."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_news(session, row)
-
-
-PlayerId = Annotated[str, Path(pattern=r"^[A-Za-z0-9]{1,12}$")]
-
-
-@app.get("/api/leagues/{league_id}/players/{player_id}")
-def get_player_detail(
-    league_id: LeagueId, player_id: PlayerId, session: SessionDep, response: Response
-) -> PlayerDetail:
-    """One player's bio, season, weekly points, projection and past seasons in this league."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    detail = build_player_detail(session, row, player_id)
-    if detail is None:
-        raise HTTPException(status_code=404, detail="Player not found")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return detail
-
-
-PlayerIdParam = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9]{1,12}$")]
-TeamCode = Annotated[str, Path(pattern=r"^[A-Z]{2,3}$")]
-
-
-@app.get("/api/leagues/{league_id}/teams/{team}")
-def get_team_depth(
-    league_id: LeagueId, team: TeamCode, session: SessionDep, response: Response
-) -> TeamDepth:
-    """One NFL team's depth chart (offense, defense, special teams) as seen through this league."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    if team not in TEAM_IDS:
-        raise HTTPException(status_code=404, detail="Team not found")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_team_depth(session, row, team)
-
-
-@app.get("/api/leagues/{league_id}/lineups")
-def get_league_lineups(
-    league_id: LeagueId,
-    session: SessionDep,
-    response: Response,
-    week: Annotated[int | None, Query(ge=1, le=18)] = None,
-) -> Lineups:
-    """Both teams' lineups (starters by slot, bench, points) per matchup for one week."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_lineups(session, row, week)
-
-
-@app.get("/api/leagues/{league_id}/start-sit")
-def get_start_sit(
-    league_id: LeagueId,
-    session: SessionDep,
-    response: Response,
-    player: Annotated[list[PlayerIdParam], Query(min_length=2, max_length=MAX_COMPARE)],
-    week: Annotated[int | None, Query(ge=1, le=18)] = None,
-) -> Comparison:
-    """Compare two or more players for one lineup spot and say which to start."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return compare_players(session, row, player, week)
-
-
-@app.get("/api/leagues/{league_id}/start-sit/lineup")
-def get_best_lineup(
-    league_id: LeagueId,
-    session: SessionDep,
-    response: Response,
-    roster: Annotated[int, Query(ge=1, le=64)],
-    week: Annotated[int | None, Query(ge=1, le=18)] = None,
-) -> BestLineup:
-    """The projected-best lineup for one roster and how it differs from today's starters."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    result = best_lineup(session, row, roster, week)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Team not found")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return result
-
-
-@app.get("/api/leagues/{league_id}/games")
-def get_games(
-    league_id: LeagueId,
-    session: SessionDep,
-    response: Response,
-    week: Annotated[int | None, Query(ge=1, le=18)] = None,
-) -> Games:
-    """Every NFL game of a week with score, line, conditions and the players in it."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_games(session, row, week)
-
-
-@app.get("/api/leagues/{league_id}/alerts")
-def get_alerts(
-    league_id: LeagueId,
-    session: SessionDep,
-    response: Response,
-    roster: Annotated[int, Query(ge=1, le=64)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
-) -> AlertsView:
-    """A team's recent alerts, newest first. Whether they have been read is the viewer's own
-    business (kept in their browser), because anyone can open this public page."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    if session.get(RosterRow, (league_id, roster)) is None:
-        raise HTTPException(status_code=404, detail="Team not found")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_alerts(session, league_id, roster, limit)
-
-
-@app.get("/api/leagues/{league_id}/waiver-wire")
-def get_waiver_wire(
-    league_id: LeagueId,
-    session: SessionDep,
-    response: Response,
-    roster: Annotated[int, Query(ge=1, le=64)],
-) -> WaiverWire:
-    """This waiver cycle's most recommended adds for one team, with the reasons."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    if session.get(RosterRow, (league_id, roster)) is None:
-        raise HTTPException(status_code=404, detail="Team not found")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_waiver_wire(session, row, roster)
-
-
-@app.get("/api/leagues/{league_id}/rankings")
-def get_rankings(
-    league_id: LeagueId,
-    session: SessionDep,
-    response: Response,
-    week: Annotated[int | None, Query(ge=1, le=18)] = None,
-    sources: Annotated[str | None, Query(pattern=r"^[a-z,]{0,80}$")] = None,
-) -> Rankings:
-    """Weekly player rankings by position: a consensus of the chosen signals, with the spread."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    chosen = [s for s in (sources or "").split(",") if s]
-    return build_rankings(session, row, week, chosen)
-
-
-@app.get("/api/leagues/{league_id}/accuracy")
-def get_lineup_accuracy(
-    league_id: LeagueId, session: SessionDep, response: Response
-) -> LineupAccuracy:
-    """Sit vs start accuracy per team: actual points against the best lineup, finished weeks."""
-    row = session.get(LeagueRow, league_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="League not connected yet")
-    response.headers["Cache-Control"] = read_cache(session, row.season)
-    return build_lineup_accuracy(session, row)
 
 
 def _connected(row: LeagueRow) -> ConnectedLeague:

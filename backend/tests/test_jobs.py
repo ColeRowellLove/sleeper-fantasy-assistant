@@ -17,12 +17,8 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.worker import (
-    enqueue_due_syncs,
-    enqueue_player_sync_if_due,
-    run_cycle,
-    run_once,
-)
+from sleeper_assistant.job_schedule import enqueue_due_syncs, enqueue_player_sync_if_due
+from sleeper_assistant.worker import run_cycle, run_once
 
 
 def test_enqueue_and_claim_in_order(session: Session) -> None:

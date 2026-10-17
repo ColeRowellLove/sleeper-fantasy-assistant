@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import build_dashboard, build_lineups
+from sleeper_assistant.dashboard import build_dashboard
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -15,6 +15,7 @@ from sleeper_assistant.db import (
     PlayerRow,
     RosterRow,
 )
+from sleeper_assistant.lineups import build_lineups
 from sleeper_assistant.projections import projected_points, score_stats, sync_projections
 from sleeper_assistant.sleeper import BASE_URL, SleeperClient
 

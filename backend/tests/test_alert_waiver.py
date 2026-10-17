@@ -10,14 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import alert_advice, alerts, llm
-from sleeper_assistant.alert_waiver import (
-    coming_week,
-    day_name,
-    detect_waiver_targets,
-    replaced_by,
-    waiver_date_if_tomorrow,
-    waiver_day,
-)
+from sleeper_assistant.alert_waiver import detect_waiver_targets, replaced_by
 from sleeper_assistant.alerts import run_alerts
 from sleeper_assistant.db import (
     AlertRow,
@@ -29,6 +22,12 @@ from sleeper_assistant.db import (
     RosterRow,
     TeamDepthChartRow,
     utcnow,
+)
+from sleeper_assistant.waiver_calendar import (
+    coming_week,
+    day_name,
+    waiver_date_if_tomorrow,
+    waiver_day,
 )
 
 SCORING = {"rush_yd": 0.1, "rec_yd": 0.1}

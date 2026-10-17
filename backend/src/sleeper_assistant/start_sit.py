@@ -14,24 +14,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import (
-    GameInfo,
-    InjuryInfo,
-    games_for_week,
-    injury_info,
-    starter_slots,
-)
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow
-from sleeper_assistant.lineup_slots import assign_lineup
+from sleeper_assistant.lineup_slots import assign_lineup, starter_slots
 from sleeper_assistant.matchup_rank import (
     DefenseTable,
     MatchupRank,
     build_defense_table,
     matchup_rank,
 )
+from sleeper_assistant.nfl_games import GameInfo, games_for_week
 from sleeper_assistant.players_view import player_name
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.rankings import RankedPlayer, Rankings, build_rankings
+from sleeper_assistant.roster_players import InjuryInfo, injury_info
 
 # designations that mean a player will not play
 _OUT = {"Out", "IR", "PUP", "Suspended", "NA", "DNR", "COV"}
@@ -247,7 +242,7 @@ def best_lineup(
         for pid, c in cands.items()
         if c.out is None and c.projected is not None
     ]
-    slots = starter_slots(league)
+    slots = starter_slots(league.roster_positions)
     lineup = assign_lineup(slots, usable)
     spots: list[LineupSpot] = []
     remaining = list(lineup)

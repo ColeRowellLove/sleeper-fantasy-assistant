@@ -13,10 +13,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
+from sleeper_assistant.stats_version import season_stats_version
 
 
 @dataclass(frozen=True)
@@ -91,20 +92,7 @@ def reset_cache() -> None:
 
 def build_team_stats(session: Session, season: str) -> TeamStatTable:
     """Every team's per-game stats and ranks, rebuilt only when games or stats change."""
-    version = (
-        session.scalar(
-            select(func.count())
-            .select_from(NflGameRow)
-            .where(NflGameRow.season == season, NflGameRow.status == "complete")
-        )
-        or 0,
-        session.scalar(
-            select(func.count())
-            .select_from(PlayerWeekStatsRow)
-            .where(PlayerWeekStatsRow.season == season)
-        )
-        or 0,
-    )
+    version = season_stats_version(session, season)
     cached = _CACHE.get(season)
     if cached is not None and cached[0] == version:
         return cached[1]

@@ -14,14 +14,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import (
-    GameInfo,
-    InjuryInfo,
-    current_week,
-    games_for_week,
-    injury_info,
-    team_names,
-)
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -40,10 +32,13 @@ from sleeper_assistant.matchup_rank import (
     matchup_rank,
 )
 from sleeper_assistant.news_view import NewsEntryView, player_news
+from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
 from sleeper_assistant.player_history import HistoryEvent, build_history
 from sleeper_assistant.players_view import player_name
 from sleeper_assistant.projections import score_projection, score_stats
+from sleeper_assistant.roster_players import InjuryInfo, injury_info
 from sleeper_assistant.team_depth import TeamDepth, build_team_depth
+from sleeper_assistant.team_names import team_names
 from sleeper_assistant.team_stats import TeamStat, build_team_stats, stats_for_position
 
 # volume numbers worth showing even when the league does not score them directly

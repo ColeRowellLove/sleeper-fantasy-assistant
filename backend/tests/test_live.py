@@ -11,7 +11,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import live
-from sleeper_assistant.dashboard import games_for_week
 from sleeper_assistant.db import NflGameRow
 from sleeper_assistant.kickoffs import parse_scores, sync_kickoffs
 from sleeper_assistant.live import (
@@ -22,6 +21,7 @@ from sleeper_assistant.live import (
     parse_scoreboard,
     window_open,
 )
+from sleeper_assistant.nfl_games import games_for_week
 
 
 def _event(  # noqa: PLR0913

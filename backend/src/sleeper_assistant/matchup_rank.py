@@ -16,11 +16,12 @@ from collections.abc import Mapping
 from typing import Literal
 
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
 from sleeper_assistant.projections import score_stats
+from sleeper_assistant.stats_version import season_stats_version
 
 RANKED_POSITIONS = ("QB", "RB", "WR", "TE", "K")
 DEFENSE = "DEF"
@@ -63,20 +64,7 @@ def build_defense_table(
     The table only changes when a game completes or stats are stored, so it is kept per season
     and scoring and rebuilt when the number of completed games or stored stat rows changes.
     """
-    version = (
-        session.scalar(
-            select(func.count())
-            .select_from(NflGameRow)
-            .where(NflGameRow.season == season, NflGameRow.status == "complete")
-        )
-        or 0,
-        session.scalar(
-            select(func.count())
-            .select_from(PlayerWeekStatsRow)
-            .where(PlayerWeekStatsRow.season == season)
-        )
-        or 0,
-    )
+    version = season_stats_version(session, season)
     key = (season, repr(sorted(scoring.items())))
     cached = _CACHE.get(key)
     if cached is not None and cached[0] == version:

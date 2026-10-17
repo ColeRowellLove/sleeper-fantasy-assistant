@@ -9,9 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import team_names
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow, TransactionRow
 from sleeper_assistant.players_view import player_name
+from sleeper_assistant.team_names import team_names
 
 Kind = Literal["waiver", "free_agent", "trade", "commissioner"]
 _KINDS: set[str] = {"waiver", "free_agent", "trade", "commissioner"}
