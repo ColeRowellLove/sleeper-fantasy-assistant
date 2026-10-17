@@ -33,6 +33,20 @@ Inspiration only: no logos, names, fonts or assets from those apps.
 - **Filter chips:** position, availability, week; same look and keyboard behaviour everywhere.
 - **Cards and disclosure:** one spacing scale; detail in a native `<details>` where it helps.
 
+## Reuse first
+
+Before building anything, find the nearest existing piece (`PlayerIdentity`, `PlayerStatLine`,
+`StatTable`, `FilterChips`, `GameBadge`, `WinBar`, the tokens in `app/styles/tokens.css`) and use or
+extend it. A layout fix that applies to one screen usually applies to all of them: make it in the
+shared component or token. One content width (`.container`), one spacing scale, one set of chips.
+
+## Reviewing the pictures
+
+The Screenshots workflow posts every page at phone and desktop width on each PR. Go in assuming the
+change is not done until the pictures look right: read the phone images first, then desktop, then
+dark. Fix what looks off before merging. Anything that cannot be fixed in the same PR becomes an
+issue immediately (page, width, screenshot, labels, milestone).
+
 ## Enforced, not just encouraged
 
 `frontend/tests/consistency.test.ts` fails when a component builds its own stats table, filter chip
