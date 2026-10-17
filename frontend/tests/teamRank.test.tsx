@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import PlayerDialog from "../components/PlayerDialog";
 import TeamRankChips from "../components/TeamRankChips";
 import type { PlayerDetail, TeamStat } from "../lib/api";
-import { rankChips, teamRankTone } from "../lib/teamRank";
+import { rankChips, shortStatLabel, teamRankTone } from "../lib/teamRank";
 import { expectNoA11yViolations } from "./a11y";
 
 vi.mock("next/navigation", () => ({
@@ -33,6 +33,11 @@ const stat = (key: string, label: string, rank: number): TeamStat => ({
 });
 
 describe("team rank", () => {
+  it("shortens the labels: per game is said once and touchdowns are TDs", () => {
+    expect(shortStatLabel("Pass touchdowns per game")).toBe("Pass TDs");
+    expect(shortStatLabel("Sacks")).toBe("Sacks");
+  });
+
   it("colours the best third great, the worst third poor and the middle ok", () => {
     expect(teamRankTone(1, 32)).toBe("great");
     expect(teamRankTone(10, 32)).toBe("great");

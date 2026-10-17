@@ -219,10 +219,10 @@ describe("TeamDepthChart", () => {
         myRosterId={null}
       />,
     );
-    expect(screen.getByText("Total yards per game")).toBeInTheDocument();
-    expect(screen.queryByText("Sacks per game")).not.toBeInTheDocument();
+    expect(screen.getByText("Total yards")).toBeInTheDocument();
+    expect(screen.queryByText("Sacks")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Defense" }));
-    expect(screen.getByText("Sacks per game")).toBeInTheDocument();
+    expect(screen.getByText("Sacks")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Special teams" }));
     expect(screen.getByText("No special teams stats yet.")).toBeInTheDocument();
   });
@@ -416,14 +416,14 @@ describe("team stats with league ranks", () => {
 
   it("shows a few stats as rank chips with the per-game number", async () => {
     render(<TeamDepthChart data={{ ...data, stats }} myRosterId={null} />);
-    const chip = screen.getByText("Rush yards per game").closest("li") as HTMLElement;
+    const chip = screen.getByText("Rush yards").closest("li") as HTMLElement;
     expect(chip).toHaveTextContent("2nd");
     expect(chip).toHaveTextContent("142.5");
     expect(screen.queryByText(/team stats$/)).not.toBeInTheDocument(); // nothing more to open
     await expectNoA11yViolations(<TeamDepthChart data={{ ...data, stats }} myRosterId={null} />);
   });
 
-  it("keeps the first ten as chips and the full table under a disclosure", () => {
+  it("keeps the first six as chips and the full table under a disclosure", () => {
     const many = Array.from({ length: 12 }, (_, i) => ({
       ...stats[0],
       key: `s${i}`,
@@ -431,7 +431,7 @@ describe("team stats with league ranks", () => {
       rank: i + 1,
     }));
     render(<TeamDepthChart data={{ ...data, stats: many }} myRosterId={null} />);
-    expect(document.querySelectorAll(".rank-chip")).toHaveLength(10);
+    expect(document.querySelectorAll(".rank-chip")).toHaveLength(6);
     const more = screen.getByText("All 12 team stats").closest("details") as HTMLElement;
     expect(more).not.toHaveAttribute("open");
     const table = within(more).getByRole("table", { name: /per-game stats and league rank/ });

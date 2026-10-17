@@ -16,6 +16,7 @@ export default function TeamRankChips({
   return (
     <section aria-labelledby={headingId}>
       <h3 id={headingId}>{team} team rank</h3>
+      <p className="muted rank-chips-note">Per game, among all teams</p>
       <ul className="rank-chips">
         {chips.map((c) => (
           <li key={c.key} className={`rank-chip tone-${c.tone}`}>

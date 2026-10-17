@@ -3,6 +3,11 @@ import { ordinal } from "./game";
 
 export type TeamRankTone = "great" | "ok" | "poor";
 
+/** "Pass yards per game" becomes "Pass yards": every number here is per game, so it is said once. */
+export function shortStatLabel(label: string): string {
+  return label.replace(/ per game$/i, "").replace(/touchdowns/i, "TDs");
+}
+
 export interface RankChip {
   key: string;
   label: string;
@@ -25,7 +30,7 @@ export function teamRankTone(rank: number, teams: number): TeamRankTone {
 export function rankChips(stats: TeamStat[] | undefined): RankChip[] {
   return (stats ?? []).map((s) => ({
     key: s.key,
-    label: s.label,
+    label: shortStatLabel(s.label),
     rank: ordinal(s.rank),
     value: String(s.value),
     spoken: `${s.label}: ${ordinal(s.rank)} of ${s.teams} teams`,
