@@ -10,6 +10,7 @@ export default function StatTable({
   className = "",
   empty,
   bare = false,
+  scrollLabel,
   children,
 }: {
   caption: string;
@@ -19,10 +20,15 @@ export default function StatTable({
   empty?: ReactNode;
   /** Without the card around it, for a table nested in another card. */
   bare?: boolean;
+  /** Makes the sideways scroll reachable by keyboard, named for a screen reader. */
+  scrollLabel?: string;
   children: ReactNode;
 }) {
   const table = (
-    <div className="players-scroll">
+    <div
+      className="players-scroll"
+      {...(scrollLabel ? { tabIndex: 0, role: "region", "aria-label": scrollLabel } : {})}
+    >
       <table className={`players ${className}`.trim()}>
         <caption className="visually-hidden">{caption}</caption>
         {children}
