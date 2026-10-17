@@ -8,7 +8,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from sleeper_assistant.api import app, get_session
+from sleeper_assistant.api import app
+from sleeper_assistant.api_deps import get_session
 from sleeper_assistant.db import Base, make_session_factory
 from sleeper_assistant.sample_league import CURRENT_WEEK, LEAGUE_ID, seed
 

@@ -25,14 +25,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import (
-    GameInfo,
-    InjuryInfo,
-    current_week,
-    games_for_week,
-    injury_info,
-    team_names,
-)
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -43,8 +35,11 @@ from sleeper_assistant.db import (
     RosterRow,
 )
 from sleeper_assistant.matchup_rank import MatchupRank, build_defense_table, matchup_rank
+from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
 from sleeper_assistant.players_view import player_name
 from sleeper_assistant.projections import score_projection, score_stats
+from sleeper_assistant.roster_players import InjuryInfo, injury_info
+from sleeper_assistant.team_names import team_names
 
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
 FLEX_POSITIONS = frozenset({"RB", "WR", "TE"})

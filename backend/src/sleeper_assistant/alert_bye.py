@@ -15,8 +15,9 @@ from sqlalchemy.orm import Session
 
 from sleeper_assistant.alert_injury import Spot, suggested_switch
 from sleeper_assistant.alerts import NewAlert, register
-from sleeper_assistant.dashboard import current_week, games_for_week, starter_slots
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow
+from sleeper_assistant.lineup_slots import starter_slots
+from sleeper_assistant.nfl_games import current_week, games_for_week
 from sleeper_assistant.projections import projected_points
 
 TELL_BEFORE = timedelta(days=3)  # said this long before the week's first game, not the week before
@@ -43,7 +44,7 @@ def detect_bye_week(session: Session, league: LeagueRow, now: datetime) -> list[
     )  # fmt: skip
     if not byes:
         return []
-    slots = starter_slots(league)
+    slots = starter_slots(league.roster_positions)
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )

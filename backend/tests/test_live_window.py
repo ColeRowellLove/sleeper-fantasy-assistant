@@ -6,17 +6,16 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import api, live_window, worker
+from sleeper_assistant import api_deps, live_window, worker
 from sleeper_assistant.db import JobRow, NflGameRow, make_session_factory, utcnow
-from sleeper_assistant.live_window import live_window_cached, live_window_open
-from sleeper_assistant.worker import (
-    LIVE_CYCLE_SECONDS,
+from sleeper_assistant.job_schedule import (
     STATS_SYNC_INTERVAL,
     STATS_SYNC_INTERVAL_LIVE,
     enqueue_schedule_sync_if_due,
     enqueue_stats_sync_if_due,
-    run_batch,
 )
+from sleeper_assistant.live_window import live_window_cached, live_window_open
+from sleeper_assistant.worker import LIVE_CYCLE_SECONDS, run_batch
 
 NOW = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)
 
@@ -65,12 +64,12 @@ def test_the_window_can_be_asked_per_season(session: Session) -> None:
 
 def test_reads_are_cached_briefly_only_while_a_game_is_on(session: Session) -> None:
     now = datetime.now(UTC)
-    assert api.read_cache(session, "2026") == api.READ_CACHE
+    assert api_deps.read_cache(session, "2026") == api_deps.READ_CACHE
     session.add(_game("g", now + timedelta(minutes=5)))
     session.commit()
     live_window.reset_cache()  # the quiet answer above is remembered for a few seconds
-    assert api.read_cache(session, "2026") == api.READ_CACHE_LIVE
-    assert "s-maxage=10" in api.READ_CACHE_LIVE and "s-maxage=30" in api.READ_CACHE
+    assert api_deps.read_cache(session, "2026") == api_deps.READ_CACHE_LIVE
+    assert "s-maxage=10" in api_deps.READ_CACHE_LIVE and "s-maxage=30" in api_deps.READ_CACHE
 
 
 def test_stats_and_schedule_sync_often_while_a_game_is_on_and_slowly_otherwise(

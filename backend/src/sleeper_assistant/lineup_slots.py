@@ -8,6 +8,8 @@ does; leagues that mix REC_FLEX and WRRB_FLEX may be slightly off.
 
 from __future__ import annotations
 
+NON_STARTER_SLOTS = frozenset({"BN", "IR", "TAXI"})  # bench, injured reserve and taxi squad
+
 # which positions can fill a slot; a slot Sleeper adds later that we do not know counts as no slot
 _ELIGIBLE: dict[str, frozenset[str]] = {
     "QB": frozenset({"QB"}),
@@ -55,3 +57,8 @@ def optimal_lineup(slots: list[str], candidates: list[tuple[str, str, float]]) -
     """Player ids of the best lineup, highest scorer first."""
     chosen = {pid for _, pid in assign_lineup(slots, candidates)}
     return [pid for pid, _, _ in sorted(candidates, key=lambda c: -c[2]) if pid in chosen]
+
+
+def starter_slots(roster_positions: list[str]) -> list[str]:
+    """Lineup slot labels in the order Sleeper lists a roster's starters (no bench, IR or taxi)."""
+    return [p for p in roster_positions if p not in NON_STARTER_SLOTS]

@@ -15,8 +15,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.alerts import NewAlert, register
-from sleeper_assistant.dashboard import current_week
 from sleeper_assistant.db import LeagueRow, NflGameRow, RosterRow
+from sleeper_assistant.nfl_games import current_week
 from sleeper_assistant.start_sit import Candidate, best_lineup, candidate_line
 
 MIN_GAIN = 3.0  # projected points a swap must add, so small differences are not noise

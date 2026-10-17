@@ -12,8 +12,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import team_names
 from sleeper_assistant.db import LeagueRow, RosterRow
+from sleeper_assistant.team_names import team_names
 
 
 class TeamAccuracy(BaseModel):

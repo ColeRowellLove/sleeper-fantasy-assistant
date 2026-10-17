@@ -6,6 +6,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel
 
+from sleeper_assistant.lineup_slots import starter_slots
 from sleeper_assistant.sleeper import SleeperLeague
 
 # Sleeper waiver_type: 0 = rolling priority, 1 = reverse standings priority, 2 = FAAB
@@ -13,7 +14,6 @@ FAAB_WAIVER_TYPE = 2
 
 HALF_PPR = 0.5
 
-_BENCH_SLOTS = {"BN", "IR", "TAXI"}
 _FLEX_SLOTS = {"FLEX", "WRRB_FLEX", "REC_FLEX"}
 _SUPERFLEX_SLOTS = {"SUPER_FLEX"}
 
@@ -66,7 +66,7 @@ def derive_rules(league: SleeperLeague) -> LeagueRules:
     return LeagueRules(
         reception_scoring=_reception_scoring(float(scoring.get("rec", 0))),
         te_premium=float(scoring.get("bonus_rec_te", 0)),
-        starter_slots=[p for p in positions if p not in _BENCH_SLOTS],
+        starter_slots=starter_slots(positions),
         flex_count=sum(p in _FLEX_SLOTS for p in positions),
         superflex_count=sum(p in _SUPERFLEX_SLOTS for p in positions),
         bench_size=sum(p == "BN" for p in positions),

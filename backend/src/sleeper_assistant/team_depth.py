@@ -15,16 +15,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import (
-    GameInfo,
-    InjuryInfo,
-    current_week,
-    games_for_week,
-    injury_info,
-    team_names,
-)
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow, TeamDepthChartRow
 from sleeper_assistant.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
+from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
+from sleeper_assistant.roster_players import InjuryInfo, injury_info
+from sleeper_assistant.team_names import team_names
 from sleeper_assistant.team_stats import TeamStat, all_team_stats, build_team_stats
 
 # designations that mean a player will not play

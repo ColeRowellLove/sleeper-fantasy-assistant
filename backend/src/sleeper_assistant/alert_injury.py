@@ -22,9 +22,9 @@ from sqlalchemy.orm import Session
 
 from sleeper_assistant import alert_advice
 from sleeper_assistant.alerts import NewAlert, needs_advice, register, register_pre_run
-from sleeper_assistant.dashboard import current_week, games_for_week, starter_slots
 from sleeper_assistant.db import LeagueRow, PlayerInjuryRow, PlayerRow, RosterRow, as_utc
-from sleeper_assistant.lineup_slots import eligible_positions
+from sleeper_assistant.lineup_slots import eligible_positions, starter_slots
+from sleeper_assistant.nfl_games import current_week, games_for_week
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.team_depth import OUT_STATUSES, build_team_depth
 
@@ -242,7 +242,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
     if not news:
         return []
     week = current_week(session, league.season)
-    slots = starter_slots(league)
+    slots = starter_slots(league.roster_positions)
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )

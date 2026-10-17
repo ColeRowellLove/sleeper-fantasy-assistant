@@ -4,10 +4,10 @@ import httpx
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import jobs
-from sleeper_assistant.dashboard import games_for_week
 from sleeper_assistant.db import NflGameRow, utcnow
+from sleeper_assistant.job_schedule import enqueue_kickoff_sync_if_due
 from sleeper_assistant.kickoffs import parse_conditions, parse_kickoffs, sync_kickoffs
-from sleeper_assistant.worker import enqueue_kickoff_sync_if_due
+from sleeper_assistant.nfl_games import games_for_week
 
 CSV = """season,game_type,week,gameday,gametime,home_team,away_team
 2026,REG,6,2026-10-18,13:00,SF,DAL
