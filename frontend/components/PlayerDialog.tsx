@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -14,6 +14,8 @@ import {
   statTotals,
 } from "../lib/playerDetail";
 import { rankTone } from "../lib/gameLog";
+import { splitName } from "../lib/playerName";
+import { teamColor } from "../lib/teamColors";
 import { rosterPath } from "../lib/league";
 import GameBadge from "./GameBadge";
 import GameLog from "./GameLog";
@@ -171,6 +173,8 @@ export default function PlayerDialog({
 
   const close = () => router.replace(closeHref, { scroll: false });
   const strip = bioStrip(detail.bio);
+  const name = splitName(detail.name);
+  const color = teamColor(detail.team);
   const details = bioDetails(detail.bio);
   const weekStats = detail.weeks.map((w) => w.stats);
   const columns = statColumns(
@@ -279,7 +283,10 @@ export default function PlayerDialog({
       }}
     >
       <div className="player-dialog-body">
-        <header className="player-dialog-head">
+        <header
+          className="player-dialog-head pd-hero"
+          style={color ? ({ "--team": color } as CSSProperties) : undefined}
+        >
           <PlayerAvatar
             player_id={detail.player_id}
             name={detail.name}
@@ -288,22 +295,6 @@ export default function PlayerDialog({
             priority
           />
           <div className="player-dialog-title">
-            <h2 id="player-dialog-title">{detail.name}</h2>
-            <p className="player-dialog-meta">
-              <PositionChip position={detail.position} />
-              {detail.team ? (
-                <TeamLink team={detail.team}>{detail.team} depth chart</TeamLink>
-              ) : (
-                <span className="muted">Free agent</span>
-              )}
-              <InjuryBadge injury={detail.injury} />
-              <GameBadge
-                game={detail.game}
-                matchup={detail.matchup}
-                position={detail.position}
-                conditions="full"
-              />
-            </p>
             <p className="player-dialog-owner">
               {detail.owner_team === null || detail.owner_team === undefined ? (
                 <span className="status-available">Available in this league</span>
@@ -326,7 +317,21 @@ export default function PlayerDialog({
                 </span>
               )}
             </p>
+            <h2 id="player-dialog-title" className="pd-name">
+              {name.first && <span className="pd-first">{name.first}</span>}{" "}
+              <span className="pd-last">{name.last}</span>
+            </h2>
           </div>
+          {strip.length > 0 && (
+            <dl className="pd-strip" aria-label="Age, height, weight and experience">
+              {strip.map((row) => (
+                <div key={row.label}>
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
           <button
             type="button"
             className="btn btn-quiet player-dialog-close"
@@ -335,18 +340,22 @@ export default function PlayerDialog({
           >
             Close
           </button>
+          <p className="player-dialog-meta pd-hero-meta">
+            <PositionChip position={detail.position} />
+            {detail.team ? (
+              <TeamLink team={detail.team}>{detail.team} depth chart</TeamLink>
+            ) : (
+              <span className="muted">Free agent</span>
+            )}
+            <InjuryBadge injury={detail.injury} />
+            <GameBadge
+              game={detail.game}
+              matchup={detail.matchup}
+              position={detail.position}
+              conditions="full"
+            />
+          </p>
         </header>
-
-        {strip.length > 0 && (
-          <dl className="pd-strip" aria-label="Age, height, weight and experience">
-            {strip.map((row) => (
-              <div key={row.label}>
-                <dt>{row.label}</dt>
-                <dd>{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
 
         <PanelTabs
           label="Player sections"
