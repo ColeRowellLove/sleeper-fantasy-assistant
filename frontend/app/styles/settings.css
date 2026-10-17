@@ -109,6 +109,7 @@ a.filter-chip {
 
 .players-scroll {
   overflow-x: auto;
+  position: relative; /* keeps the screen-reader text inside a wide table from widening the page */
 }
 
 table.players {

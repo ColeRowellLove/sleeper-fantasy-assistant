@@ -93,11 +93,6 @@ export function newestAlertTime(alerts: AlertItem[]): string | null {
   return times.length > 0 ? new Date(Math.max(...times)).toISOString() : null;
 }
 
-/** "Alerts" or "Alerts (3 new)": the count is in words, never only a color or a dot. */
-export function alertsTabLabel(unread: number): string {
-  return unread > 0 ? `Alerts (${unread} new)` : "Alerts";
-}
-
 /** "Mon, Oct 12, 4:05 PM" in UTC, so the server and the browser print the same text. */
 export function alertTime(iso: string): string {
   const date = new Date(iso);

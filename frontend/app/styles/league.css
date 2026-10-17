@@ -79,8 +79,9 @@ tr.mine {
 
 .tabs > ul {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.25rem;
+  overflow-x: auto; /* five sections in one row; a very narrow screen scrolls instead of wrapping */
+  position: relative; /* clips the screen-reader text inside the scrolling row */
   list-style: none;
   margin: 0;
   padding: 0;
@@ -91,9 +92,20 @@ tr.mine {
   color: var(--muted);
   display: block;
   font-weight: 600;
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.9rem;
   text-decoration: none;
   white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .tabs > ul {
+    gap: 0;
+  }
+
+  .tabs a {
+    font-size: 0.9rem;
+    padding: 0.65rem 0.5rem;
+  }
 }
 
 .tabs a:hover {
@@ -242,4 +254,15 @@ table.standings {
     margin-left: 0.35rem;
     padding: 0.1rem 0.4rem;
   }
+}
+
+/* the number of new alerts: a small badge; the words are in the link's accessible name */
+.tab-count {
+  background: var(--accent);
+  border-radius: 999px;
+  color: var(--on-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 0.3rem;
+  padding: 0.05rem 0.4rem;
 }

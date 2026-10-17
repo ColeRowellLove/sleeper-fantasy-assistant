@@ -98,15 +98,19 @@ export default function StartSitTool({
             Best lineup{best.week ? `, week ${best.week}` : ""}
           </h3>
           <p className="note">
-            {best.why} Projected {best.projected.toFixed(1)} against{" "}
-            {best.current_projected.toFixed(1)} for the current lineup.
+            {/* with swaps to make, the list below is the why; otherwise this says why not */}
+            {best.changes.length === 0 && `${best.why} `}
+            Projected {best.projected.toFixed(1)} against {best.current_projected.toFixed(1)} for
+            the current lineup.
           </p>
           <StatTable bare caption="Best projected lineup by slot" className="pd-table">
             <thead>
               <tr>
                 <th scope="col">Slot</th>
                 <th scope="col">Player</th>
-                <th scope="col">Opponent</th>
+                <th scope="col" className="hide-narrow">
+                  Opponent
+                </th>
                 <th scope="col" className="num">
                   Proj
                 </th>
@@ -121,7 +125,7 @@ export default function StartSitTool({
                       <td>
                         <PlayerCell c={spot.player} />
                       </td>
-                      <td>
+                      <td className="hide-narrow">
                         <GameBadge
                           game={spot.player.game}
                           matchup={spot.player.matchup}
@@ -193,6 +197,9 @@ export default function StartSitTool({
                         <GameBadge game={p.game} matchup={p.matchup} position={p.position} />
                       )}
                     </span>
+                    {p.out && p.out !== "no projection this week" && (
+                      <span className="pick-out">Can&apos;t start: {p.out}</span>
+                    )}
                   </span>
                   <span className="pick-proj num">
                     {p.projected === undefined
@@ -200,9 +207,6 @@ export default function StartSitTool({
                       : p.projected === null
                         ? "No projection yet"
                         : `Proj ${p.projected.toFixed(1)}`}
-                    {p.out && p.out !== "no projection this week" && (
-                      <span className="pick-out"> Can&apos;t start: {p.out}</span>
-                    )}
                   </span>
                 </div>
               </li>

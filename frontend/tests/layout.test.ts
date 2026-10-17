@@ -20,17 +20,10 @@ ${selector} {`);
 }
 
 describe("scrollable rows containing screen-reader text", () => {
-  it.each([".week-chips"])("%s clips its own hidden text", (selector) => {
+  it.each([".week-chips", ".tabs > ul"])("%s clips its own hidden text", (selector) => {
     const body = rule(selector);
     expect(body).toContain("overflow-x: auto");
     expect(body).toContain("position: relative");
-  });
-
-  it(".tabs does not scroll sideways, so the More menu is never clipped", () => {
-    const body = rule(".tabs");
-    expect(body).not.toContain("overflow");
-    expect(body).toContain("position: relative");
-    expect(rule(".tabs > ul")).toContain("flex-wrap: wrap");
   });
 });
 

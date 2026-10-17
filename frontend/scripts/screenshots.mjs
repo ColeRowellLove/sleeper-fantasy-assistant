@@ -32,7 +32,6 @@ const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800 },
 ];
 const THEMES = ["light", "dark"];
-const MIN_NAME_WIDTH = 90; // px: a player's name narrower than this is being squeezed
 const SHOT_HEIGHT = 2000; // px: pictures show the top of a page, so a long list stays readable
 // Known problems at phone width. The list may only shrink: a new problem fails the run, and so
 // does a listed one that has been fixed (delete its entry). Keys are "<page>@<viewport>:<kind>".
@@ -77,7 +76,7 @@ async function waitForServer() {
 
 /** What is wrong with the page's layout at this width, as short sentences. */
 async function layoutProblems(page) {
-  return page.evaluate((minName) => {
+  return page.evaluate(() => {
     const problems = [];
     const root = document.documentElement;
     if (root.scrollWidth > window.innerWidth + 1) {
@@ -86,18 +85,26 @@ async function layoutProblems(page) {
         text: `the page scrolls sideways (${root.scrollWidth}px wide in ${window.innerWidth}px)`,
       });
     }
+    // a name is squeezed when it is cut off ("Jayd…") or wraps onto more than two lines
     for (const el of document.querySelectorAll(".player-name, .cell-name")) {
-      const width = el.getBoundingClientRect().width;
-      if (width > 0 && width < minName && window.innerWidth < 600) {
+      const box = el.getBoundingClientRect();
+      const line = parseFloat(getComputedStyle(el).lineHeight) || box.height;
+      const cut = el.scrollWidth > el.clientWidth + 1; // a block cut off with an ellipsis
+      const lines = el.getClientRects().length; // an inline name has one box per line it wraps onto
+      if (
+        box.width > 0 &&
+        window.innerWidth < 600 &&
+        (cut || lines > 2 || box.height > line * 2.2)
+      ) {
         problems.push({
           kind: "name-squeezed",
-          text: `"${el.textContent}" is only ${Math.round(width)}px wide`,
+          text: `"${el.textContent}" is cut off or wrapped to many lines (${Math.round(box.width)}px wide)`,
         });
         break;
       }
     }
     return problems;
-  }, MIN_NAME_WIDTH);
+  });
 }
 
 const found = new Map(); // "<page>@<viewport>:<kind>" -> sentence

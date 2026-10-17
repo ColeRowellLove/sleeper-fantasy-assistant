@@ -132,11 +132,11 @@ describe("LeagueTabs", () => {
   it("is reachable by keyboard in order and shows unread alerts in words", async () => {
     const user = userEvent.setup();
     render(<LeagueTabs leagueId="9" active="rosters" unreadAlerts={2} />);
-    expect(screen.getByRole("link", { name: "Alerts (2 new)" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Alerts 2 new" })).toBeInTheDocument();
     await user.tab();
     expect(screen.getByRole("link", { name: "My team" })).toHaveFocus();
     for (let i = 0; i < 4; i += 1) await user.tab();
-    expect(screen.getByRole("link", { name: "Alerts (2 new)" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Alerts 2 new" })).toHaveFocus();
   });
 });
 
