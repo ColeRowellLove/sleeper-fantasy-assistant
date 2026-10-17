@@ -18,11 +18,13 @@ import {
   type PositionFilter,
   type SortKey,
 } from "../lib/playersFilter";
+import { NONE, count, fixed, percent } from "../lib/format";
 import { rosterPath } from "../lib/league";
 import GameBadge from "./GameBadge";
 import FilterChips from "./FilterChips";
 import PlayerIdentity from "./PlayerIdentity";
 import StatTable from "./StatTable";
+import NoteList from "./NoteList";
 
 const PAGE = 50;
 
@@ -43,10 +45,6 @@ const AVAILABILITY: { value: Availability; label: string }[] = [
   { value: "available", label: "Available" },
   { value: "rostered", label: "Rostered" },
 ];
-
-const count = (n: number | null) => (n === null ? "–" : n.toLocaleString("en-US"));
-const percent = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : `${n.toFixed(1)}%`;
 
 /** Every relevant NFL player through this league: filter, search and sort by the numbers that matter. */
 export default function PlayersTable({
@@ -149,11 +147,8 @@ export default function PlayersTable({
                     position={p.position}
                     team={p.team}
                     injury={p.injury}
-                  >
-                    <span className="player-meta player-game">
-                      <GameBadge game={p.game} />
-                    </span>
-                  </PlayerIdentity>
+                    meta={<GameBadge game={p.game} />} // the game chip shares the position line
+                  />
                 </th>
                 <td className="status-cell">
                   {p.owner_team === null ? (
@@ -180,11 +175,9 @@ export default function PlayersTable({
                 <td className="num num-col">{count(p.drops)}</td>
                 <td className="num num-col">{percent(p.owned_pct)}</td>
                 <td className="num num-col">{percent(p.started_pct)}</td>
-                <td className="num num-col">{p.rank === null ? "–" : `${p.position}${p.rank}`}</td>
+                <td className="num num-col">{p.rank === null ? NONE : `${p.position}${p.rank}`}</td>
                 <td className="num num-col">{p.total_points.toFixed(1)}</td>
-                <td className="num num-col">
-                  {p.projected === null ? "–" : p.projected.toFixed(1)}
-                </td>
+                <td className="num num-col">{fixed(p.projected)}</td>
               </tr>
             );
           })}
@@ -194,12 +187,14 @@ export default function PlayersTable({
       <p className="visually-hidden" role="status">
         {describeSort(sort)}. Showing {visible.length} of {rows.length} players.
       </p>
-      <p className="note">
-        Showing {visible.length} of {rows.length} players. Adds and drops are Sleeper&apos;s top 100
-        over the last 24 hours; a dash means not on that list. Owned % and Start % are ESPN-wide
-        (the share of ESPN leagues that roster and start the player), not Sleeper&apos;s. Points are
-        this season under this league&apos;s scoring.
-      </p>
+      <NoteList
+        items={[
+          `Showing ${visible.length} of ${rows.length} players`,
+          "Adds and drops are Sleeper's top 100 over the last 24 hours; a dash means not on that list",
+          "Owned % and Start % are ESPN-wide (the share of ESPN leagues that roster and start the player)",
+          "Points are this season under this league's scoring",
+        ]}
+      />
       {visible.length < rows.length && (
         <button type="button" className="btn btn-quiet" onClick={() => setShown((n) => n + PAGE)}>
           Show more players

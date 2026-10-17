@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { fixed, fractionPercent } from "../lib/format";
 import type { StandingsRow } from "../lib/api";
 import { formatRecord, rosterPath } from "../lib/league";
+import NoteList from "./NoteList";
 import {
   DEFAULT_SORT,
   nextSort,
@@ -30,10 +32,8 @@ const ACCURACY_COLUMNS: typeof COLUMNS = [
 ];
 const ALL_COLUMNS = [...COLUMNS, ...ACCURACY_COLUMNS];
 
-const percent = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : `${(n * 100).toFixed(1)}%`;
-const points = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : n.toFixed(1);
+const percent = fractionPercent;
+const points = fixed;
 
 function StreakBadge({ streak }: { streak: string | null | undefined }) {
   const parsed = parseStreak(streak);
@@ -187,11 +187,13 @@ export default function StandingsTable({
         {describe(sort)}
       </p>
       {showAccuracy && (
-        <p className="note">
-          Accuracy is the points a team scored divided by Sleeper&apos;s potential points (what its
-          best lineups would have scored); 100% means the best lineup every week. Bench pts is what
-          was left on the bench.
-        </p>
+        <NoteList
+          items={[
+            "Accuracy is the points a team scored divided by its potential points (what its best lineups would have scored)",
+            "100% means the best lineup every week",
+            "Bench pts is what was left on the bench",
+          ]}
+        />
       )}
       {showPlayoffs && (
         <p className="note">

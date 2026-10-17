@@ -54,3 +54,19 @@ export function agreementText(p: Pick<RankedPlayer, "sources" | "spread">): stri
   if (p.spread === 0) return `${p.sources} sources agree`;
   return `${p.sources} sources, ${p.spread} ${p.spread === 1 ? "place" : "places"} apart`;
 }
+
+/** "projected 16.8 (5th RB); started in 17% of ESPN leagues" as separate short reasons. */
+export function whyParts(why: string | null | undefined): string[] {
+  return (why ?? "")
+    .split(";")
+    .map((part) => part.trim().replace(/\.$/, ""))
+    .filter(Boolean);
+}
+
+// the table already has columns for these, so as chips they would only repeat a cell
+const IN_A_COLUMN = [/^projected /, /a game over his last \d/, /^started in /];
+
+/** The reasons that no column shows (the matchup, the betting line): the rest repeat the table. */
+export function extraWhy(why: string | null | undefined): string[] {
+  return whyParts(why).filter((part) => !IN_A_COLUMN.some((re) => re.test(part)));
+}

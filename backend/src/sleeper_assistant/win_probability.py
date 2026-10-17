@@ -22,6 +22,7 @@ BASE_SPREAD = 28.0  # standard deviation of the difference between two nine-star
 BASE_STARTERS = 9
 FLOOR = 0.01  # never claim certainty: the model is simple
 MIN_REMAINING = 0.05  # keep a little uncertainty even when almost everything has been played
+ROUGH_SPREAD = 1.25  # extra uncertainty when starters with no projection are filled in
 
 
 class StarterState(NamedTuple):
@@ -39,6 +40,7 @@ class Expectation(NamedTuple):
     remaining: float  # share of the projected points still to be played, 0 to 1
     missing: int  # starters still to play with no projection
     starters: int
+    basis: int = 0  # starters who can score and have a number: what a stand-in is based on
 
 
 def _expected(player: StarterState) -> float | None:
@@ -57,17 +59,24 @@ def _expected(player: StarterState) -> float | None:
     return max(actual, player.projected)
 
 
-def expectation(starters: Iterable[StarterState]) -> Expectation:
+def expectation(starters: Iterable[StarterState], *, fill_missing: bool = False) -> Expectation:
+    """The team's expected final score. With ``fill_missing`` a starter with no projection is
+    assumed to score what the team's other starters average (a rough estimate, not a fact)."""
     players = list(starters)
     total = 0.0
     missing = 0
     still_to_play = 0.0
     projected_total = 0.0
+    # bye weeks (a true 0.0) would drag the stand-in down, so only players who can score count
+    known = [e for p in players if p.state != "bye" and (e := _expected(p)) is not None]
+    stand_in = sum(known) / len(known) if fill_missing and known else None
     for p in players:
         expected = _expected(p)
         if expected is None:
             missing += 1
-            continue
+            if stand_in is None:
+                continue
+            expected = stand_in  # a starter still to play: his whole game is left
         total += expected
         planned = (
             p.pregame
@@ -80,7 +89,9 @@ def expectation(starters: Iterable[StarterState]) -> Expectation:
             share_left = 1.0 if p.elapsed is None else max(0.0, 1.0 - p.elapsed)
             still_to_play += planned * share_left
     remaining = still_to_play / projected_total if projected_total > 0 else 1.0
-    return Expectation(round(total, 2), min(1.0, max(0.0, remaining)), missing, len(players))
+    return Expectation(
+        round(total, 2), min(1.0, max(0.0, remaining)), missing, len(players), len(known)
+    )
 
 
 def spread(starters: int, remaining: float) -> float:
@@ -104,20 +115,33 @@ def matchup_chances(
     team_b: Iterable[StarterState],
     *,
     max_missing: int = 1,
+    fill_missing: bool = False,
 ) -> tuple[float, float] | None:
     """(chance A wins, chance B wins), or None when there is nothing fair to say.
 
     None when either team has more than ``max_missing`` starters with no projection (so the totals
     would be guesses), when no one has anything to compare, or when every starter on both teams
     is done (the result is known, so the page shows it instead of a percentage).
+
+    With ``fill_missing`` the first rule is replaced: a starter with no projection is assumed to
+    score what the team's other starters average, and the spread widens with the share of starters
+    guessed (a team with no starter to base the guess on still gives None).
     """
-    a, b = expectation(team_a), expectation(team_b)
+    a, b = (
+        expectation(team_a, fill_missing=fill_missing),
+        expectation(team_b, fill_missing=fill_missing),
+    )
     if a.starters == 0 or b.starters == 0:
         return None
-    if a.missing > max_missing or b.missing > max_missing:
+    if fill_missing and ((a.basis == 0 and a.missing) or (b.basis == 0 and b.missing)):
+        return None  # a side with nothing known to base a stand-in on
+    if not fill_missing and (a.missing > max_missing or b.missing > max_missing):
         return None
     if a.remaining == 0.0 and b.remaining == 0.0:
         return None  # decided: show the result
     sigma = spread(max(a.starters, b.starters), max(a.remaining, b.remaining))
+    if fill_missing:
+        guessed = max(a.missing / a.starters, b.missing / b.starters)
+        sigma *= 1.0 + (ROUGH_SPREAD - 1.0) * guessed  # the more is guessed, the less sure
     chance = win_probability(a.total, b.total, sigma)
     return round(chance, 4), round(1.0 - chance, 4)

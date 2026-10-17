@@ -9,6 +9,38 @@ ranking/projection sources into a consensus, and produces waiver alerts, trade i
 playoff odds and weekly recaps. The Sleeper API is public and **read-only**: the app recommends,
 users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full build plan and milestones.
 
+## How we work (read first)
+
+1. **Reuse before you write.** Before adding code, look for what already exists and use it:
+   `backend/src/sleeper_assistant` (helpers such as `stat_lines`, `projections`, `lineup_slots`,
+   `matchup_rank`, `alerts`), `frontend/lib` (`format.ts` numbers, `time.ts` times, game state, lineups, alerts, positions) and
+   `frontend/components` (`PlayerIdentity`, `PlayerStatLine`, `StatTable`, `FilterChips`, `GameBadge`, `GameLine`, `ReasonChips`, `PanelTabs`, `LocalTime`,
+   `WinBar`). Search first (`grep`), read the module, then extend it. Do not write a second version.
+2. **Duplicated logic becomes a shared util.** The second time the same logic is needed, move it to
+   one shared module (backend: a small module named for what it does; frontend: `lib/<topic>.ts`),
+   point both callers at it, and give it its own test. A private helper imported across modules
+   (`_name`) is a sign it should be public and shared.
+3. **Separation of concerns.** One responsibility per module. Rules and data live in the backend
+   (scoring, projections, alerts, win chances); formatting and view decisions live in `frontend/lib`;
+   components lay things out and call `lib`. League rules are read from Sleeper, never hard-coded.
+   Pages do not format numbers, components do not own business rules, and CSS values come from the
+   tokens in `app/styles/tokens.css`.
+4. **Frontend: reuse existing elements.** A new screen is built from the shared components and CSS
+   patterns in [docs/DESIGN.md](docs/DESIGN.md). If a component does not do what you need, change it
+   for every screen (and let the consistency test hold the line). Never create a one-off table, chip
+   group, player row, card or colour.
+5. **The code does nothing until it looks right.** Treat a UI change as unfinished until you have
+   looked at it. Open the screenshots on the PR (phone first, then desktop, light and dark) and go in
+   assuming something is wrong. If anything looks off (cramped, wrapped letter by letter, too wide,
+   too tall, misaligned, inconsistent with another screen, hard to read), fix it before asking for a
+   merge; do not wait for the owner to spot it.
+6. **Visual findings become issues automatically.** Any visual problem found while reviewing images or
+   the layout check that is not fixed in the same PR gets an issue straight away (what is wrong, the
+   page and width, the screenshot, labels `bug` or `enhancement` plus `frontend`, a milestone), and is
+   then worked in the owner's order. Never leave a known visual problem unrecorded.
+7. **Every issue has a milestone and labels.** Issues are created with both; a PR gets its issue's
+   milestone.
+
 ## Layout
 
 - `backend/` — Python 3.12 (FastAPI, Pydantic, httpx). Package `src/sleeper_assistant`. Managed with **uv**.
@@ -68,9 +100,14 @@ npm run dev
   from `develop` to `main`. Squash commit titles follow Conventional Commits.
 - **Frontend changes** must include (1) accessibility tests (axe assertions plus role/label queries
   via Testing Library, keyboard reachability for interactive elements) and (2) lightweight
-  screenshots in the PR description when feasible (before/after, desktop and mobile width,
-  compressed PNG, no secrets or real user data). Tooling: `tests/a11y.ts` (`expectNoA11yViolations`), Testing Library, and `npm run screenshots`
-  (also produced by the Screenshots workflow as a downloadable artifact).
+  screenshots (desktop and mobile width, no secrets or real user data). The Screenshots workflow
+  shoots every page against the made-up sample league (`backend/src/sleeper_assistant/sample_league.py`)
+  and posts the images on the PR; read the phone ones first. Locally: `make preview-data`, `make dev-api`,
+  then `npm run screenshots` in `frontend/`. The run also checks the layout at phone width against
+  `frontend/scripts/layout-baseline.json`, a list of known problems that may only shrink; the job is
+  "Frontend screenshots" and must be a required check in branch protection to block merging. Read
+  the images in the PR comment before merging and act on them (see "How we work", points 5 and 6).
+  Tooling: `tests/a11y.ts` (`expectNoA11yViolations`) and Testing Library.
 - **Review before pushing.** Run the `code-review` skill on the branch diff before pushing code
   changes and fix its findings first. Also run `a11y-enforcer:a11y-check` for UI changes and
   `security-review` for anything touching auth, user input, secrets or external requests.
@@ -79,8 +116,10 @@ npm run dev
 ## Design
 
 Take inspiration from Sleeper and theScore (inspiration only, no assets): see [docs/DESIGN.md](docs/DESIGN.md).
-Reuse the shared patterns there instead of building a new layout per tab, keep the number of tabs
-small, and look at a UI change (screenshots at phone and desktop width, both themes) before it ships.
+Build from the shared patterns there, keep the number of tabs small, and keep content to one width
+so tables and cards never span the whole screen. Look at every UI change at phone (390 px) and
+desktop width in both themes before it ships, phone first: names must not wrap letter by letter,
+rows must not be tall blocks, and nothing may scroll the page sideways.
 
 ## Conventions
 
@@ -90,4 +129,7 @@ small, and look at a UI change (screenshots at phone and desktop width, both the
 - LLM output (recaps, trash talk) is written only around a fixed JSON of computed facts; validate numbers.
 - Recaps default to family-friendly tone.
 - Treat unofficial endpoints as fragile: cache raw responses, version schemas, alert on parse failures.
+- Backend modules stay small and named for what they do; extract a helper when two modules need it.
+- Frontend `lib/` holds pure functions (formatting, state, view rules) with unit tests; components
+  stay thin.
 - Never commit secrets; API keys go in environment variables (`.env` is git-ignored).

@@ -8,7 +8,6 @@ import type { AlertsData, Dashboard } from "../lib/api";
 import {
   alertAdvice,
   alertTime,
-  alertsTabLabel,
   newestAlertTime,
   parseOff,
   parseSeen,
@@ -21,8 +20,9 @@ import { parseTab } from "../lib/league";
 import { expectNoA11yViolations } from "./a11y";
 
 const refresh = vi.fn();
+const push = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh, replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ refresh, replace: vi.fn(), push }),
   usePathname: () => "/league/1",
   useSearchParams: () => new URLSearchParams("tab=alerts"),
 }));
@@ -56,6 +56,7 @@ const data: AlertsData = {
 
 beforeEach(() => {
   refresh.mockClear();
+  push.mockClear();
   document.cookie = "sa_alerts_seen_1=; max-age=0; path=/";
 });
 
@@ -81,11 +82,6 @@ describe("alert helpers", () => {
     expect(newestAlertTime([])).toBeNull();
   });
 
-  it("puts the new count in words on the tab", () => {
-    expect(alertsTabLabel(0)).toBe("Alerts");
-    expect(alertsTabLabel(3)).toBe("Alerts (3 new)");
-  });
-
   it("writes times in UTC so the server and the browser agree", () => {
     expect(alertTime("2026-10-17T16:05:00Z")).toBe("Sat, Oct 17, 4:05 PM UTC");
     expect(alertTime("nonsense")).toBe("");
@@ -99,7 +95,7 @@ describe("alert helpers", () => {
 describe("LeagueTabs", () => {
   it("shows how many alerts are new on the Alerts tab, in words", () => {
     render(<LeagueTabs leagueId="1" active="standings" unreadAlerts={2} />);
-    expect(screen.getByRole("link", { name: "Alerts (2 new)" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Alerts 2 new" })).toHaveAttribute(
       "href",
       "/league/1?tab=alerts",
     );
@@ -175,13 +171,19 @@ describe("AlertsPanel", () => {
 
   it("picks the team with a plain GET form", () => {
     render(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
-    const form = screen
-      .getByRole("button", { name: "Show alerts" })
-      .closest("form") as HTMLFormElement;
+    const form = screen.getByRole("combobox", { name: /Team/ }).closest("form") as HTMLFormElement;
     expect(form).toHaveAttribute("method", "get");
     expect(form).toHaveAttribute("action", "/league/1");
     expect((form.querySelector('input[name="tab"]') as HTMLInputElement).value).toBe("alerts");
     expect(screen.getByRole("combobox", { name: /Team/ })).toHaveValue("1");
+  });
+
+  it("shows the chosen team's alerts as soon as it is picked, with no button", async () => {
+    const user = userEvent.setup();
+    render(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
+    expect(screen.queryByRole("button", { name: "Show alerts" })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox", { name: /Team/ }), "2");
+    expect(push).toHaveBeenCalledWith("/league/1?tab=alerts&roster=2");
   });
 
   it("explains an empty feed", () => {
@@ -211,8 +213,12 @@ describe("AlertsPanel", () => {
     expect(details).toHaveAttribute("open"); // open when there are no alerts yet
     const group = within(details).getByRole("group", { name: "Alert types to show" });
     const boxes = within(group).getAllByRole("checkbox");
-    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([true, true]);
+    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([true, true, true, true]);
     expect(within(group).getByRole("checkbox", { name: /ruled out/ })).toBeInTheDocument();
+    expect(within(group).getByRole("checkbox", { name: /on a bye/ })).toBeInTheDocument();
+    expect(
+      within(group).getByRole("checkbox", { name: /higher than a starter/ }),
+    ).toBeInTheDocument();
     expect(within(group).getByText(/9 am Eastern the day before/)).toBeInTheDocument();
     expect(within(details).getByText(/Not on yet/)).toBeInTheDocument();
     expect(within(details).getByText(/kept in this browser/)).toBeInTheDocument();

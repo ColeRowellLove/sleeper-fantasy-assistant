@@ -1,4 +1,5 @@
 import type { GameConditions, GameInfo, MatchupRank } from "./api";
+import { localDateTime } from "./time";
 
 /** "Sun, Sep 20" from an ISO date. Always UTC so server and browser render the same text. */
 export function formatGameDate(date: string | null): string | null {
@@ -18,17 +19,7 @@ export function formatGameDate(date: string | null): string | null {
  * server does not know the viewer's zone, so server output would differ from the first client render.
  */
 export function formatKickoff(kickoff: string | null | undefined): string | null {
-  if (!kickoff) return null;
-  const parsed = new Date(kickoff);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
+  return localDateTime(kickoff) || null;
 }
 
 export interface GameLabel {
@@ -149,6 +140,8 @@ export function matchupText(
 
 const WINDY_MPH = 15;
 const FREEZING_F = 32;
+const COLD_F = 45;
+const HOT_F = 85;
 
 /** "SF -3.5", "DAL +3.5" or "SF pick'em" for a team's spread. */
 export function spreadText(team: string | null | undefined, spread: number): string {
@@ -167,6 +160,25 @@ export interface ConditionsLabel {
 }
 
 /**
+ * One general word for the weather, for a row that has no room for numbers: Dome, Closed roof,
+ * Freezing, Cold, Hot or Windy. Nothing notable (mild, or nothing known) gives null, so a row says
+ * nothing rather than "Mild" on every line. The exact temperature and wind belong on the game
+ * screen. There is no rain or sun in the data, so the word never claims either.
+ */
+export function weatherWord(c: GameConditions): string | null {
+  if (c.roof === "dome") return "Dome";
+  if (c.roof === "closed") return "Closed roof";
+  const { temp, wind } = c;
+  if (temp !== null && temp !== undefined) {
+    if (temp <= FREEZING_F) return "Freezing";
+    if (temp <= COLD_F) return "Cold";
+    if (temp >= HOT_F) return "Hot";
+  }
+  if (wind !== null && wind !== undefined && wind >= WINDY_MPH) return "Windy";
+  return null;
+}
+
+/**
  * Plain words for a game's conditions. Weather only applies outdoors; a dome or closed roof says
  * so instead. Every state is text, so nothing relies on color.
  */
@@ -178,7 +190,9 @@ export function conditionsLabel(
   if (!game || !c || game.state === "bye") return null;
   const indoors = c.roof === "dome" || c.roof === "closed";
   let setting: string | null = null;
-  if (indoors) {
+  if (compact) {
+    setting = weatherWord(c); // rows get one word; the game screen gets the numbers
+  } else if (indoors) {
     setting = c.roof === "closed" ? "Closed roof" : "Dome";
   } else {
     const parts: string[] = [];
@@ -284,4 +298,114 @@ export function needsLiveRefresh(
       return Number.isFinite(kickoff) && kickoff - now <= SOON_MS && now - kickoff < 8 * SOON_MS;
     }),
   );
+}
+
+/** "J. Daniels": the first initial and the rest. One-word names and team defenses stay whole. */
+export function abbreviateName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  // a defense, a one-word name and a first name that is already initials ("D.J. Moore") stay whole
+  if (parts.length < 2 || /\bdefense$/i.test(name.trim()) || parts[0].includes(".")) {
+    return name.trim();
+  }
+  return `${Array.from(parts[0])[0]}. ${parts.slice(1).join(" ")}`;
+}
+
+/** "Mon 5:15 PM" in the viewer's own time zone (browser only, like `formatKickoff`). */
+const shortKickoffs = new Map<string, string | null>(); // the zone does not change while the page is open
+
+export function formatKickoffShort(kickoff: string | null | undefined): string | null {
+  if (!kickoff) return null;
+  const known = shortKickoffs.get(kickoff);
+  if (known !== undefined) return known;
+  const parsed = new Date(kickoff);
+  const text = Number.isNaN(parsed.getTime())
+    ? null
+    : parsed.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
+  shortKickoffs.set(kickoff, text);
+  return text;
+}
+
+export interface GameLineParts {
+  state: GameInfo["state"];
+  /** The lead words: "Mon 5:15 PM", "Q2 2:24", "Final" or "Bye week". */
+  time: string;
+  /** "W 24-20" or "L 14-17" once there is a score (live or final); the player's team first. */
+  score: string | null;
+  /** "@" or "vs", with the opponent's code; both null on a bye or without an opponent. */
+  versus: "@" | "vs" | null;
+  opponent: string | null;
+}
+
+/** The game as one short line of parts, like Sleeper's "Mon 5:15 PM @ SF". Null without a game. */
+export function gameLineParts(
+  game: GameInfo | null | undefined,
+  kickoffShort: string | null = null,
+): GameLineParts | null {
+  if (!game) return null;
+  if (game.state === "bye") {
+    return { state: "bye", time: "Bye week", score: null, versus: null, opponent: null };
+  }
+  const versus = game.opponent ? (game.home === false ? "@" : "vs") : null;
+  const opponent = game.opponent ?? null;
+  const mine = game.team_score;
+  const theirs = game.opponent_score;
+  const haveScore = mine !== null && mine !== undefined && theirs !== null && theirs !== undefined;
+  const numbers = haveScore ? `${mine}-${theirs}` : null;
+  if (game.state === "upcoming") {
+    return {
+      state: "upcoming",
+      time: kickoffShort ?? formatGameDate(game.date) ?? "Upcoming",
+      score: null,
+      versus,
+      opponent,
+    };
+  }
+  const result = haveScore ? (mine > theirs ? "W " : mine < theirs ? "L " : "T ") : "";
+  if (game.state === "live") {
+    return {
+      state: "live",
+      time: game.period_text || "Live",
+      score: numbers ? `${result}${numbers}` : null, // winning or losing, like Sleeper's "L 14-17"
+      versus,
+      opponent,
+    };
+  }
+  return {
+    state: "final",
+    time: "Final",
+    score: numbers ? `${result}${numbers}` : null,
+    versus,
+    opponent,
+  };
+}
+
+export interface WeatherIcon {
+  icon: string;
+  /** The word for a screen reader and a tooltip. */
+  label: string;
+}
+
+const WEATHER_ICONS: Record<string, string | undefined> = {
+  Dome: "🏟️",
+  "Closed roof": "🏟️",
+  Freezing: "❄️",
+  Cold: "🥶",
+  Hot: "🔥",
+  Windy: "💨",
+};
+
+/** A small icon for notable weather only (nothing for mild weather), for a one-line game. */
+export function weatherIcon(game: GameInfo | null | undefined): WeatherIcon | null {
+  if (!game || game.state === "bye" || !game.conditions) return null;
+  const word = weatherWord(game.conditions);
+  const icon = word ? WEATHER_ICONS[word] : undefined;
+  return word && icon ? { icon, label: word } : null; // no icon for a word we have none for
+}
+
+/** The two teams' scores for a game card's header, away then home; null before kickoff. */
+export function cardScores(card: { game: GameInfo }): { away: number; home: number } | null {
+  const { team_score: home, opponent_score: away } = card.game;
+  if (card.game.state === "upcoming" || card.game.state === "bye") return null;
+  if (home === null || home === undefined || away === null || away === undefined) return null;
+  return { away, home };
 }

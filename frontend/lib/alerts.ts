@@ -93,24 +93,7 @@ export function newestAlertTime(alerts: AlertItem[]): string | null {
   return times.length > 0 ? new Date(Math.max(...times)).toISOString() : null;
 }
 
-/** "Alerts" or "Alerts (3 new)": the count is in words, never only a color or a dot. */
-export function alertsTabLabel(unread: number): string {
-  return unread > 0 ? `Alerts (${unread} new)` : "Alerts";
-}
-
-/** "Mon, Oct 12, 4:05 PM" in UTC, so the server and the browser print the same text. */
-export function alertTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  })} UTC`;
-}
+export { utcDateTime as alertTime } from "./time"; // alerts first print in UTC, then in the viewer's zone (LocalTime)
 
 /**
  * The alert types a person can choose between, in plain words (keep in step with the detectors
@@ -121,6 +104,16 @@ export const ALERT_TYPES = [
     kind: "injury_out",
     title: "A player on your team is ruled out",
     text: "We say where they start and who to start instead: a healthy bench player, the next player up on their depth chart (even if you own them), or the best free agent. It arrives soon after the app next checks for news.",
+  },
+  {
+    kind: "bye_week",
+    title: "A starter is on a bye",
+    text: "Once per player and week: who in your lineup has no game, the slot they leave empty and the best healthy bench player who could take it.",
+  },
+  {
+    kind: "lineup_move",
+    title: "A bench player projects higher than a starter",
+    text: "In the two days before your week's first game: who to start over whom, with both projections and the gain. Only when a swap adds at least 3 points, and never for a player whose game has started.",
   },
   {
     kind: "waiver_targets",

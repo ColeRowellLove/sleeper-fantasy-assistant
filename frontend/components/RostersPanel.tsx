@@ -3,13 +3,16 @@
 import { useState } from "react";
 
 import type { Dashboard, Lineups, RosterPlayer, RosterStatus } from "../lib/api";
-import GameBadge from "./GameBadge";
+import { notPlayedYet, ownershipText, slotShort } from "../lib/lineups";
+import { positionClass } from "../lib/positions";
+import GameLine from "./GameLine";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
+import PlayerStatLine from "./PlayerStatLine";
 import TeamLink from "./TeamLink";
-import PositionChip from "./PositionChip";
 import RosterMatchup from "./RosterMatchup";
+import TeamHeader from "./TeamHeader";
 
 type Roster = Dashboard["rosters"][number];
 
@@ -20,22 +23,30 @@ const GROUPS: { status: RosterStatus; title: string; note: string }[] = [
   { status: "taxi", title: "Taxi squad", note: "Stashed, not eligible to start" },
 ];
 
+const BENCH_SLOT: Record<RosterStatus, string | null> = {
+  starter: null,
+  bench: "BN",
+  ir: "IR",
+  taxi: "TAXI",
+};
+
 /** Rosters tab: pick a team, see its players grouped by role. Your team is listed and shown first. */
 export default function RostersPanel({
   rosters,
   myRosterId,
-  week = null,
   initialRosterId = null,
   lineups = null,
+  standings,
   leagueId,
 }: {
   rosters: Roster[];
   myRosterId: number | null;
-  week?: number | null;
   /** The team to start on (from a link); your own team when absent or unknown. */
   initialRosterId?: number | null;
   /** This week's lineups: the selected team's matchup and win chance come from here. */
   lineups?: Lineups | null;
+  /** The standings, for the team header's record, place and points ranks. */
+  standings?: Dashboard["standings"];
   leagueId: string;
 }) {
   const ordered = [
@@ -49,10 +60,7 @@ export default function RostersPanel({
   if (!selected) return <p className="note">No rosters have been synced yet.</p>;
 
   return (
-    <section aria-labelledby="rosters-heading" className="rosters">
-      <h2 id="rosters-heading" className="visually-hidden">
-        Rosters
-      </h2>
+    <section aria-labelledby="team-heading" className="rosters">
       <div className="picker-row">
         <label htmlFor="roster-team">Team</label>
         <select
@@ -69,11 +77,15 @@ export default function RostersPanel({
         </select>
       </div>
 
-      <RosterMatchup lineups={lineups} rosterId={selected.roster_id} leagueId={leagueId} />
+      <TeamHeader
+        rosterId={selected.roster_id}
+        name={selected.team}
+        headingId="team-heading"
+        standings={standings}
+        lineups={lineups}
+      />
 
-      {week !== null && (
-        <p className="note">Game status is for NFL week {week}: upcoming, live, played, or bye.</p>
-      )}
+      <RosterMatchup lineups={lineups} rosterId={selected.roster_id} leagueId={leagueId} />
 
       <p role="status" className="visually-hidden">
         Showing {selected.team}: {selected.players.filter((p) => p.status === "starter").length}{" "}
@@ -110,8 +122,16 @@ export default function RostersPanel({
 }
 
 function PlayerItem({ player }: { player: RosterPlayer }) {
+  const slot = player.status === "starter" ? player.slot : BENCH_SLOT[player.status];
+  const own = ownershipText(player);
   return (
     <li className="player">
+      {slot && (
+        <span className={`slot-chip ${positionClass(slot)}`}>
+          <span className="visually-hidden">Slot {slot}</span>
+          <span aria-hidden="true">{slotShort(slot)}</span>
+        </span>
+      )}
       <PlayerAvatar
         player_id={player.player_id}
         name={player.name}
@@ -121,60 +141,49 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
       <span className="player-main">
         <span className="player-name">
           <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
-        </span>
-        <span className="player-sub">
-          {player.team ? <TeamLink team={player.team}>{player.team}</TeamLink> : "No team"}
+          <span className="player-posteam">
+            {player.position ?? "–"} ·{" "}
+            {player.team ? <TeamLink team={player.team}>{player.team}</TeamLink> : "No team"}
+          </span>
           <InjuryBadge injury={player.injury} />
         </span>
-        <span className="player-tags">
-          <GameBadge
-            game={player.game}
-            matchup={player.matchup}
-            position={player.position}
-            conditions="compact"
-          />
-        </span>
-        {player.stat_line && (
-          <span className="stat-line">
-            <span className="visually-hidden">Stats this week: </span>
-            {player.stat_line}
-          </span>
-        )}
+        {own && <span className="player-own">{own}</span>}
+        <GameLine game={player.game} matchup={player.matchup} position={player.position} />
+        <PlayerStatLine line={player.stat_line} projected={player.stat_line_projected} />
       </span>
-      {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with
+      {/* three fixed-width columns on every row, so the numbers and slot line up; a row with
           no value keeps its (empty) column */}
-      {player.points !== null && player.points !== undefined ? (
-        <span className="player-proj player-pts num">
-          <span className="visually-hidden">Points this week </span>
-          {player.points.toFixed(1)}
-          <span className="player-proj-label" aria-hidden="true">
-            pts
+      <span className="player-nums">
+        {player.points !== null && player.points !== undefined ? (
+          <span className="player-proj player-pts num">
+            <span className="visually-hidden">Points this week </span>
+            {player.points.toFixed(1)}
+            <span className="player-proj-label" aria-hidden="true">
+              pts
+            </span>
           </span>
-        </span>
-      ) : (
-        <span className="player-proj player-pts" aria-hidden="true" />
-      )}
-      {player.projected !== null && player.projected !== undefined ? (
-        <span className="player-proj num">
-          <span className="visually-hidden">Projected </span>
-          {player.projected.toFixed(1)}
-          <span className="player-proj-label" aria-hidden="true">
-            proj
+        ) : notPlayedYet("current", player.game) ? (
+          <span className="player-proj player-pts num">
+            <span className="visually-hidden">Not played yet</span>
+            <span aria-hidden="true">–</span>
+            <span className="player-proj-label" aria-hidden="true">
+              pts
+            </span>
           </span>
-        </span>
-      ) : (
-        <span className="player-proj" aria-hidden="true" />
-      )}
-      {player.status === "starter" && player.slot ? (
-        <span className="slot" title="Lineup slot">
-          <span className="visually-hidden">Slot </span>
-          {player.slot}
-        </span>
-      ) : (
-        <span className="slot" aria-hidden="true" />
-      )}
-      <span className="player-chip">
-        <PositionChip position={player.position} />
+        ) : (
+          <span className="player-proj player-pts" aria-hidden="true" />
+        )}
+        {player.projected !== null && player.projected !== undefined ? (
+          <span className="player-proj num">
+            <span className="visually-hidden">Projected </span>
+            {player.projected.toFixed(1)}
+            <span className="player-proj-label" aria-hidden="true">
+              proj
+            </span>
+          </span>
+        ) : (
+          <span className="player-proj" aria-hidden="true" />
+        )}
       </span>
     </li>
   );

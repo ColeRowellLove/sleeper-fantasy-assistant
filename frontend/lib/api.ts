@@ -49,6 +49,8 @@ export interface PlayerListing {
   /** Rank within position by total points; null until the player has points. */
   rank: number | null;
   projected: number | null;
+  /** Last week's points; null when he did not play. */
+  last_points?: number | null;
   /** ESPN-wide share of leagues that roster / start the player (not Sleeper's). */
   owned_pct?: number | null;
   started_pct?: number | null;
@@ -72,6 +74,8 @@ export interface PlayerDetail {
   matchup?: MatchupRank | null;
   /** His team's numbers that matter for his position, ranked. */
   team_stats?: TeamStat[];
+  /** His team's depth chart, for the Team tab. */
+  depth?: TeamDepth | null;
   bio?: Record<string, unknown> | null;
   owner_roster_id?: number | null;
   owner_team?: string | null;
@@ -97,6 +101,24 @@ export interface PlayerDetail {
     projected?: number | null;
     /** The game is over, so points can be compared with the projection. */
     final?: boolean;
+    /** His rank among players at his position that week (1 = best). */
+    rank?: number | null;
+  }[];
+  /** Every week of the season for his team: the opponent and how hard it is, or a bye. */
+  schedule?: {
+    week: number;
+    opponent?: string | null;
+    home?: boolean | null;
+    bye?: boolean;
+    matchup?: MatchupRank | null;
+  }[];
+  /** His adds and drops in this league, newest first. */
+  history?: {
+    kind: "added" | "dropped";
+    source: "waivers" | "free_agency" | "trade" | "commissioner";
+    manager?: string | null;
+    date?: string | null;
+    week: number;
   }[];
   past_seasons: {
     season: string;
@@ -308,6 +330,11 @@ export interface RosterPlayer {
   matchup?: MatchupRank | null;
   /** How he did once his game has started, e.g. "18 car, 92 yds, 1 TD"; absent before kickoff. */
   stat_line?: string | null;
+  /** True when `stat_line` is what he is projected to do (his game has not started). */
+  stat_line_projected?: boolean;
+  /** ESPN-wide shares of leagues that roster and start him; absent without a number. */
+  owned_pct?: number | null;
+  started_pct?: number | null;
 }
 
 export interface LineupPlayer {
@@ -329,11 +356,15 @@ export interface LineupPlayer {
   matchup?: MatchupRank | null;
   /** How he did once his game has started, e.g. "18 car, 92 yds, 1 TD"; absent before kickoff. */
   stat_line?: string | null;
+  /** True when `stat_line` is what he is projected to do (his game has not started). */
+  stat_line_projected?: boolean;
 }
 
 export interface TeamLineup {
   roster_id: number;
   team: string;
+  /** The team's picture (a Sleeper image URL), when it has one. */
+  avatar?: string | null;
   owner_id: string | null;
   points: number;
   /** Sum of the starters' projections; null/absent when none has one. */
@@ -342,6 +373,7 @@ export interface TeamLineup {
   projected_pregame?: number | null;
   /** Chance to win from projected points, 0 to 1; null/absent when there is nothing fair to say. */
   win_probability?: number | null;
+  win_probability_rough?: boolean;
   starters: LineupPlayer[];
   bench: LineupPlayer[];
 }

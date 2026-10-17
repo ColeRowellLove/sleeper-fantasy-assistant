@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import LocalTime from "./LocalTime";
+
 import type { AlertItem, AlertsData, Dashboard } from "../lib/api";
 import {
   ALERT_NOTES,
   ALERT_TYPES,
   alertAdvice,
-  alertTime,
   newestAlertTime,
   serializeOff,
   unreadAlerts,
@@ -79,7 +80,7 @@ function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
         <p className="alert-why">{alert.why}</p>
       )}
       <p className="muted alert-meta">
-        {alertTime(alert.created_at)}
+        <LocalTime iso={alert.created_at} />
         {alert.player_id && (
           <>
             {" · "}
@@ -179,7 +180,13 @@ export default function AlertsPanel({
         <input type="hidden" name="tab" value="alerts" />
         <label>
           Team{" "}
-          <select name="roster" defaultValue={String(data.roster_id)}>
+          <select
+            name="roster"
+            defaultValue={String(data.roster_id)}
+            onChange={(event) =>
+              router.push(leaguePath(leagueId, `?tab=alerts&roster=${event.target.value}`))
+            }
+          >
             {rosters.map((r) => (
               <option key={r.roster_id} value={r.roster_id}>
                 {r.team}
@@ -188,9 +195,11 @@ export default function AlertsPanel({
             ))}
           </select>
         </label>
-        <button type="submit" className="btn">
-          Show alerts
-        </button>
+        <noscript>
+          <button type="submit" className="btn">
+            Show alerts
+          </button>
+        </noscript>
       </form>
 
       {mine && unread.length > 0 && (

@@ -33,12 +33,20 @@ from sleeper_assistant.db import (
     PlayerWeekStatsRow,
     RosterRow,
 )
-from sleeper_assistant.matchup_rank import MatchupRank, build_defense_table, matchup_rank
+from sleeper_assistant.matchup_rank import (
+    DefenseTable,
+    MatchupRank,
+    build_defense_table,
+    matchup_rank,
+)
+from sleeper_assistant.player_history import HistoryEvent, build_history
 from sleeper_assistant.players_view import _name
 from sleeper_assistant.projections import score_projection, score_stats
+from sleeper_assistant.team_depth import TeamDepth, build_team_depth
 from sleeper_assistant.team_stats import TeamStat, build_team_stats, stats_for_position
 
 # volume numbers worth showing even when the league does not score them directly
+_MAX_BYES = 2  # a team has one bye; more gaps than this means the schedule is not fully loaded
 _VOLUME_KEYS = ("pass_att", "pass_cmp", "rush_att", "rec_tgt", "fga", "pts_allow")
 
 
@@ -53,6 +61,17 @@ class WeekLine(BaseModel):
     final: bool = (
         False  # the game is over, so the points can fairly be compared with the projection
     )
+    rank: int | None = None  # his rank among players at his position that week (1 = best)
+
+
+class ScheduleWeek(BaseModel):
+    """One week of his team's season: who it plays, or that it is on a bye."""
+
+    week: int
+    opponent: str | None = None
+    home: bool | None = None
+    bye: bool = False
+    matchup: MatchupRank | None = None  # the opponent's rank against his position
 
 
 class SeasonLine(BaseModel):
@@ -86,6 +105,7 @@ class PlayerDetail(BaseModel):
     game: GameInfo | None = None
     matchup: MatchupRank | None = None  # this week's opponent against his position
     team_stats: list[TeamStat] = []  # his team's numbers that matter for his position, ranked
+    depth: TeamDepth | None = None  # his team's depth chart, for the Team tab
     bio: dict[str, Any] | None = None
     owner_roster_id: int | None = None
     owner_team: str | None = None
@@ -97,6 +117,8 @@ class PlayerDetail(BaseModel):
     started_pct: float | None = None  # ESPN-wide share of leagues that start the player
     season: SeasonSummary
     projected: ProjectedLine | None = None
+    schedule: list[ScheduleWeek] = []  # every week of the season, for the game log
+    history: list[HistoryEvent] = []  # his adds and drops in this league, newest first
     weeks: list[WeekLine]
     past_seasons: list[SeasonLine]
 
@@ -175,6 +197,35 @@ def _opponents(
     }
 
 
+def _schedule(
+    session: Session, season: str, player: PlayerRow, defense: DefenseTable
+) -> list[ScheduleWeek]:
+    """Every week of the season for his team: the opponent and how hard it is, or a bye."""
+    weeks = sorted(
+        {w for (w,) in session.execute(select(NflGameRow.week).where(NflGameRow.season == season))}
+    )
+    games = _opponents(session, season, player.team)
+    if not weeks or not games:
+        return []  # without his team's games we cannot tell a bye from missing data
+    if sum(1 for w in weeks if w not in games) > _MAX_BYES:
+        return []  # that many gaps is missing data (or a team-code mismatch), not byes
+    out: list[ScheduleWeek] = []
+    for week in weeks:
+        if week not in games:
+            out.append(ScheduleWeek(week=week, bye=True))
+            continue
+        opponent, home, _over = games[week]
+        out.append(
+            ScheduleWeek(
+                week=week,
+                opponent=opponent,
+                home=home,
+                matchup=matchup_rank(defense, player.position, opponent),
+            )
+        )
+    return out
+
+
 def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> PlayerDetail | None:
     """The pop-up for one player in this league, or None when Sleeper has no such player."""
     player = session.get(PlayerRow, player_id)
@@ -208,12 +259,18 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         pid: pos for pid, pos in session.execute(select(PlayerRow.player_id, PlayerRow.position))
     }
     season_totals: dict[str, float] = defaultdict(float)
-    for pid, stats in session.execute(
-        select(PlayerWeekStatsRow.player_id, PlayerWeekStatsRow.stats).where(
-            PlayerWeekStatsRow.season == season
-        )
+    week_peers: dict[int, list[float]] = defaultdict(list)  # week -> points of his position
+    for pid, week, stats in session.execute(
+        select(
+            PlayerWeekStatsRow.player_id, PlayerWeekStatsRow.week, PlayerWeekStatsRow.stats
+        ).where(PlayerWeekStatsRow.season == season)
     ):
-        season_totals[pid] += score_stats(stats, scoring)
+        points = score_stats(stats, scoring)
+        season_totals[pid] += points
+        if player.position and position_of.get(pid) == player.position and stats.get("gp", 1) > 0:
+            week_peers[week].append(points)
+    for line in weeks:
+        line.rank = _rank(line.points, week_peers.get(line.week, [])) if week_peers else None
     rank = None
     if weekly and player.position:
         peers = [t for pid, t in season_totals.items() if position_of.get(pid) == player.position]
@@ -233,6 +290,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
     trend = session.get(PlayerTrendRow, player_id)
     espn = session.get(PlayerOwnershipRow, player_id)
     game = games_for_week(session, season, week_now).get(player.team or "") if week_now else None
+    defense = build_defense_table(session, season, scoring)
     return PlayerDetail(
         player_id=player_id,
         name=_name(player),
@@ -240,14 +298,11 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         team=player.team,
         injury=_injury({player_id: player}, player_id),
         game=game,
+        depth=build_team_depth(session, league, player.team) if player.team else None,
         team_stats=stats_for_position(
             build_team_stats(session, season), player.team, player.position
         ),
-        matchup=matchup_rank(
-            build_defense_table(session, season, scoring),
-            player.position,
-            game.opponent if game else None,
-        ),
+        matchup=matchup_rank(defense, player.position, game.opponent if game else None),
         bio=player.bio,
         owner_roster_id=owner,
         owner_team=team_name.get(owner) if owner is not None else None,
@@ -264,6 +319,8 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
             rank=rank,
         ),
         projected=projected,
+        schedule=_schedule(session, season, player, defense),
+        history=build_history(session, league, player_id),
         weeks=weeks,
         past_seasons=_past_seasons(session, scoring, player, position_of),
     )

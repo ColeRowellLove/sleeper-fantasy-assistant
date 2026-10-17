@@ -339,3 +339,56 @@ def test_bio_keeps_only_what_sleeper_has() -> None:
         "age": 25, "height": "74", "college": "BYU", "number": 12, "depth_chart_order": 1,
     }  # fmt: skip
     assert _bio(SleeperPlayer(player_id="2", college="")) is None  # nothing useful: no empty dict
+
+
+def test_each_played_week_has_his_rank_among_players_at_his_position(session: Session) -> None:
+    league = _setup(session)
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None
+    # week 1: Nacua 24.5, the second WR 20.0, the third 1.0; week 2: only Nacua played
+    assert [(w.week, w.rank) for w in detail.weeks] == [(1, 1), (2, 1)]
+
+
+def test_the_schedule_lists_every_week_with_the_opponent_and_byes(session: Session) -> None:
+    league = _setup(session)
+    session.add(
+        NflGameRow(
+            game_id="g3", season="2026", week=3, home="SEA", away="SF",
+            game_date="2026-09-27", status="pre_game",
+        )
+    )  # fmt: skip
+    session.commit()
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None
+    by_week = {s.week: s for s in detail.schedule}
+    assert sorted(by_week) == [1, 2, 3]
+    assert (by_week[1].opponent, by_week[1].home) == ("SEA", True)
+    assert (by_week[2].opponent, by_week[2].home) == ("SF", False)
+    assert by_week[3].bye and by_week[3].opponent is None  # LAR does not play in week 3
+
+
+def test_no_schedule_without_his_teams_games(session: Session) -> None:
+    league = _setup(session)
+    player = session.get(PlayerRow, "1")
+    assert player is not None
+    player.team = None
+    session.commit()
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None and detail.schedule == []
+
+
+def test_his_teams_depth_chart_comes_with_the_detail(session: Session) -> None:
+    league = _setup(session)
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None and detail.depth is not None
+    assert detail.depth.team == "LAR"
+
+
+def test_no_depth_chart_for_a_free_agent_without_a_team(session: Session) -> None:
+    league = _setup(session)
+    player = session.get(PlayerRow, "1")
+    assert player is not None
+    player.team = None
+    session.commit()
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None and detail.depth is None
