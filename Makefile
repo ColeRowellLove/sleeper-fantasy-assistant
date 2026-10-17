@@ -1,4 +1,4 @@
-.PHONY: help setup check fmt backend-check frontend-check migrate preview-data dev dev-api dev-web hooks
+.PHONY: help setup check fmt backend-check frontend-check migrate preview-data boot dev dev-api dev-web hooks
 
 help:
 	@echo "make setup           install backend + frontend dependencies"
@@ -6,7 +6,8 @@ help:
 	@echo "make fmt             auto-format backend code"
 	@echo "make migrate         apply database migrations (DATABASE_URL, default SQLite)"
 	@echo "make preview-data    load the made-up sample league (id 100001) for a first look"
-	@echo "make dev             migrate, then run the API (:8000) and the web app (:3000) together"
+	@echo "make dev             migrate, then run the API (:8000), the web app (:3000) and boot loading"
+	@echo "                     (SLEEPER_USERNAME=name or SLEEPER_LEAGUE_ID=id loads that league)"
 	@echo "make dev-api         run the API on :8000"
 	@echo "make dev-web         run the web app on :3000"
 	@echo "make hooks           install pre-commit hooks"
@@ -32,8 +33,11 @@ migrate:
 preview-data: migrate
 	cd backend && uv run python -m sleeper_assistant.sample_league
 
+boot:
+	-cd backend && uv run python -m sleeper_assistant.boot  # a boot failure never stops the servers
+
 dev: migrate
-	$(MAKE) -j2 dev-api dev-web
+	$(MAKE) -j3 boot dev-api dev-web
 
 dev-api:
 	cd backend && uv run uvicorn sleeper_assistant.api:app --reload

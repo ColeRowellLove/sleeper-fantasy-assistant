@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
 from typing import Any
 
-from sqlalchemy import select
+import httpx
+from pydantic import ValidationError
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.crosswalk import build_crosswalk
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -22,6 +27,8 @@ from sleeper_assistant.db import (
     utcnow,
 )
 from sleeper_assistant.sleeper import SleeperClient, SleeperPlayer
+
+log = logging.getLogger(__name__)
 
 MAX_WEEKS = 18
 _SKIP_SNAPSHOT_PREFIXES = ("/players/",)  # ~5 MB; the parsed rows are enough
@@ -245,3 +252,48 @@ def sync_schedule(session: Session, client: SleeperClient, season: str) -> int:
         row.updated_at = now
     session.commit()
     return len(games)
+
+
+def ensure_schedule(session: Session, sleeper: SleeperClient, season: str) -> None:
+    """Load the season schedule the first time (one small request) so bye weeks and game state show.
+
+    The worker refreshes it afterwards; a failure here must not block connecting.
+    """
+    has_games = session.scalar(
+        select(func.count()).select_from(NflGameRow).where(NflGameRow.season == season)
+    )
+    if has_games:
+        return
+    try:
+        sync_schedule(session, sleeper, season)
+    except IntegrityError:  # a concurrent first connect loaded the schedule; that is fine
+        session.rollback()
+    except (httpx.HTTPError, ValidationError):
+        session.rollback()
+        log.exception("could not load the NFL schedule; bye weeks and game state will be missing")
+
+
+def ensure_players(session: Session, sleeper: SleeperClient) -> None:
+    """Load Sleeper's player DB (~5 MB) the first time, so rosters show names, not ids.
+
+    After that the worker refreshes it daily; a failure here must not block connecting.
+    """
+    if (session.scalar(select(func.count()).select_from(PlayerRow)) or 0) > 0:
+        return
+    try:
+        sync_players(session, sleeper)
+        build_crosswalk(session)
+    except IntegrityError:  # a concurrent first connect loaded the players; that is fine
+        session.rollback()
+    except (httpx.HTTPError, ValidationError):
+        session.rollback()
+        log.exception("could not load the Sleeper player database; names will show as ids")
+
+
+def finish_connect(session: Session, sleeper: SleeperClient, league: LeagueRow) -> None:
+    """What connecting a synced league also does: the player list and schedule the first time, and
+    marking the league active so the worker keeps it fresh. Shared by the API and boot loading."""
+    ensure_players(session, sleeper)
+    ensure_schedule(session, sleeper, league.season)
+    league.last_viewed_at = utcnow()
+    session.commit()

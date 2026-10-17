@@ -12,19 +12,15 @@ from typing import Annotated, Any
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 from pydantic import BaseModel, StringConstraints, ValidationError
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from sleeper_assistant import __version__
 from sleeper_assistant.alerts import AlertsView, build_alerts
-from sleeper_assistant.crosswalk import build_crosswalk
 from sleeper_assistant.dashboard import Dashboard, Lineups, build_dashboard, build_lineups
 from sleeper_assistant.db import (
     LeagueRow,
-    NflGameRow,
-    PlayerRow,
     RosterRow,
     as_utc,
     make_engine,
@@ -33,7 +29,7 @@ from sleeper_assistant.db import (
 )
 from sleeper_assistant.depth import TEAM_IDS
 from sleeper_assistant.games_view import Games, build_games
-from sleeper_assistant.ingest import sync_league, sync_players, sync_schedule
+from sleeper_assistant.ingest import finish_connect, sync_league
 from sleeper_assistant.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
 from sleeper_assistant.live_window import live_window_cached
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
@@ -205,47 +201,8 @@ def connect_league(
             raise HTTPException(
                 status_code=502, detail="Unexpected response from Sleeper"
             ) from None
-    _ensure_players(session, sleeper)
-    _ensure_schedule(session, sleeper, row.season)
-    row.last_viewed_at = utcnow()
-    session.commit()
+    finish_connect(session, sleeper, row)
     return _connected(row)
-
-
-def _ensure_schedule(session: Session, sleeper: SleeperClient, season: str) -> None:
-    """Load the season schedule the first time (one small request) so bye weeks and game state show.
-
-    The worker refreshes it afterwards; a failure here must not block connecting.
-    """
-    has_games = session.scalar(
-        select(func.count()).select_from(NflGameRow).where(NflGameRow.season == season)
-    )
-    if has_games:
-        return
-    try:
-        sync_schedule(session, sleeper, season)
-    except IntegrityError:  # a concurrent first connect loaded the schedule; that is fine
-        session.rollback()
-    except (httpx.HTTPError, ValidationError):
-        session.rollback()
-        log.exception("could not load the NFL schedule; bye weeks and game state will be missing")
-
-
-def _ensure_players(session: Session, sleeper: SleeperClient) -> None:
-    """Load Sleeper's player DB (~5 MB) the first time, so rosters show names, not ids.
-
-    After that the worker refreshes it daily; a failure here must not block connecting.
-    """
-    if (session.scalar(select(func.count()).select_from(PlayerRow)) or 0) > 0:
-        return
-    try:
-        sync_players(session, sleeper)
-        build_crosswalk(session)
-    except IntegrityError:  # a concurrent first connect loaded the players; that is fine
-        session.rollback()
-    except (httpx.HTTPError, ValidationError):
-        session.rollback()
-        log.exception("could not load the Sleeper player database; names will show as ids")
 
 
 class DashboardResponse(Dashboard):
