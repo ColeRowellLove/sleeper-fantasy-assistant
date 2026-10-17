@@ -187,7 +187,10 @@ class PlayerProjectionRow(Base):
     """A player's projected stat line for one week, kept as pulled before the game kicked off."""
 
     __tablename__ = "player_projections"
-    __table_args__ = (Index("ix_player_projections_season_week", "season", "week"),)
+    __table_args__ = (
+        Index("ix_player_projections_season_week", "season", "week"),
+        Index("ix_player_projections_player_season", "player_id", "season"),  # one player's year
+    )
 
     season: Mapped[str] = mapped_column(String, primary_key=True)
     week: Mapped[int] = mapped_column(primary_key=True)
@@ -246,6 +249,7 @@ class PlayerWeekStatsRow(Base):
     """A player's actual stat line for one week, scored per league when needed."""
 
     __tablename__ = "player_week_stats"
+    __table_args__ = (Index("ix_player_week_stats_player_season", "player_id", "season"),)
 
     season: Mapped[str] = mapped_column(String, primary_key=True)
     week: Mapped[int] = mapped_column(primary_key=True)

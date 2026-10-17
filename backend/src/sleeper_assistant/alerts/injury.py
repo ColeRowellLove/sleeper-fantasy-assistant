@@ -14,6 +14,7 @@ are other events.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -26,9 +27,10 @@ from sleeper_assistant.alerts.helpers import alert_key, player_tag
 from sleeper_assistant.core.league.lineup_slots import eligible_positions, starter_slots
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.team_names import team_names
 from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY
 from sleeper_assistant.core.nfl.nfl_games import current_week, games_for_week
-from sleeper_assistant.core.nfl.team_depth import build_team_depth
+from sleeper_assistant.core.nfl.team_depth import depth_groups
 from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import LeagueRow, PlayerInjuryRow, PlayerRow, RosterRow, as_utc
 
@@ -119,12 +121,14 @@ def _best_bench(options: list[PlayerRow], projections: dict[str, float]) -> Play
     return max(projected, key=lambda p: projections[p.player_id]) if projected else None
 
 
-def _next_up(session: Session, league: LeagueRow, out: PlayerRow) -> NextUp | None:
+def _next_up(
+    session: Session, owner: Mapping[str, int], team_name: Mapping[int, str], out: PlayerRow
+) -> NextUp | None:
     """Who is first in line behind him on the NFL depth chart, and who owns him in this league."""
     if out.team is None:
         return None
-    chart = build_team_depth(session, league, out.team)
-    for group in chart.groups:
+    groups, _ = depth_groups(session, out.team, owner, team_name)
+    for group in groups:
         for slot in group.slots:
             if not any(p.player_id == out.player_id for p in slot.players):
                 continue
@@ -323,7 +327,11 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
         for injury, player in news
     ]
     rostered = [item for item in rostered if item[2]]
-    next_ups = {player.player_id: _next_up(session, league, player) for _, player, _ in rostered}
+    team_name, _ = team_names(session, rosters)
+    owner = {pid: r.roster_id for r in rosters for pid in _all(r)}
+    next_ups = {
+        player.player_id: _next_up(session, owner, team_name, player) for _, player, _ in rostered
+    }
     ctx = _week_context(session, league, rosters, next_ups)
     raised: list[NewAlert] = []
     for injury, player, owners in rostered:

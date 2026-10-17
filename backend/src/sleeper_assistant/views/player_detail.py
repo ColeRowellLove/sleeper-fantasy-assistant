@@ -143,7 +143,10 @@ def _game_log(  # noqa: PLR0913 - the season, the player and how to score him ar
     for row in rows:
         if row.stats.get("gp", 1.0) <= 0:
             continue  # he did not play that week: no game to list (not a game of zero points)
-        opponents = schedule.setdefault(row.team or "", _opponents(session, season, row.team))
+        team = row.team or ""
+        if team not in schedule:  # one query per team he played for, not one per game
+            schedule[team] = _opponents(session, season, row.team)
+        opponents = schedule[team]
         opponent, home, over = opponents.get(row.week, (None, None, False))
         lines.append(
             WeekLine(
@@ -315,7 +318,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         team=player.team,
         injury=injury_info({player_id: player}, player_id),
         game=game,
-        depth=build_team_depth(session, league, player.team) if player.team else None,
+        depth=build_team_depth(session, league, player.team, rosters) if player.team else None,
         team_stats=stats_for_position(
             build_team_stats(session, season), player.team, player.position
         ),
@@ -338,7 +341,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         projected=_this_weeks_projection(session, season, week_now, player_id, scoring),
         schedule=_schedule(session, season, player, defense),
         news=player_news(session, player_id),
-        history=build_history(session, league, player_id),
+        history=build_history(session, league, player_id, rosters),
         weeks=weeks,
         past_seasons=_past_seasons(session, scoring, player, position_of),
     )

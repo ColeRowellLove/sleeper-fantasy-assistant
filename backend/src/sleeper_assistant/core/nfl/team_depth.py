@@ -25,7 +25,7 @@ from sleeper_assistant.core.nfl.depth import GROUPS, SKILL_SLOTS, slot_label, sl
 from sleeper_assistant.core.nfl.injury_status import WILL_NOT_PLAY, injury_info
 from sleeper_assistant.core.nfl.nfl_games import current_week, games_for_week
 from sleeper_assistant.core.nfl.team_stats import TeamStat, all_team_stats, build_team_stats
-from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, TeamDepthChartRow
+from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow, TeamDepthChartRow
 
 # designations that mean a player will not play
 _ORDINAL = {1: "Starter", 2: "2nd string", 3: "3rd string"}
@@ -177,13 +177,18 @@ def _depth_groups(
     return groups
 
 
-def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDepth:
-    """The stored depth chart for one NFL team, with this league's ownership and injuries."""
-    row = session.get(TeamDepthChartRow, team)
-    rosters = league_rosters(session, league.league_id)
-    team_name, _ = team_names(session, rosters)
-    owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+def depth_groups(
+    session: Session,
+    team: str,
+    owner: Mapping[str, int] | None = None,
+    team_name: Mapping[int, str] | None = None,
+) -> tuple[list[DepthGroup], TeamDepthChartRow | None]:
+    """A team's stored depth chart as groups, with the injuries of the players on it.
 
+    Needs only the chart and the players on it (two queries); ownership is added when ``owner`` and
+    ``team_name`` are given. The alerts and the waiver board use this without the rest of the page.
+    """
+    row = session.get(TeamDepthChartRow, team)
     chart: dict[str, Any] = row.chart if row else {}
     ids = {
         e["sleeper_id"]
@@ -196,6 +201,20 @@ def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDept
         p.player_id: p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
     }
+    return _depth_groups(chart, sleeper, owner or {}, team_name or {}), row
+
+
+def build_team_depth(
+    session: Session, league: LeagueRow, team: str, rosters: list[RosterRow] | None = None
+) -> TeamDepth:
+    """The stored depth chart for one NFL team, with this league's ownership and injuries.
+
+    A caller that already loaded the league's rosters passes them, saving two queries.
+    """
+    rosters = rosters if rosters is not None else league_rosters(session, league.league_id)
+    team_name, _ = team_names(session, rosters)
+    owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    groups, row = depth_groups(session, team, owner, team_name)
     week = current_week(session, league.season)
     game = games_for_week(session, league.season, week).get(team) if week else None
     return TeamDepth(
@@ -205,5 +224,5 @@ def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDept
         game=game,
         record=team_record(session, league.season, team),
         stats=all_team_stats(build_team_stats(session, league.season), team),
-        groups=_depth_groups(chart, sleeper, owner, team_name),
+        groups=groups,
     )
