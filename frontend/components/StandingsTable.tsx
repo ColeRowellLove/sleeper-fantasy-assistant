@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import type { StandingsRow } from "../lib/api";
 import { formatRecord, rosterPath } from "../lib/league";
+import NoteList from "./NoteList";
 import {
   DEFAULT_SORT,
   nextSort,
@@ -187,11 +188,13 @@ export default function StandingsTable({
         {describe(sort)}
       </p>
       {showAccuracy && (
-        <p className="note">
-          Accuracy is the points a team scored divided by Sleeper&apos;s potential points (what its
-          best lineups would have scored); 100% means the best lineup every week. Bench pts is what
-          was left on the bench.
-        </p>
+        <NoteList
+          items={[
+            "Accuracy is the points a team scored divided by its potential points (what its best lineups would have scored)",
+            "100% means the best lineup every week",
+            "Bench pts is what was left on the bench",
+          ]}
+        />
       )}
       {showPlayoffs && (
         <p className="note">

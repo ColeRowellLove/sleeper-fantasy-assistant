@@ -18,6 +18,7 @@ import PlayerIdentity from "./PlayerIdentity";
 import StatTable from "./StatTable";
 import { leaguePath } from "../lib/league";
 import WeekChips from "./WeekChips";
+import NoteList from "./NoteList";
 
 const AVAILABILITY: { value: RankAvailability; label: string }[] = [
   { value: "all", label: "All players" },
@@ -56,10 +57,13 @@ export default function RankingsPanel({
   return (
     <section aria-labelledby="rankings-heading">
       <h2 id="rankings-heading">Weekly rankings</h2>
-      <p className="note">
-        {data.week ? `Week ${data.week}. ` : ""}Each player is ranked by {labels.join(", ")} and the
-        consensus is the average of those ranks, using this league&apos;s scoring. Rank 1 is best.
-      </p>
+      <NoteList
+        items={[
+          `${data.week ? `Week ${data.week}: ` : ""}each player is ranked by ${labels.join(", ")}`,
+          "The consensus is the average of those ranks, using this league's scoring",
+          "Rank 1 is best",
+        ]}
+      />
       {data.weeks.length > 0 && (
         <WeekChips
           leagueId={leagueId}
@@ -198,10 +202,13 @@ export default function RankingsPanel({
           })}
         </tbody>
       </StatTable>
-      <p className="note">
-        Projections are Sleeper&apos;s, scored with this league&apos;s rules. Start % is ESPN-wide
-        and only shown for the current week. A smaller gap between sources means they agree more.
-      </p>
+      <NoteList
+        items={[
+          "Projections are Sleeper's, scored with this league's rules",
+          "Start % is ESPN-wide and only shown for the current week",
+          "A smaller gap between sources means they agree more",
+        ]}
+      />
     </section>
   );
 }

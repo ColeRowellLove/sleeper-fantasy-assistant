@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import FilterChips from "../components/FilterChips";
+import NoteList from "../components/NoteList";
 import PlayerIdentity from "../components/PlayerIdentity";
 import StatTable from "../components/StatTable";
 import { expectNoA11yViolations } from "./a11y";
@@ -135,5 +136,21 @@ describe("StatTable", () => {
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(<StatTable caption="Things">{body}</StatTable>);
+  });
+});
+
+describe("NoteList", () => {
+  it("renders short bullets as a list", async () => {
+    const ui = (
+      <NoteList items={["Shows the best adds", "Resets each cycle"]} label="About this page" />
+    );
+    render(ui);
+    const list = screen.getByRole("list", { name: "About this page" });
+    expect(
+      within(list)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["Shows the best adds", "Resets each cycle"]);
+    await expectNoA11yViolations(ui);
   });
 });

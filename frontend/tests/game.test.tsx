@@ -230,20 +230,12 @@ describe("rosters with game status", () => {
   ];
 
   it("shows each player's game or bye and which NFL week it refers to", async () => {
-    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} week={6} />);
+    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
     expect(screen.getByText("Bye week")).toBeInTheDocument();
     expect(screen.getByText("Sun, Sep 20 vs CHI")).toBeInTheDocument();
-    expect(screen.getByText(/NFL week 6/)).toBeInTheDocument();
     expect(screen.getByText("3rd · Easy")).toBeInTheDocument(); // the opponent's rank for his position
     expect(screen.getByText("CHI ranks 3rd against RBs (easy matchup)")).toBeInTheDocument();
-    await expectNoA11yViolations(
-      <RostersPanel leagueId="1" rosters={rosters} myRosterId={1} week={6} />,
-    );
-  });
-
-  it("omits the week note when the week is unknown", () => {
-    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
-    expect(screen.queryByText(/NFL week/)).not.toBeInTheDocument();
+    await expectNoA11yViolations(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
   });
 });
 

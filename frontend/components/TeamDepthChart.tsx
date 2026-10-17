@@ -6,6 +6,7 @@ import InjuryBadge from "./InjuryBadge";
 import TeamLogo from "./TeamLogo";
 import TeamStatsTable from "./TeamStatsTable";
 import PlayerLink from "./PlayerLink";
+import NoteList from "./NoteList";
 
 function PlayerCell({ player, myRosterId }: { player: DepthPlayer; myRosterId: number | null }) {
   const mine = myRosterId !== null && player.owner_roster_id === myRosterId;
@@ -169,10 +170,13 @@ export default function TeamDepthChart({
           title="Team stats"
         />
       )}
-      <p className="note">
-        Depth order is 1 for the starter. A &quot;Next up&quot; tag shows who is first in line when
-        a starter is out. Charts change with injuries and news, so check close to kickoff.
-      </p>
+      <NoteList
+        items={[
+          "Depth order is 1 for the starter",
+          'A "Next up" tag shows who is first in line when a starter is out',
+          "Charts change with injuries and news, so check close to kickoff",
+        ]}
+      />
     </Wrapper>
   );
 }

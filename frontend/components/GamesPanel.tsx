@@ -6,6 +6,7 @@ import GamePlayers from "./GamePlayers";
 import TeamLink from "./TeamLink";
 import TeamLogo from "./TeamLogo";
 import WeekChips from "./WeekChips";
+import NoteList from "./NoteList";
 
 const NOTES = {
   played: "Final scores for this week.",
@@ -80,9 +81,12 @@ export default function GamesPanel({
           </li>
         ))}
       </ul>
-      <p className="note">
-        Fantasy points use this league&apos;s scoring. Games with your players are listed first.
-      </p>
+      <NoteList
+        items={[
+          "Fantasy points use this league's scoring",
+          "Games with your players are listed first",
+        ]}
+      />
     </section>
   );
 }

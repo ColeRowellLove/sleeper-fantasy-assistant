@@ -31,6 +31,7 @@ Inspiration only: no logos, names, fonts or assets from those apps.
 - **Stat table:** compact, sticky name column, right-aligned numbers, sortable, an empty state, and
   projected values clearly marked.
 - **Filter chips:** position, availability, week; same look and keyboard behaviour everywhere.
+- **Notes:** explanatory text is 2 to 4 short bullets in `NoteList`, never a paragraph wall.
 - **Cards and disclosure:** one spacing scale; detail in a native `<details>` where it helps.
 
 ## Reuse first
