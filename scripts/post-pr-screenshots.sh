@@ -31,7 +31,7 @@ base="https://raw.githubusercontent.com/${repo}/${sha}"
 
 body="${marker}"$'\n'"### Screenshots (sample league, made-up data)"$'\n\n'
 body+="Phone (390 px) and desktop (1280 px), light theme; the top of each page. Dark theme and the full set are in the run's \`frontend-screenshots\` artifact."$'\n\n'
-if [ -s "$work/layout-problems.txt" ]; then
+if [ -f "$work/layout-problems.txt" ] && [ -n "$(tr -d '[:space:]' < "$work/layout-problems.txt")" ]; then
   body+="<details><summary>Layout problems found at phone width</summary>"$'\n\n'
   body+='```'$'\n'"$(cat "$work/layout-problems.txt")"$'\n''```'$'\n\n'"</details>"$'\n\n'
 fi

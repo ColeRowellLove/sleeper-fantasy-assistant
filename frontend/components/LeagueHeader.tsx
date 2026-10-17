@@ -12,9 +12,9 @@ export default function LeagueHeader({
   return (
     <header className="league-head">
       <div>
-        <h1>{data.name.trim()}</h1>
+        <h1 title={data.name.trim()}>{data.name.trim()}</h1>
         <p className="league-meta">{data.season} season</p>
-        <ul className="rule-chips" aria-label="League rules">
+        <ul className="rule-chips" aria-label="League rules" tabIndex={0}>
           {ruleChips(data.rules).map((chip) => (
             <li key={chip}>{chip}</li>
           ))}

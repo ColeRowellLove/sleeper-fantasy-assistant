@@ -141,36 +141,38 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
       </span>
       {/* three fixed-width columns on every row, so the numbers and slot line up; a row with
           no value keeps its (empty) column */}
-      {player.points !== null && player.points !== undefined ? (
-        <span className="player-proj player-pts num">
-          <span className="visually-hidden">Points this week </span>
-          {player.points.toFixed(1)}
-          <span className="player-proj-label" aria-hidden="true">
-            pts
+      <span className="player-nums">
+        {player.points !== null && player.points !== undefined ? (
+          <span className="player-proj player-pts num">
+            <span className="visually-hidden">Points this week </span>
+            {player.points.toFixed(1)}
+            <span className="player-proj-label" aria-hidden="true">
+              pts
+            </span>
           </span>
-        </span>
-      ) : notPlayedYet("current", player.game) ? (
-        <span className="player-proj player-pts num">
-          <span className="visually-hidden">Not played yet</span>
-          <span aria-hidden="true">–</span>
-          <span className="player-proj-label" aria-hidden="true">
-            pts
+        ) : notPlayedYet("current", player.game) ? (
+          <span className="player-proj player-pts num">
+            <span className="visually-hidden">Not played yet</span>
+            <span aria-hidden="true">–</span>
+            <span className="player-proj-label" aria-hidden="true">
+              pts
+            </span>
           </span>
-        </span>
-      ) : (
-        <span className="player-proj player-pts" aria-hidden="true" />
-      )}
-      {player.projected !== null && player.projected !== undefined ? (
-        <span className="player-proj num">
-          <span className="visually-hidden">Projected </span>
-          {player.projected.toFixed(1)}
-          <span className="player-proj-label" aria-hidden="true">
-            proj
+        ) : (
+          <span className="player-proj player-pts" aria-hidden="true" />
+        )}
+        {player.projected !== null && player.projected !== undefined ? (
+          <span className="player-proj num">
+            <span className="visually-hidden">Projected </span>
+            {player.projected.toFixed(1)}
+            <span className="player-proj-label" aria-hidden="true">
+              proj
+            </span>
           </span>
-        </span>
-      ) : (
-        <span className="player-proj" aria-hidden="true" />
-      )}
+        ) : (
+          <span className="player-proj" aria-hidden="true" />
+        )}
+      </span>
       {player.status === "starter" && player.slot ? (
         <span className="slot" title="Lineup slot">
           <span className="visually-hidden">Slot </span>

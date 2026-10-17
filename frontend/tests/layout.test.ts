@@ -87,6 +87,13 @@ describe("roster row columns", () => {
     }
   });
 
+  it("puts points and projection in one fixed-width column, wider side by side than stacked", () => {
+    expect(rule(".player-nums")).toMatch(/flex: 0 0 [\d.]+rem/);
+    expect(css).toMatch(
+      /@media \(max-width: 40rem\)[\s\S]*?\.player-nums \{[^}]*flex-direction: column/,
+    );
+  });
+
   it("keeps the position out of the columns, in the name's line, so a phone leaves the name room", () => {
     expect(css).not.toContain(".player-chip");
     // on a phone the three number columns together stay under 8rem (2.4 + 2.4 + 2.4)
