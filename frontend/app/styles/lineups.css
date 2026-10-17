@@ -756,6 +756,10 @@ table.h2h {
 .game-list {
   display: grid;
   gap: 0.75rem;
+  grid-template-columns: minmax(
+    0,
+    1fr
+  ); /* a wide table inside a card must scroll, not stretch the page */
   list-style: none;
   margin: 1rem 0;
   padding: 0;
