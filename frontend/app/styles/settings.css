@@ -416,7 +416,7 @@ table.players.pd-table {
 .depth-section-title {
   font-size: 1rem;
   margin: 0;
-  padding: 1rem 1.25rem 0.5rem;
+  padding: 0.7rem 0.9rem 0.3rem;
 }
 
 .depth-details {
@@ -431,14 +431,14 @@ table.players.pd-table {
 
 table.depth-table {
   border-collapse: collapse;
-  min-width: 40rem;
+  min-width: 0;
   width: 100%;
 }
 
 .depth-table th,
 .depth-table td {
   border-top: 1px solid var(--line);
-  padding: 0.6rem 0.75rem;
+  padding: 0.45rem 0.6rem;
   text-align: left;
   vertical-align: top;
 }
@@ -450,7 +450,7 @@ table.depth-table {
 }
 
 .depth-table td {
-  min-width: 11rem;
+  min-width: 7.5rem;
 }
 
 .depth-table tbody th {
@@ -462,9 +462,9 @@ table.depth-table {
 
 .depth-slide-hint {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   margin: 0;
-  padding: 0.5rem 1.25rem 0;
+  padding: 0 0.9rem 0.3rem;
 }
 
 .depth-table thead th {
@@ -474,8 +474,62 @@ table.depth-table {
 }
 
 .depth-table tbody th {
-  font-weight: 600;
-  min-width: 9rem;
+  font-weight: 700;
+  min-width: 0;
+  width: 3.4rem;
+}
+
+.depth-slot {
+  color: var(--pos, var(--muted));
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.depth-name {
+  line-height: 1.15;
+}
+
+.depth-name a {
+  display: grid;
+}
+
+.depth-name .depth-first {
+  display: block;
+}
+
+.depth-first {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.depth-last {
+  font-weight: 700;
+}
+
+.depth-marks {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.4rem;
+}
+
+.depth-mine {
+  background: var(--accent);
+  border-radius: 999px;
+  color: var(--on-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 0.45rem;
+}
+
+.depth-owner-text {
+  display: none;
+}
+
+@media (min-width: 40rem) {
+  .depth-owner-text {
+    display: inline;
+  }
 }
 
 .depth-note {
@@ -856,28 +910,40 @@ td.season-log {
 .rank-chips {
   display: grid;
   gap: 0.5rem;
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(6.8rem, 1fr));
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
+.rank-chips-note {
+  font-size: 0.8rem;
+  margin: 0 0 0.4rem;
+}
+
 .rank-chip {
   border-radius: var(--radius-sm);
   display: grid;
-  gap: 0.1rem;
-  padding: 0.4rem 0.6rem;
+  gap: 0;
+  padding: 0.35rem 0.6rem;
 }
 
 .rank-chip-label {
   color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-chip-value {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .rank-chip-rank {
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
@@ -1093,25 +1159,78 @@ td.season-log {
   width: max-content;
 }
 
-.trend-about {
-  margin-top: 1rem;
-}
-
-.trend-about > summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
 .depth-chart > * + * {
   margin-top: 1rem;
 }
 
-.depth-all-stats {
+/* Transactions board */
+.txn-list {
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.txn-card {
+  border-left: 4px solid var(--line);
+  padding: 0.65rem 0.8rem;
+}
+
+.txn-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.75rem;
+  justify-content: space-between;
+  margin: 0 0 0.5rem;
+}
+
+.txn-time {
+  font-size: 0.8rem;
+}
+
+.txn-moves {
+  display: grid;
+  gap: 0.6rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.txn-team {
+  font-size: 0.85rem;
+  margin: 0 0 0.3rem;
+}
+
+.txn-players {
+  display: grid;
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.txn-sign {
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.05rem 0.5rem;
+}
+
+.txn-added .txn-sign {
+  background: color-mix(in srgb, var(--game-live) 18%, var(--surface-2));
+  color: var(--game-live);
+}
+
+.txn-dropped .txn-sign {
+  background: color-mix(in srgb, var(--injury-out) 18%, var(--surface-2));
+  color: var(--injury-out);
+}
+
+/* a quiet fold-out for explanations and extras: one look everywhere (about, notes, all stats) */
+.fold {
   margin-top: 0.75rem;
 }
 
-.depth-all-stats > summary {
+.fold > summary {
   color: var(--muted);
   cursor: pointer;
   font-size: 0.85rem;

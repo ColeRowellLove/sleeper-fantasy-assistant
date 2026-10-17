@@ -18,10 +18,10 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.dashboard import (
     GameInfo,
     InjuryInfo,
-    _injury,
-    _team_names,
     current_week,
     games_for_week,
+    injury_info,
+    team_names,
 )
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow, TeamDepthChartRow
 from sleeper_assistant.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
@@ -133,7 +133,7 @@ def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDept
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team_name, _ = _team_names(session, rosters)
+    team_name, _ = team_names(session, rosters)
     owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
 
     chart: dict[str, Any] = row.chart if row else {}
@@ -157,7 +157,7 @@ def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDept
             players: list[DepthPlayer] = []
             for depth, entry in enumerate(chart[group][slot], start=1):
                 pid = entry.get("sleeper_id")
-                injury = _injury(sleeper, pid) if pid else None
+                injury = injury_info(sleeper, pid) if pid else None
                 if injury is None and entry.get("injury"):
                     injury = InjuryInfo(status=entry["injury"], body_part=None)
                 owner_id = owner.get(pid) if pid else None

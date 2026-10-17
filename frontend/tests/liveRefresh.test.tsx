@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LiveRefresh from "../components/LiveRefresh";
@@ -56,19 +56,13 @@ describe("LiveRefresh", () => {
     expect(screen.getByText(/Updated/)).toBeInTheDocument();
   });
 
-  it("can be paused and resumed", () => {
+  it("has no pause button: it is always live while a game is on", () => {
     render(<LiveRefresh active seconds={15} />);
-    fireEvent.click(screen.getByRole("button", { name: "Pause live updates" }));
-    expect(screen.getByText("Live updates paused.")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
     act(() => {
       vi.advanceTimersByTime(60_000);
     });
-    expect(refresh).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Resume live updates" }));
-    act(() => {
-      vi.advanceTimersByTime(15_000);
-    });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(4);
   });
 
   it("waits while the tab is hidden and catches up when it is shown again", () => {

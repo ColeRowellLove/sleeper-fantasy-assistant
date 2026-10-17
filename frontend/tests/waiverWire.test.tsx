@@ -8,10 +8,12 @@ import { parseTab } from "../lib/league";
 import { entriesFor, stanceWord } from "../lib/waiverView";
 import { expectNoA11yViolations } from "./a11y";
 
+const push = vi.fn();
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/league/1",
   useSearchParams: () => new URLSearchParams("tab=waiver"),
-  useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push }),
 }));
 
 const rosters: Dashboard["rosters"] = [
@@ -142,16 +144,23 @@ describe("waiver wire", () => {
     render(panel(data));
     expect(screen.getByRole("combobox", { name: /Team/ })).toHaveValue("1");
     expect(screen.getByRole("option", { name: "Cole (you)" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show waiver wire" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show waiver wire" })).not.toBeInTheDocument();
   });
 
-  it("reaches the team picker, its button and the position chips with the keyboard", async () => {
+  it("shows the chosen team's wire as soon as it is picked", async () => {
+    const user = userEvent.setup();
+    push.mockClear();
+    render(panel(data));
+    await user.selectOptions(screen.getByRole("combobox", { name: /Team/ }), "2");
+    expect(push).toHaveBeenCalledWith("/league/1?tab=waiver&roster=2");
+  });
+
+  it("reaches the team picker and the position chips with the keyboard", async () => {
     const user = userEvent.setup();
     render(panel(data));
+    await user.tab(); // the "About" fold-out comes first
     await user.tab();
     expect(screen.getByRole("combobox", { name: /Team/ })).toHaveFocus();
-    await user.tab();
-    expect(screen.getByRole("button", { name: "Show waiver wire" })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: "Top adds" })).toHaveFocus();
   });

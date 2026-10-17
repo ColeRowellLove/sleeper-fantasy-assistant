@@ -17,10 +17,10 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.dashboard import (
     GameInfo,
     InjuryInfo,
-    _injury,
-    _team_names,
     current_week,
     games_for_week,
+    injury_info,
+    team_names,
 )
 from sleeper_assistant.db import (
     LeagueRow,
@@ -40,7 +40,7 @@ from sleeper_assistant.matchup_rank import (
     matchup_rank,
 )
 from sleeper_assistant.player_history import HistoryEvent, build_history
-from sleeper_assistant.players_view import _name
+from sleeper_assistant.players_view import player_name
 from sleeper_assistant.projections import score_projection, score_stats
 from sleeper_assistant.team_depth import TeamDepth, build_team_depth
 from sleeper_assistant.team_stats import TeamStat, build_team_stats, stats_for_position
@@ -237,7 +237,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team_name, manager_name = _team_names(session, rosters)
+    team_name, manager_name = team_names(session, rosters)
     owner = next(
         (r.roster_id for r in rosters if player_id in [*r.players, *r.reserve, *r.taxi]), None
     )
@@ -293,10 +293,10 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
     defense = build_defense_table(session, season, scoring)
     return PlayerDetail(
         player_id=player_id,
-        name=_name(player),
+        name=player_name(player),
         position=player.position,
         team=player.team,
-        injury=_injury({player_id: player}, player_id),
+        injury=injury_info({player_id: player}, player_id),
         game=game,
         depth=build_team_depth(session, league, player.team) if player.team else None,
         team_stats=stats_for_position(

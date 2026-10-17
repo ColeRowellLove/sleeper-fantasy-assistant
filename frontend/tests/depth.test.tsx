@@ -171,9 +171,11 @@ describe("TeamDepthChart", () => {
 
   it("marks players on your team, available players and players without a Sleeper match", () => {
     render(<TeamDepthChart data={data} myRosterId={1} />);
-    expect(screen.getByText("On your team")).toBeInTheDocument();
-    expect(screen.getAllByText("Available").length).toBeGreaterThan(0);
-    expect(screen.getByText("Jake Bobo")).toBeInTheDocument();
+    expect(screen.getByText(/on your team/)).toBeInTheDocument();
+    expect(screen.getAllByText(/available in this league/).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText((_, el) => el?.className === "depth-name" && el.textContent === "Jake Bobo"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Jake Bobo" })).not.toBeInTheDocument(); // not matched: no pop-up
     expect(screen.getByRole("link", { name: "Sam Darnold" })).toHaveAttribute(
       "href",
@@ -181,15 +183,48 @@ describe("TeamDepthChart", () => {
     );
   });
 
-  it("keeps the offensive line, defense and special teams in sections that open", () => {
+  it("shows one unit at a time: offense with its line folded away, then defense, then special teams", async () => {
+    const user = userEvent.setup();
     const { container } = render(<TeamDepthChart data={data} myRosterId={null} />);
-    const sections = [...container.querySelectorAll("details")];
-    expect(sections.map((d) => d.querySelector("summary")?.textContent)).toEqual([
-      "Offensive line",
-      "Defense",
-      "Special teams",
-    ]);
-    expect(sections.every((d) => !d.open)).toBe(true);
+    const group = screen.getByRole("group", { name: "Unit" });
+    expect(
+      within(group)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["Offense", "Defense", "Special teams"]);
+    expect(screen.getByText("Fantasy positions")).toBeInTheDocument();
+    const folds = [...container.querySelectorAll("details")];
+    expect(folds.map((d) => d.querySelector("summary")?.textContent)).toEqual(["Offensive line"]);
+    expect(folds.every((d) => !d.open)).toBe(true);
+    await user.click(within(group).getByRole("button", { name: "Defense" }));
+    expect(screen.getByRole("heading", { name: "Defense" })).toBeInTheDocument();
+    expect(screen.queryByText("Fantasy positions")).not.toBeInTheDocument();
+    await user.click(within(group).getByRole("button", { name: "Special teams" }));
+    expect(screen.getByRole("heading", { name: "Special teams" })).toBeInTheDocument();
+  });
+
+  it("shows only the stats of the chosen unit, and says so when it has none", async () => {
+    const user = userEvent.setup();
+    const stat = (key: string, label: string, side: string) =>
+      ({ key, label, side, value: 10, rank: 3, teams: 32, games: 5 }) as TeamStat;
+    render(
+      <TeamDepthChart
+        data={{
+          ...data,
+          stats: [
+            stat("yards", "Total yards per game", "offense"),
+            stat("sack", "Sacks per game", "defense"),
+          ],
+        }}
+        myRosterId={null}
+      />,
+    );
+    expect(screen.getByText("Total yards")).toBeInTheDocument();
+    expect(screen.queryByText("Sacks")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Defense" }));
+    expect(screen.getByText("Sacks")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Special teams" }));
+    expect(screen.getByText("No special teams stats yet.")).toBeInTheDocument();
   });
 
   it("explains an empty chart instead of showing an empty table", () => {
@@ -346,7 +381,7 @@ describe("deep charts slide sideways", () => {
     });
     expect(area).toHaveAttribute("tabindex", "0");
     expect(within(area).getByRole("columnheader", { name: "5th string" })).toBeInTheDocument();
-    expect(within(area).getByText("Back 5")).toBeInTheDocument();
+    expect(within(area).getByRole("link", { name: "Back 5" })).toBeInTheDocument();
     expect(screen.getByText("Slide sideways to see all 5 depth levels.")).toBeInTheDocument();
     await expectNoA11yViolations(<TeamDepthChart data={deep} myRosterId={null} />);
   });
@@ -381,14 +416,14 @@ describe("team stats with league ranks", () => {
 
   it("shows a few stats as rank chips with the per-game number", async () => {
     render(<TeamDepthChart data={{ ...data, stats }} myRosterId={null} />);
-    const chip = screen.getByText("Rush yards per game").closest("li") as HTMLElement;
+    const chip = screen.getByText("Rush yards").closest("li") as HTMLElement;
     expect(chip).toHaveTextContent("2nd");
     expect(chip).toHaveTextContent("142.5");
     expect(screen.queryByText(/team stats$/)).not.toBeInTheDocument(); // nothing more to open
     await expectNoA11yViolations(<TeamDepthChart data={{ ...data, stats }} myRosterId={null} />);
   });
 
-  it("keeps the first ten as chips and the full table under a disclosure", () => {
+  it("keeps the first six as chips and the full table under a disclosure", () => {
     const many = Array.from({ length: 12 }, (_, i) => ({
       ...stats[0],
       key: `s${i}`,
@@ -396,7 +431,7 @@ describe("team stats with league ranks", () => {
       rank: i + 1,
     }));
     render(<TeamDepthChart data={{ ...data, stats: many }} myRosterId={null} />);
-    expect(document.querySelectorAll(".rank-chip")).toHaveLength(10);
+    expect(document.querySelectorAll(".rank-chip")).toHaveLength(6);
     const more = screen.getByText("All 12 team stats").closest("details") as HTMLElement;
     expect(more).not.toHaveAttribute("open");
     const table = within(more).getByRole("table", { name: /per-game stats and league rank/ });
@@ -481,22 +516,21 @@ describe("the unit on the field", () => {
     render(<TeamDepthChart data={{ ...data, game: liveGame("SEA") }} myRosterId={null} />);
     expect(screen.getAllByText("On the field now")).toHaveLength(2); // fantasy positions and the line
     expect(screen.getByText("SEA have the ball · 1st & 10 · at SEA 35")).toBeInTheDocument();
-    const defense = screen.getByText("Defense").closest("summary") as HTMLElement;
-    expect(within(defense).queryByText("On the field now")).not.toBeInTheDocument();
     await expectNoA11yViolations(
       <TeamDepthChart data={{ ...data, game: liveGame("SEA") }} myRosterId={null} />,
     );
   });
 
-  it("marks the defense when the other team has the ball", () => {
+  it("marks the defense when the other team has the ball", async () => {
+    const user = userEvent.setup();
     render(
       <TeamDepthChart
         data={{ ...data, game: { ...liveGame("SEA"), situation: { possession: "DEN" } } }}
         myRosterId={null}
       />,
     );
-    const defense = screen.getByText("Defense").closest("summary") as HTMLElement;
-    expect(within(defense).getByText("On the field now")).toBeInTheDocument();
+    expect(screen.queryByText("On the field now")).not.toBeInTheDocument(); // the offense is shown
+    await user.click(screen.getByRole("button", { name: "Defense" }));
     expect(screen.getAllByText("On the field now")).toHaveLength(1);
   });
 

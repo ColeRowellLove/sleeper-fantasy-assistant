@@ -129,7 +129,7 @@ describe("LeagueTabs", () => {
   it("every page belongs to exactly one section and old links still resolve", () => {
     const keys = TABS.map((t) => t.key);
     expect(new Set(keys).size).toBe(keys.length);
-    expect(keys).toHaveLength(12);
+    expect(keys).toHaveLength(13);
     expect(sectionOf("startsit").label).toBe("My team");
     expect(sectionOf("teams").label).toBe("Players");
   });

@@ -45,3 +45,6 @@ export function alertsOffCookie(leagueId: string): string {
 export function alertsSeenCookie(leagueId: string): string {
   return `sa_alerts_seen_${leagueId}`;
 }
+
+/** The cookie holding the viewer's favourite NFL team (a team code such as "WAS"), for every league. */
+export const NFL_TEAM_COOKIE = "sa_nfl_team";

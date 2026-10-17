@@ -1,5 +1,19 @@
+"use client";
+
+import { useState } from "react";
+
 import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
-import { depthRows, groupSlots, recordText, SLIDE_FROM, TEAM_NAMES } from "../lib/depth";
+import {
+  DEPTH_UNITS,
+  depthRows,
+  groupSlots,
+  unitView,
+  type DepthUnit,
+  type UnitView,
+  recordText,
+  SLIDE_FROM,
+  TEAM_NAMES,
+} from "../lib/depth";
 import { unitOnField, type Unit } from "../lib/game";
 import GameBadge from "./GameBadge";
 import LocalTime from "./LocalTime";
@@ -7,10 +21,13 @@ import InjuryBadge from "./InjuryBadge";
 import TeamLogo from "./TeamLogo";
 import TeamRankChips from "./TeamRankChips";
 import TeamStatsTable from "./TeamStatsTable";
+import { splitName } from "../lib/playerName";
+import { positionClass } from "../lib/positions";
+import FilterChips from "./FilterChips";
 import PlayerLink from "./PlayerLink";
 import NoteList from "./NoteList";
 
-const TOP_STATS = 10; // the chips show the first ten; the rest are under a disclosure
+const TOP_STATS = 6; // the chips show the first six; the rest are under a disclosure
 
 function PlayerCell({
   player,
@@ -22,6 +39,17 @@ function PlayerCell({
   highlightId?: string | null;
 }) {
   const mine = myRosterId !== null && player.owner_roster_id === myRosterId;
+  const name = splitName(player.name);
+  const full = (
+    <>
+      {name.first && (
+        <>
+          <span className="depth-first">{name.first}</span>{" "}
+        </>
+      )}
+      <span className="depth-last">{name.last}</span>
+    </>
+  );
   return (
     <span
       className={`depth-player${player.next_up ? " next-up" : ""}${
@@ -29,21 +57,31 @@ function PlayerCell({
       }`}
     >
       <span className="depth-name">
-        {player.player_id ? (
-          <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
-        ) : (
-          player.name
-        )}
+        {player.player_id ? <PlayerLink playerId={player.player_id}>{full}</PlayerLink> : full}
       </span>
-      <InjuryBadge injury={player.injury} />
-      {player.next_up && <span className="depth-tag">Next up</span>}
-      {player.owner_team ? (
-        <span className="depth-owner">{mine ? "On your team" : `On ${player.owner_team}`}</span>
-      ) : player.player_id ? (
-        <span className="depth-available">Available</span>
-      ) : null}
+      <span className="depth-marks">
+        <InjuryBadge injury={player.injury} />
+        {player.next_up && <span className="depth-tag">Next up</span>}
+        {player.owner_team ? (
+          <span className={mine ? "depth-mine" : "depth-owner"}>
+            {mine ? "You" : <span className="depth-owner-text">{player.owner_team}</span>}
+            <span className="visually-hidden">
+              {mine ? " (on your team)" : `On ${player.owner_team}`}
+            </span>
+          </span>
+        ) : player.player_id ? (
+          <span className="depth-available" title="Available in this league">
+            FA<span className="visually-hidden"> (available in this league)</span>
+          </span>
+        ) : null}
+      </span>
     </span>
   );
+}
+
+/** QB, RB, WR1: the slot's own short code, or its full label when the code is long. */
+function slotCode(slot: DepthSlot): string {
+  return slot.slot.length <= 4 ? slot.slot.toUpperCase() : slot.label;
 }
 
 function SlotTable({
@@ -85,8 +123,11 @@ function SlotTable({
           <tbody>
             {rows.map(({ slot, cells }) => (
               <tr key={slot.slot}>
-                <th scope="row">
-                  {slot.label}
+                <th scope="row" title={slot.label}>
+                  <span className={`depth-slot ${positionClass(slot.slot.replace(/\d+$/, ""))}`}>
+                    <span aria-hidden="true">{slotCode(slot)}</span>
+                    <span className="visually-hidden">{slot.label}</span>
+                  </span>
                   {slot.note && <span className="depth-note">{slot.note}</span>}
                 </th>
                 {cells.map((player, i) =>
@@ -134,7 +175,15 @@ export default function TeamDepthChart({
   landmark?: boolean;
 }) {
   const Wrapper = landmark ? "section" : "div";
-  const sections = groupSlots(data.groups);
+  const [unit, setUnit] = useState<DepthUnit>("offense");
+  // a pop-up shows the whole chart as before; the team page shows one unit at a time
+  const view: UnitView = compact
+    ? (() => {
+        const all = groupSlots(data.groups);
+        return { mainTitle: "Fantasy positions", main: all.skill, more: all.more };
+      })()
+    : unitView(data.groups, unit);
+  const unitStats = (data.stats ?? []).filter((s) => compact || s.side === unit);
   const name = TEAM_NAMES[data.team] ?? data.team;
   // while the game is live, the unit on the field is marked in words on its sections
   const onField = unitOnField(data.game, data.team);
@@ -145,6 +194,9 @@ export default function TeamDepthChart({
 
   return (
     <Wrapper {...(landmark ? { "aria-labelledby": headingId } : {})} className="depth-chart">
+      {!compact && (
+        <FilterChips label="Unit" options={DEPTH_UNITS} value={unit} onChange={setUnit} />
+      )}
       {compact ? (
         <h3 id={headingId}>Depth chart</h3>
       ) : (
@@ -175,25 +227,29 @@ export default function TeamDepthChart({
         </>
       )}
 
-      {sections.skill.length === 0 && sections.more.length === 0 ? (
-        <p className="note">No depth chart is available for this team yet.</p>
+      {view.main.length === 0 && view.more.length === 0 ? (
+        <p className="note">
+          {data.groups.length === 0
+            ? "No depth chart is available for this team yet."
+            : "No lineup is listed for this unit yet."}
+        </p>
       ) : (
         <>
-          {sections.skill.length > 0 && (
+          {view.main.length > 0 && (
             <div className="card flush">
               <h3 className="depth-section-title">
-                Fantasy positions
-                {marker("offense")}
+                {view.mainTitle}
+                {marker(compact ? "offense" : unit === "special" ? null : unit)}
               </h3>
               <SlotTable
-                slots={sections.skill}
+                slots={view.main}
                 myRosterId={myRosterId}
                 highlightId={highlightId}
-                title="Fantasy positions"
+                title={view.mainTitle}
               />
             </div>
           )}
-          {sections.more.map((section) => (
+          {view.more.map((section) => (
             <details key={section.key} className="card flush depth-details">
               <summary>
                 {section.title}
@@ -209,18 +265,21 @@ export default function TeamDepthChart({
           ))}
         </>
       )}
-      {!compact && data.stats && data.stats.length > 0 && (
+      {!compact && data.stats && data.stats.length > 0 && unitStats.length === 0 && (
+        <p className="note">No {unit === "special" ? "special teams" : unit} stats yet.</p>
+      )}
+      {!compact && unitStats.length > 0 && (
         <div className="depth-stats">
           <TeamRankChips
-            stats={data.stats.slice(0, TOP_STATS)}
+            stats={unitStats.slice(0, TOP_STATS)}
             team={data.team}
             headingId={`${headingId}-rank`}
           />
-          {data.stats.length > TOP_STATS && (
-            <details className="depth-all-stats">
-              <summary>All {data.stats.length} team stats</summary>
+          {unitStats.length > TOP_STATS && (
+            <details className="fold">
+              <summary>All {unitStats.length} team stats</summary>
               <TeamStatsTable
-                stats={data.stats}
+                stats={unitStats}
                 team={data.team}
                 headingId={`${headingId}-stats`}
                 title="Team stats"

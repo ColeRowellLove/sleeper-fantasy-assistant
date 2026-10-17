@@ -532,6 +532,9 @@ export interface GameCard {
   away: string;
   /** From the home team's side: score, state, clock, line and conditions. */
   game: GameInfo;
+  /** Wins, losses and ties; absent unless every finished game has a score. */
+  home_record?: TeamRecord | null;
+  away_record?: TeamRecord | null;
   players: GamePlayer[];
 }
 
@@ -599,4 +602,33 @@ export interface AlertsData {
   roster_id: number;
   /** Newest first, the last 14 days. */
   alerts: AlertItem[];
+}
+
+export interface MovedPlayer {
+  player_id: string;
+  name: string;
+  position?: string | null;
+  team?: string | null;
+}
+
+/** What one team did in a transaction: who came in and who went out. */
+export interface TeamMove {
+  roster_id: number;
+  team: string;
+  manager?: string | null;
+  added: MovedPlayer[];
+  dropped: MovedPlayer[];
+}
+
+export interface TransactionItem {
+  transaction_id: string;
+  kind: "waiver" | "free_agent" | "trade" | "commissioner";
+  week: number;
+  created_at?: string | null;
+  moves: TeamMove[];
+}
+
+export interface TransactionsData {
+  league_id: string;
+  transactions: TransactionItem[];
 }

@@ -1,6 +1,9 @@
+"use client";
+
 import { fixed } from "../lib/format";
 import type { GameCard, GamePlayer } from "../lib/api";
 import { GROUPS, playersFor, type StatGroup } from "../lib/gameStats";
+import PanelTabs from "./PanelTabs";
 import PlayerIdentity from "./PlayerIdentity";
 import StatTable from "./StatTable";
 import TeamLogo from "./TeamLogo";
@@ -103,28 +106,34 @@ export default function GamePlayers({
   card: GameCard;
   myRosterId: number | null;
 }) {
+  // one team at a time, like theScore's box score: far less scrolling than both teams stacked
+  const tabs = [card.away, card.home].map((team) => ({
+    key: team,
+    label: team,
+    content: (
+      <section aria-label={`${team} players`} className="game-team-block">
+        <h3 className="game-team-title">
+          <TeamLogo team={team} size={28} /> {team}
+        </h3>
+        {GROUPS.map((group) => {
+          const rows = playersFor(group, card.players, team);
+          if (rows.length === 0) return null;
+          return (
+            <GroupTable
+              key={group.key}
+              group={group}
+              team={team}
+              players={rows}
+              myRosterId={myRosterId}
+            />
+          );
+        })}
+      </section>
+    ),
+  }));
   return (
     <div className="game-teams-detail">
-      {[card.away, card.home].map((team) => (
-        <section key={team} aria-label={`${team} players`} className="game-team-block">
-          <h3 className="game-team-title">
-            <TeamLogo team={team} size={28} /> {team}
-          </h3>
-          {GROUPS.map((group) => {
-            const rows = playersFor(group, card.players, team);
-            if (rows.length === 0) return null;
-            return (
-              <GroupTable
-                key={group.key}
-                group={group}
-                team={team}
-                players={rows}
-                myRosterId={myRosterId}
-              />
-            );
-          })}
-        </section>
-      ))}
+      <PanelTabs label="Team" tabs={tabs} />
     </div>
   );
 }
