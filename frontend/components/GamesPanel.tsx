@@ -7,6 +7,7 @@ import GameBadge from "./GameBadge";
 import GamePlayers from "./GamePlayers";
 import TeamLink from "./TeamLink";
 import TeamLogo from "./TeamLogo";
+import TopPerformers from "./TopPerformers";
 import WeekChips from "./WeekChips";
 import NoteList from "./NoteList";
 
@@ -128,6 +129,7 @@ export default function GamesPanel({
           </ul>
         </section>
       ))}
+      <TopPerformers data={data} />
       <NoteList
         items={[
           "Fantasy points use this league's scoring",
