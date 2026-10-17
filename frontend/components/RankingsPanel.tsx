@@ -59,13 +59,10 @@ export default function RankingsPanel({
   return (
     <section aria-labelledby="rankings-heading">
       <h2 id="rankings-heading">Weekly rankings</h2>
-      <NoteList
-        items={[
-          `${data.week ? `Week ${data.week}: ` : ""}each player is ranked by ${labels.join(", ")}`,
-          "The consensus is the average of those ranks, using this league's scoring",
-          "Rank 1 is best",
-        ]}
-      />
+      <p className="note rank-line">
+        {data.week ? `Week ${data.week}: ` : ""}ranked by {labels.length}{" "}
+        {labels.length === 1 ? "signal" : "signals"}, using this league&apos;s scoring
+      </p>
       {data.weeks.length > 0 && (
         <WeekChips
           leagueId={leagueId}
@@ -78,38 +75,41 @@ export default function RankingsPanel({
       )}
 
       {available.length > 0 && (
-        <form method="get" action={leaguePath(leagueId)} className="card rank-sources">
-          <input type="hidden" name="tab" value="rankings" />
-          {data.week !== null && <input type="hidden" name="week" value={data.week} />}
-          <input type="hidden" name="pos" value={position} />
-          <fieldset>
-            <legend>Ranked by</legend>
-            <ul className="startsit-picks">
-              {available.map((key) => (
-                <li key={key}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      name="sources"
-                      value={key}
-                      defaultChecked={selected.includes(key)}
-                    />{" "}
-                    {data.signals[key]}
-                  </label>
-                </li>
-              ))}
-            </ul>
-          </fieldset>
-          <button type="submit" className="btn" aria-label="Update rankings">
-            Update
-          </button>
-          {data.unavailable && Object.keys(data.unavailable).length > 0 && (
-            <details className="rank-missing">
-              <summary>Not included yet</summary>
-              <p className="note">{Object.values(data.unavailable).join(", ")}.</p>
-            </details>
-          )}
-        </form>
+        <details className="card rank-fold">
+          <summary>Change what the ranks use ({labels.join(", ")})</summary>
+          <form method="get" action={leaguePath(leagueId)} className="rank-sources">
+            <input type="hidden" name="tab" value="rankings" />
+            {data.week !== null && <input type="hidden" name="week" value={data.week} />}
+            <input type="hidden" name="pos" value={position} />
+            <fieldset>
+              <legend>Ranked by</legend>
+              <ul className="startsit-picks">
+                {available.map((key) => (
+                  <li key={key}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        name="sources"
+                        value={key}
+                        defaultChecked={selected.includes(key)}
+                      />{" "}
+                      {data.signals[key]}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
+            <button type="submit" className="btn" aria-label="Update rankings">
+              Update
+            </button>
+            {data.unavailable && Object.keys(data.unavailable).length > 0 && (
+              <details className="rank-missing">
+                <summary>Not included yet</summary>
+                <p className="note">{Object.values(data.unavailable).join(", ")}.</p>
+              </details>
+            )}
+          </form>
+        </details>
       )}
 
       <div className="players-controls">
@@ -156,7 +156,6 @@ export default function RankingsPanel({
             <th scope="col" className="num">
               ESPN start %
             </th>
-            <th scope="col">Sources</th>
           </tr>
         </thead>
         <tbody>
@@ -164,7 +163,17 @@ export default function RankingsPanel({
             const mine = myRosterId !== null && p.owner_roster_id === myRosterId;
             return (
               <tr key={p.player_id} className={mine ? "mine" : undefined}>
-                <td className="num">{flex ? (p.flex_rank ?? i + 1) : p.rank}</td>
+                <td className="num">
+                  {flex ? (p.flex_rank ?? i + 1) : p.rank}
+                  <span
+                    className="rank-agree"
+                    title={Object.entries(p.signal_ranks)
+                      .map(([k, v]) => `${data.signals[k] ?? k}: ${ordinal(v)}`)
+                      .join(", ")}
+                  >
+                    {agreementText(p)}
+                  </span>
+                </td>
                 <th scope="row" className="player-cell">
                   <PlayerIdentity
                     player_id={p.player_id}
@@ -180,10 +189,12 @@ export default function RankingsPanel({
                       )
                     }
                   >
-                    <ReasonChips
-                      label={`Why ${p.name} is ranked here`}
-                      reasons={extraWhy(p.why).map((label) => ({ label }))}
-                    />
+                    <span className="rank-why">
+                      <ReasonChips
+                        label={`Why ${p.name} is ranked here`}
+                        reasons={extraWhy(p.why).map((label) => ({ label }))}
+                      />
+                    </span>
                   </PlayerIdentity>
                 </th>
                 <td>
@@ -196,27 +207,22 @@ export default function RankingsPanel({
                     ? "–"
                     : `${p.started_pct.toFixed(0)}%`}
                 </td>
-                <td>
-                  <span
-                    title={Object.entries(p.signal_ranks)
-                      .map(([k, v]) => `${data.signals[k] ?? k}: ${ordinal(v)}`)
-                      .join(", ")}
-                  >
-                    {agreementText(p)}
-                  </span>
-                </td>
               </tr>
             );
           })}
         </tbody>
       </StatTable>
-      <NoteList
-        items={[
-          "Projections are Sleeper's, scored with this league's rules",
-          "Start % is ESPN-wide and only shown for the current week",
-          "A smaller gap between sources means they agree more",
-        ]}
-      />
+      <details className="rank-about">
+        <summary>About these rankings</summary>
+        <NoteList
+          items={[
+            "The consensus is the average of the signals' ranks; rank 1 is best",
+            "Projections are Sleeper's, scored with this league's rules",
+            "Start % is ESPN-wide and only shown for the current week",
+            "A smaller gap between sources means they agree more",
+          ]}
+        />
+      </details>
     </section>
   );
 }
