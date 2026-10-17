@@ -150,11 +150,8 @@ export default function PlayersTable({
                     position={p.position}
                     team={p.team}
                     injury={p.injury}
-                  >
-                    <span className="player-meta player-game">
-                      <GameBadge game={p.game} />
-                    </span>
-                  </PlayerIdentity>
+                    meta={<GameBadge game={p.game} />} // the game chip shares the position line
+                  />
                 </th>
                 <td className="status-cell">
                   {p.owner_team === null ? (

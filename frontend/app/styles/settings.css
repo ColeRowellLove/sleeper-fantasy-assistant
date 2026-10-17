@@ -550,3 +550,35 @@ td.season-log {
   background: color-mix(in srgb, var(--surface-2) 60%, transparent);
   padding: 0.5rem 0.75rem 1rem;
 }
+
+/* the players list on a phone: one scrolling row of filter chips each, and short rows */
+@media (max-width: 40rem) {
+  .players-controls {
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+
+  .players-controls .players-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    position: relative; /* clips the screen-reader text inside */
+  }
+
+  .players-controls .filter-chip {
+    flex: none;
+  }
+
+  .players-list tbody tr {
+    height: auto;
+  }
+
+  /* the row keeps the game's state; the time, score and opponent are on the Games screen */
+  .players-list .game-detail {
+    display: none;
+  }
+
+  .players-list .avatar {
+    --size: 2.1rem;
+  }
+}
