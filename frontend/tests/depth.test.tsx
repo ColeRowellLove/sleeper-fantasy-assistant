@@ -181,15 +181,48 @@ describe("TeamDepthChart", () => {
     );
   });
 
-  it("keeps the offensive line, defense and special teams in sections that open", () => {
+  it("shows one unit at a time: offense with its line folded away, then defense, then special teams", async () => {
+    const user = userEvent.setup();
     const { container } = render(<TeamDepthChart data={data} myRosterId={null} />);
-    const sections = [...container.querySelectorAll("details")];
-    expect(sections.map((d) => d.querySelector("summary")?.textContent)).toEqual([
-      "Offensive line",
-      "Defense",
-      "Special teams",
-    ]);
-    expect(sections.every((d) => !d.open)).toBe(true);
+    const group = screen.getByRole("group", { name: "Unit" });
+    expect(
+      within(group)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["Offense", "Defense", "Special teams"]);
+    expect(screen.getByText("Fantasy positions")).toBeInTheDocument();
+    const folds = [...container.querySelectorAll("details")];
+    expect(folds.map((d) => d.querySelector("summary")?.textContent)).toEqual(["Offensive line"]);
+    expect(folds.every((d) => !d.open)).toBe(true);
+    await user.click(within(group).getByRole("button", { name: "Defense" }));
+    expect(screen.getByRole("heading", { name: "Defense" })).toBeInTheDocument();
+    expect(screen.queryByText("Fantasy positions")).not.toBeInTheDocument();
+    await user.click(within(group).getByRole("button", { name: "Special teams" }));
+    expect(screen.getByRole("heading", { name: "Special teams" })).toBeInTheDocument();
+  });
+
+  it("shows only the stats of the chosen unit, and says so when it has none", async () => {
+    const user = userEvent.setup();
+    const stat = (key: string, label: string, side: string) =>
+      ({ key, label, side, value: 10, rank: 3, teams: 32, games: 5 }) as TeamStat;
+    render(
+      <TeamDepthChart
+        data={{
+          ...data,
+          stats: [
+            stat("yards", "Total yards per game", "offense"),
+            stat("sack", "Sacks per game", "defense"),
+          ],
+        }}
+        myRosterId={null}
+      />,
+    );
+    expect(screen.getByText("Total yards per game")).toBeInTheDocument();
+    expect(screen.queryByText("Sacks per game")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Defense" }));
+    expect(screen.getByText("Sacks per game")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Special teams" }));
+    expect(screen.getByText("No special teams stats yet.")).toBeInTheDocument();
   });
 
   it("explains an empty chart instead of showing an empty table", () => {
@@ -481,22 +514,21 @@ describe("the unit on the field", () => {
     render(<TeamDepthChart data={{ ...data, game: liveGame("SEA") }} myRosterId={null} />);
     expect(screen.getAllByText("On the field now")).toHaveLength(2); // fantasy positions and the line
     expect(screen.getByText("SEA have the ball · 1st & 10 · at SEA 35")).toBeInTheDocument();
-    const defense = screen.getByText("Defense").closest("summary") as HTMLElement;
-    expect(within(defense).queryByText("On the field now")).not.toBeInTheDocument();
     await expectNoA11yViolations(
       <TeamDepthChart data={{ ...data, game: liveGame("SEA") }} myRosterId={null} />,
     );
   });
 
-  it("marks the defense when the other team has the ball", () => {
+  it("marks the defense when the other team has the ball", async () => {
+    const user = userEvent.setup();
     render(
       <TeamDepthChart
         data={{ ...data, game: { ...liveGame("SEA"), situation: { possession: "DEN" } } }}
         myRosterId={null}
       />,
     );
-    const defense = screen.getByText("Defense").closest("summary") as HTMLElement;
-    expect(within(defense).getByText("On the field now")).toBeInTheDocument();
+    expect(screen.queryByText("On the field now")).not.toBeInTheDocument(); // the offense is shown
+    await user.click(screen.getByRole("button", { name: "Defense" }));
     expect(screen.getAllByText("On the field now")).toHaveLength(1);
   });
 

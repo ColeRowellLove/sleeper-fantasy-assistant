@@ -24,7 +24,7 @@ class StatDef:
     key: str
     label: str
     value: Callable[[Mapping[str, float]], float]
-    side: str  # "offense" or "defense"
+    side: str  # "offense", "defense" or "special" (special teams)
     fewer_is_better: bool = False
 
 
@@ -48,7 +48,9 @@ STATS: tuple[StatDef, ...] = (
     StatDef("td", "Touchdowns per game", _sum("pass_td", "rush_td"), "offense"),
     StatDef("pass_td", "Pass touchdowns per game", _get("pass_td"), "offense"),
     StatDef("rush_td", "Rush touchdowns per game", _get("rush_td"), "offense"),
-    StatDef("fga", "Field goal attempts per game", _get("fga"), "offense"),
+    StatDef("fga", "Field goal attempts per game", _get("fga"), "special"),
+    StatDef("fgm", "Field goals made per game", _get("fgm"), "special"),
+    StatDef("xpm", "Extra points made per game", _get("xpm"), "special"),
     StatDef("pts_allow", "Points allowed per game", _get("pts_allow"), "defense", True),
     StatDef("yds_allow", "Yards allowed per game", _get("yds_allow"), "defense", True),
     StatDef("sack", "Sacks per game", _get("sack"), "defense"),
@@ -71,7 +73,7 @@ BY_POSITION: dict[str, tuple[str, ...]] = {
 class TeamStat(BaseModel):
     key: str
     label: str
-    side: str  # "offense" or "defense"
+    side: str  # "offense", "defense" or "special"
     value: float  # per game
     rank: int  # 1 = best of `teams`
     teams: int

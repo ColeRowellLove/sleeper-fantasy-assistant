@@ -3,7 +3,7 @@
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow, utcnow
-from sleeper_assistant.team_stats import all_team_stats, build_team_stats, stats_for_position
+from sleeper_assistant.team_stats import STATS, all_team_stats, build_team_stats, stats_for_position
 
 
 def _game(gid: str, week: int, home: str, away: str, status: str = "complete") -> NflGameRow:
@@ -87,3 +87,9 @@ def test_table_is_cached_until_games_or_stats_change(session: Session) -> None:
     session.add(_game("g9", 3, "CCC", "DDD"))
     session.commit()
     assert build_team_stats(session, "2026") is not first
+
+
+def test_kicking_numbers_are_special_teams_stats() -> None:
+    special = {s.key for s in STATS if s.side == "special"}
+    assert special == {"fga", "fgm", "xpm"}
+    assert {s.side for s in STATS} == {"offense", "defense", "special"}
