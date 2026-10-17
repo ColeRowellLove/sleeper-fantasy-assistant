@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.core.league.rosters import league_rosters
-from sleeper_assistant.db import LeagueRow, SleeperUserRow, TransactionRow
+from sleeper_assistant.db import LeagueRow, RosterRow, SleeperUserRow, TransactionRow
 
 Source = Literal["waivers", "free_agency", "trade", "commissioner"]
 _SOURCES: dict[str, Source] = {
@@ -36,9 +36,15 @@ def transaction_date(created_ms: int | None) -> str | None:
     return datetime.fromtimestamp(created_ms / 1000, tz=UTC).date().isoformat()
 
 
-def build_history(session: Session, league: LeagueRow, player_id: str) -> list[HistoryEvent]:
+def build_history(
+    session: Session,
+    league: LeagueRow,
+    player_id: str,
+    rosters: list[RosterRow] | None = None,
+) -> list[HistoryEvent]:
     """The player's completed adds and drops in this league, newest first (at most 30)."""
-    owner_of = {r.roster_id: r.owner_id for r in league_rosters(session, league.league_id)}
+    rosters = rosters if rosters is not None else league_rosters(session, league.league_id)
+    owner_of = {r.roster_id: r.owner_id for r in rosters}
     names = {
         u.user_id: u.username or u.display_name
         for u in session.scalars(

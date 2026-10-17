@@ -19,7 +19,7 @@ from sleeper_assistant.core.models.matchup import MatchupRank
 from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY
 from sleeper_assistant.core.nfl.matchup_rank import DefenseTable, build_defense_table, matchup_rank
 from sleeper_assistant.core.nfl.nfl_games import games_for_week
-from sleeper_assistant.core.nfl.team_depth import build_team_depth
+from sleeper_assistant.core.nfl.team_depth import depth_groups
 from sleeper_assistant.core.scoring.form import recent_form
 from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import (
@@ -82,7 +82,7 @@ def _opening(
     """For a team: player_id of the man next in line -> the name of the out starter ahead of him."""
     if team not in cache:
         found: dict[str, str] = {}
-        for group in build_team_depth(session, league, team).groups:
+        for group in depth_groups(session, team)[0]:
             for slot in group.slots:
                 starter = slot.players[0] if slot.players else None
                 for player in slot.players:
