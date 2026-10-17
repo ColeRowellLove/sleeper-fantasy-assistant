@@ -649,3 +649,65 @@ td.season-log {
   letter-spacing: 0.08em;
   text-align: left;
 }
+
+/* Player pop-up: header strip and tabs (Sleeper-style) */
+.pd-strip {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  text-align: center;
+}
+
+.pd-strip dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pd-strip dd {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.panel-tablist {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+.panel-tab {
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.25rem;
+  text-transform: uppercase;
+}
+
+.panel-tab:focus-visible {
+  outline: 2px solid var(--focus, currentColor);
+  outline-offset: -2px;
+}
+
+.panel-tab[aria-selected="true"] {
+  border-bottom-color: var(--text);
+  color: var(--text);
+}
+
+.panel-tabpanel {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: 1.25rem;
+}

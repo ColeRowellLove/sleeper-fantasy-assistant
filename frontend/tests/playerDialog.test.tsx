@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,6 +40,8 @@ beforeEach(() => {
   replace.mockClear();
   search = "tab=players&week=6";
 });
+
+const openTab = (name: string) => fireEvent.click(screen.getByRole("tab", { name }));
 
 const detail: PlayerDetail = {
   player_id: "9493",
@@ -268,6 +270,7 @@ describe("PlayerDialog", () => {
 
   it("shows the player's team stats with their league rank", () => {
     renderDialog();
+    openTab("Team");
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
     expect(within(dialog).getByRole("heading", { name: "LAR team stats" })).toBeInTheDocument();
     const row = within(dialog).getByRole("row", { name: /Targets per game/ });
@@ -295,7 +298,7 @@ describe("PlayerDialog", () => {
       "href",
       "/league/L1?tab=rosters&roster=1",
     );
-    expect(within(dialog).getByText("3 years")).toBeInTheDocument();
+    expect(within(dialog).getByText("Exp").nextSibling).toHaveTextContent("3");
   });
 
   it("shows bio, season, projection, weekly log and past seasons", () => {
@@ -309,17 +312,20 @@ describe("PlayerDialog", () => {
     expect(
       screen.getByText("Targets 10, Catches 6.6, Rec yds 106.8, Rec TD 0.8"),
     ).toBeInTheDocument();
+    openTab("Game log");
     const weeks = screen.getByRole("table", {
       name: /every week of the season/i,
     });
     expect(within(weeks).getByText("SEA")).toBeInTheDocument(); // at home: the code alone
     expect(within(weeks).getByText("@SF")).toBeInTheDocument(); // away: "@" like Sleeper
+    openTab("History");
     const past = screen.getByRole("table", { name: /under this league/i });
     expect(within(past).getByText("WR2")).toBeInTheDocument();
   });
 
   it("lays the weeks out as a stat table with one column per stat", () => {
     renderDialog();
+    openTab("Game log");
     const table = screen.getByRole("table", {
       name: /every week of the season/i,
     });
@@ -354,6 +360,7 @@ describe("PlayerDialog", () => {
 
   it("adds a season totals row that matches the season points, and a projection row", () => {
     renderDialog();
+    openTab("Game log");
     const table = screen.getByRole("table", {
       name: /every week of the season/i,
     });
@@ -382,6 +389,7 @@ describe("PlayerDialog", () => {
       ],
     };
     render(<PlayerDialog detail={withProjections} closeHref="/league/1?tab=players" />);
+    openTab("Game log");
     const table = screen.getByRole("table", {
       name: /every week of the season/i,
     });
@@ -420,6 +428,7 @@ describe("PlayerDialog", () => {
 
   it("leaves the projection columns out when no week has a stored projection", () => {
     renderDialog();
+    openTab("Game log");
     const table = screen.getByRole("table", {
       name: /every week of the season/i,
     });
@@ -442,6 +451,7 @@ describe("PlayerDialog", () => {
     });
     expect(screen.queryByRole("heading", { name: "Bio" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Projected/ })).not.toBeInTheDocument();
+    openTab("Game log");
     expect(screen.getByText("No games played yet this season.")).toBeInTheDocument();
     expect(screen.getByText("Available in this league")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Past seasons" })).not.toBeInTheDocument();
@@ -479,6 +489,7 @@ describe("past seasons, game by game", () => {
   const open = async () => {
     const user = userEvent.setup();
     render(<PlayerDialog detail={detail} closeHref="/league/1?tab=players" />);
+    openTab("History");
     const seasons = screen.getByRole("table", {
       name: /season totals under this league/i,
     });
@@ -499,6 +510,7 @@ describe("past seasons, game by game", () => {
       weeks: [detail.weeks[0], { ...detail.weeks[1], team: "SEA" }],
     };
     render(<PlayerDialog detail={traded} closeHref="/league/1?tab=players" />);
+    openTab("Game log");
     const table = screen.getByRole("table", { name: /every week of the season/i });
     expect(
       within(table)
@@ -551,6 +563,7 @@ describe("past seasons, game by game", () => {
       past_seasons: [{ season: "2024", games: 8, points: 90, rank: 12, teams: [] }],
     };
     const { container, unmount } = render(<PlayerDialog detail={bare} closeHref="/x" />);
+    openTab("History");
     const seasons = within(container).getByRole("table", {
       name: /season totals under this league/i,
     });

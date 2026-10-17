@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 
 import type { PlayerDetail } from "../lib/api";
 import {
-  bioRows,
+  bioDetails,
+  bioStrip,
   describeStats,
   formatStat,
   rankText,
@@ -17,6 +18,7 @@ import { rosterPath } from "../lib/league";
 import GameBadge from "./GameBadge";
 import GameLog from "./GameLog";
 import InjuryBadge from "./InjuryBadge";
+import PanelTabs from "./PanelTabs";
 import PlayerAvatar from "./PlayerAvatar";
 import PositionChip from "./PositionChip";
 import TeamLink from "./TeamLink";
@@ -168,7 +170,8 @@ export default function PlayerDialog({
   }, []);
 
   const close = () => router.replace(closeHref, { scroll: false });
-  const bio = bioRows(detail.bio);
+  const strip = bioStrip(detail.bio);
+  const details = bioDetails(detail.bio);
   const rank = rankText(detail.position, detail.season.rank);
   const weekStats = detail.weeks.map((w) => w.stats);
   const columns = statColumns(
@@ -176,6 +179,141 @@ export default function PlayerDialog({
     detail.position,
   );
   const totals = statTotals(weekStats);
+  const summary = (
+    <>
+      {details.length > 0 && (
+        <section aria-labelledby="pd-bio">
+          <h3 id="pd-bio">Bio</h3>
+          <dl className="setting-rows">
+            {details.map((row) => (
+              <div key={row.label} className="setting-row">
+                <dt>{row.label}</dt>
+                <dd>{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      <section aria-labelledby="pd-season">
+        <h3 id="pd-season">This season</h3>
+        <dl className="setting-rows">
+          <div className="setting-row">
+            <dt>Position rank</dt>
+            <dd>{rank}</dd>
+          </div>
+          <div className="setting-row">
+            <dt>Points</dt>
+            <dd>{detail.season.points.toFixed(1)}</dd>
+          </div>
+          <div className="setting-row">
+            <dt>Games</dt>
+            <dd>{detail.season.games}</dd>
+          </div>
+          <div className="setting-row">
+            <dt>Points per game</dt>
+            <dd>
+              {detail.season.average === null || detail.season.average === undefined
+                ? "–"
+                : detail.season.average.toFixed(1)}
+            </dd>
+          </div>
+          <div className="setting-row">
+            <dt>Owned % (ESPN)</dt>
+            <dd>{percent(detail.owned_pct)}</dd>
+          </div>
+          <div className="setting-row">
+            <dt>Started % (ESPN)</dt>
+            <dd>{percent(detail.started_pct)}</dd>
+          </div>
+          <div className="setting-row">
+            <dt>Sleeper adds, last 24 hours</dt>
+            <dd>{count(detail.adds)}</dd>
+          </div>
+          <div className="setting-row">
+            <dt>Sleeper drops, last 24 hours</dt>
+            <dd>{count(detail.drops)}</dd>
+          </div>
+        </dl>
+        <p className="note">Points use this league&apos;s scoring, and every stat counts.</p>
+      </section>
+
+      {detail.projected && (
+        <section aria-labelledby="pd-proj">
+          <h3 id="pd-proj">Projected, week {detail.projected.week}</h3>
+          <p className="pd-projected">
+            <strong>{detail.projected.points.toFixed(1)}</strong> points
+          </p>
+          <p className="note">{describeStats(detail.projected.stats, detail.position)}</p>
+        </section>
+      )}
+    </>
+  );
+  const team = (
+    <>
+      {detail.team && detail.team_stats && (
+        <TeamStatsTable
+          stats={detail.team_stats}
+          team={detail.team}
+          headingId="pd-team-stats"
+          title={`${detail.team} team stats`}
+        />
+      )}
+    </>
+  );
+  const gameLog = (
+    <>
+      <section aria-labelledby="pd-weeks">
+        <h3 id="pd-weeks">Game log</h3>
+        <GameLog detail={detail} columns={columns} totals={totals} />
+      </section>
+    </>
+  );
+  const history = (
+    <>
+      {detail.past_seasons.length > 0 && (
+        <section aria-labelledby="pd-past">
+          <h3 id="pd-past">Past seasons</h3>
+          <div className="players-scroll">
+            <table className="players pd-table">
+              <caption className="visually-hidden">
+                Season totals under this league&apos;s scoring. Open a season to see it game by
+                game.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Season</th>
+                  <th scope="col">Team</th>
+                  <th scope="col" className="num-col">
+                    Games
+                  </th>
+                  <th scope="col" className="num-col">
+                    Points
+                  </th>
+                  <th scope="col" className="num-col">
+                    Rank
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.past_seasons.map((s) => (
+                  <PastSeasonRows
+                    key={s.season}
+                    season={s}
+                    position={detail.position}
+                    open={openSeason === s.season}
+                    onToggle={() =>
+                      setOpenSeason((current) => (current === s.season ? null : s.season))
+                    }
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </>
+  );
   return (
     <dialog
       ref={ref}
@@ -246,128 +384,30 @@ export default function PlayerDialog({
           </button>
         </header>
 
-        {bio.length > 0 && (
-          <section aria-labelledby="pd-bio">
-            <h3 id="pd-bio">Bio</h3>
-            <dl className="setting-rows">
-              {bio.map((row) => (
-                <div key={row.label} className="setting-row">
-                  <dt>{row.label}</dt>
-                  <dd>{row.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        )}
-
-        <section aria-labelledby="pd-season">
-          <h3 id="pd-season">This season</h3>
-          <dl className="setting-rows">
-            <div className="setting-row">
-              <dt>Position rank</dt>
-              <dd>{rank}</dd>
-            </div>
-            <div className="setting-row">
-              <dt>Points</dt>
-              <dd>{detail.season.points.toFixed(1)}</dd>
-            </div>
-            <div className="setting-row">
-              <dt>Games</dt>
-              <dd>{detail.season.games}</dd>
-            </div>
-            <div className="setting-row">
-              <dt>Points per game</dt>
-              <dd>
-                {detail.season.average === null || detail.season.average === undefined
-                  ? "–"
-                  : detail.season.average.toFixed(1)}
-              </dd>
-            </div>
-            <div className="setting-row">
-              <dt>Owned % (ESPN)</dt>
-              <dd>{percent(detail.owned_pct)}</dd>
-            </div>
-            <div className="setting-row">
-              <dt>Started % (ESPN)</dt>
-              <dd>{percent(detail.started_pct)}</dd>
-            </div>
-            <div className="setting-row">
-              <dt>Sleeper adds, last 24 hours</dt>
-              <dd>{count(detail.adds)}</dd>
-            </div>
-            <div className="setting-row">
-              <dt>Sleeper drops, last 24 hours</dt>
-              <dd>{count(detail.drops)}</dd>
-            </div>
+        {strip.length > 0 && (
+          <dl className="pd-strip" aria-label="Age, height, weight and experience">
+            {strip.map((row) => (
+              <div key={row.label}>
+                <dt>{row.label}</dt>
+                <dd>{row.value}</dd>
+              </div>
+            ))}
           </dl>
-          <p className="note">Points use this league&apos;s scoring, and every stat counts.</p>
-        </section>
-
-        {detail.projected && (
-          <section aria-labelledby="pd-proj">
-            <h3 id="pd-proj">Projected, week {detail.projected.week}</h3>
-            <p className="pd-projected">
-              <strong>{detail.projected.points.toFixed(1)}</strong> points
-            </p>
-            <p className="note">{describeStats(detail.projected.stats, detail.position)}</p>
-          </section>
         )}
 
-        {detail.team && detail.team_stats && (
-          <TeamStatsTable
-            stats={detail.team_stats}
-            team={detail.team}
-            headingId="pd-team-stats"
-            title={`${detail.team} team stats`}
-          />
-        )}
-
-        <section aria-labelledby="pd-weeks">
-          <h3 id="pd-weeks">Game log</h3>
-          <GameLog detail={detail} columns={columns} totals={totals} />
-        </section>
-
-        {detail.past_seasons.length > 0 && (
-          <section aria-labelledby="pd-past">
-            <h3 id="pd-past">Past seasons</h3>
-            <div className="players-scroll">
-              <table className="players pd-table">
-                <caption className="visually-hidden">
-                  Season totals under this league&apos;s scoring. Open a season to see it game by
-                  game.
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Season</th>
-                    <th scope="col">Team</th>
-                    <th scope="col" className="num-col">
-                      Games
-                    </th>
-                    <th scope="col" className="num-col">
-                      Points
-                    </th>
-                    <th scope="col" className="num-col">
-                      Rank
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.past_seasons.map((s) => (
-                    <PastSeasonRows
-                      key={s.season}
-                      season={s}
-                      position={detail.position}
-                      open={openSeason === s.season}
-                      onToggle={() =>
-                        setOpenSeason((current) => (current === s.season ? null : s.season))
-                      }
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
+        <PanelTabs
+          label="Player sections"
+          tabs={[
+            { key: "summary", label: "Summary", content: summary },
+            { key: "log", label: "Game log", content: gameLog },
+            ...(detail.team && detail.team_stats
+              ? [{ key: "team", label: "Team", content: team }]
+              : []),
+            ...(detail.past_seasons.length > 0
+              ? [{ key: "history", label: "History", content: history }]
+              : []),
+          ]}
+        />
       </div>
     </dialog>
   );
