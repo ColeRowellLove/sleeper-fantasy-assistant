@@ -1086,3 +1086,17 @@ td.season-log {
   cursor: pointer;
   font-size: 0.85rem;
 }
+
+.depth-chart > * + * {
+  margin-top: 1rem;
+}
+
+.depth-all-stats {
+  margin-top: 0.75rem;
+}
+
+.depth-all-stats > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}

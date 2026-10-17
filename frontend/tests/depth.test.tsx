@@ -379,16 +379,28 @@ describe("team stats with league ranks", () => {
     },
   ];
 
-  it("shows each stat per game with its rank on the team page", async () => {
+  it("shows a few stats as rank chips with the per-game number", async () => {
     render(<TeamDepthChart data={{ ...data, stats }} myRosterId={null} />);
-    const table = screen.getByRole("table", {
-      name: /SEA per-game stats and league rank, over 5 games/,
-    });
-    const row = within(table).getByRole("row", { name: /Rush yards per game/ });
-    expect(within(row).getByText("142.5")).toBeInTheDocument();
-    expect(within(row).getByText("2nd of 32")).toBeInTheDocument();
-    expect(within(table).getByText("1st of 32")).toBeInTheDocument();
+    const chip = screen.getByText("Rush yards per game").closest("li") as HTMLElement;
+    expect(chip).toHaveTextContent("2nd");
+    expect(chip).toHaveTextContent("142.5");
+    expect(screen.queryByText(/team stats$/)).not.toBeInTheDocument(); // nothing more to open
     await expectNoA11yViolations(<TeamDepthChart data={{ ...data, stats }} myRosterId={null} />);
+  });
+
+  it("keeps the first ten as chips and the full table under a disclosure", () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      ...stats[0],
+      key: `s${i}`,
+      label: `Stat ${i}`,
+      rank: i + 1,
+    }));
+    render(<TeamDepthChart data={{ ...data, stats: many }} myRosterId={null} />);
+    expect(document.querySelectorAll(".rank-chip")).toHaveLength(10);
+    const more = screen.getByText("All 12 team stats").closest("details") as HTMLElement;
+    expect(more).not.toHaveAttribute("open");
+    const table = within(more).getByRole("table", { name: /per-game stats and league rank/ });
+    expect(within(table).getAllByRole("row")).toHaveLength(13); // header and twelve stats
   });
 
   it("shows no stats section without data", () => {
