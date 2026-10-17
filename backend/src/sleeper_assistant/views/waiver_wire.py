@@ -168,6 +168,27 @@ def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:
     return out
 
 
+def _entry(pick: Pickup, owned: float | None) -> WireEntry:
+    """One suggested add: who he is, what he adds and every reason for and against."""
+    p = pick.player
+    reasons = reasons_for(pick, owned)
+    return WireEntry(
+        player_id=p.player_id,
+        name=player_name(p),
+        position=p.position,
+        team=p.team,
+        projected=round(pick.projected, 1),
+        gain=round(pick.gain, 1),
+        slot=pick.slot,
+        over=pick.over,
+        reason="; ".join(r.detail for r in reasons if r.stance == "for"),
+        owned=owned,
+        for_count=sum(r.stance == "for" for r in reasons),
+        against_count=sum(r.stance == "against" for r in reasons),
+        reasons=reasons,
+    )
+
+
 def build_waiver_wire(
     session: Session, league: LeagueRow, roster_id: int, now: datetime | None = None
 ) -> WaiverWire:
@@ -210,26 +231,7 @@ def build_waiver_wire(
             )
         )
     }
-    for pick in picks:
-        p = pick.player
-        reasons = reasons_for(pick, owned.get(p.player_id))
-        wire.entries.append(
-            WireEntry(
-                player_id=p.player_id,
-                name=player_name(p),
-                position=p.position,
-                team=p.team,
-                projected=round(pick.projected, 1),
-                gain=round(pick.gain, 1),
-                slot=pick.slot,
-                over=pick.over,
-                reason="; ".join(r.detail for r in reasons if r.stance == "for"),
-                owned=owned.get(p.player_id),
-                for_count=sum(r.stance == "for" for r in reasons),
-                against_count=sum(r.stance == "against" for r in reasons),
-                reasons=reasons,
-            )
-        )
+    wire.entries = [_entry(pick, owned.get(pick.player.player_id)) for pick in picks]
     wire.top = [x.player.player_id for x in capped(picks, TOP_CAPS, TOP_COUNT)]
     if not wire.entries:
         wire.note = "Nobody available would improve this team's lineup this week."
