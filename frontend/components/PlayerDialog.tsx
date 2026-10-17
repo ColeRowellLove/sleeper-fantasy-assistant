@@ -13,12 +13,14 @@ import {
   statColumns,
   statTotals,
 } from "../lib/playerDetail";
+import { rankTone } from "../lib/gameLog";
 import { rosterPath } from "../lib/league";
 import GameBadge from "./GameBadge";
 import GameLog from "./GameLog";
 import InjuryBadge from "./InjuryBadge";
 import PanelTabs from "./PanelTabs";
 import PlayerAvatar from "./PlayerAvatar";
+import PlayerHistory from "./PlayerHistory";
 import PlayerSummary from "./PlayerSummary";
 import PositionChip from "./PositionChip";
 import TeamLink from "./TeamLink";
@@ -46,6 +48,7 @@ function PastSeasonRows({
   );
   const totals = statTotals(log.map((g) => g.stats));
   const panelId = `season-${season.season}-games`;
+  const tone = rankTone(season.rank);
   return (
     <>
       <tr>
@@ -77,7 +80,9 @@ function PastSeasonRows({
         </td>
         <td className="num num-col">{season.games}</td>
         <td className="num num-col">{season.points.toFixed(1)}</td>
-        <td className="num num-col">{rankText(position, season.rank)}</td>
+        <td className={`num num-col${tone ? ` tone-${tone}` : ""}`}>
+          {rankText(position, season.rank)}
+        </td>
       </tr>
       {open && (
         <tr id={panelId}>
@@ -218,6 +223,7 @@ export default function PlayerDialog({
   );
   const history = (
     <>
+      <PlayerHistory history={detail.history} />
       {detail.past_seasons.length > 0 && (
         <section aria-labelledby="pd-past">
           <h3 id="pd-past">Past seasons</h3>
@@ -351,7 +357,7 @@ export default function PlayerDialog({
             ((detail.team_stats?.length ?? 0) > 0 || (detail.depth?.groups.length ?? 0) > 0)
               ? [{ key: "team", label: "Team", content: team }]
               : []),
-            ...(detail.past_seasons.length > 0
+            ...(detail.past_seasons.length > 0 || (detail.history?.length ?? 0) > 0
               ? [{ key: "history", label: "History", content: history }]
               : []),
           ]}
