@@ -41,6 +41,7 @@ from sleeper_assistant.projections import score_projection, score_stats
 from sleeper_assistant.roster_players import InjuryInfo, injury_info
 from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_names import team_names
+from sleeper_assistant.utils.text import ordinal
 
 FORM_GAMES = 3
 SIGNALS = ("projection", "form", "start", "vegas")
@@ -121,7 +122,7 @@ def _why(p: RankedPlayer, pool: int) -> str:
     bits: list[str] = []
     if p.projected is not None and "projection" in p.signal_ranks:
         bits.append(
-            f"projected {p.projected:.1f} ({_ordinal(p.signal_ranks['projection'])} {p.position})"
+            f"projected {p.projected:.1f} ({ordinal(p.signal_ranks['projection'])} {p.position})"
         )
     if p.form is not None:
         bits.append(f"{p.form:.1f} a game over his last {FORM_GAMES}")
@@ -132,17 +133,11 @@ def _why(p: RankedPlayer, pool: int) -> str:
     if p.matchup is not None:
         side = "offense" if p.matchup.side == "offense" else "defense"
         bits.append(
-            f"{p.matchup.opponent} {side} ranks {_ordinal(p.matchup.rank)} of {p.matchup.teams}"
+            f"{p.matchup.opponent} {side} ranks {ordinal(p.matchup.rank)} of {p.matchup.teams}"
         )
     if p.injury is not None:
         bits.append(f"listed {p.injury.status}")
     return "; ".join(bits) if bits else f"one of {pool} ranked"
-
-
-def _ordinal(n: int) -> str:
-    if 11 <= n % 100 <= 13:  # noqa: PLR2004
-        return f"{n}th"
-    return f"{n}{({1: 'st', 2: 'nd', 3: 'rd'}).get(n % 10, 'th')}"
 
 
 def _implied_points(session: Session, season: str, week: int) -> dict[str, float]:

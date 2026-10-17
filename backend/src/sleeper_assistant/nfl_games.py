@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -15,6 +14,7 @@ from sleeper_assistant.db import (
 )
 from sleeper_assistant.live import LiveGame, Situation, current_games, describe, fraction_elapsed
 from sleeper_assistant.live import window_open as live_window_open
+from sleeper_assistant.utils.clock import utc_iso
 
 GameState = Literal["upcoming", "live", "final", "bye"]
 
@@ -74,14 +74,6 @@ def current_week(session: Session, season: str) -> int | None:
         if week > last_complete:
             return week
     return weeks[-1]
-
-
-def utc_iso(moment: datetime | None) -> str | None:
-    if moment is None:
-        return None
-    if moment.tzinfo is None:  # SQLite drops the zone; everything is stored as UTC
-        moment = moment.replace(tzinfo=UTC)
-    return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _live_games(week_games: list[NflGameRow], week: int) -> dict[tuple[str, str], LiveGame]:

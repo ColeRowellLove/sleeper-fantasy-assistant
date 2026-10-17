@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.constants import GAME_COMPLETE
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
 from sleeper_assistant.stats_version import season_stats_version
+from sleeper_assistant.utils.cache import VersionedCache
 
 
 @dataclass(frozen=True)
@@ -84,7 +85,7 @@ class TeamStat(BaseModel):
 
 TeamStatTable = dict[str, dict[str, TeamStat]]  # team -> stat key -> value and rank
 
-_CACHE: dict[str, tuple[tuple[int, int], TeamStatTable]] = {}
+_CACHE: VersionedCache[str, TeamStatTable] = VersionedCache()
 
 
 def reset_cache() -> None:
@@ -94,12 +95,7 @@ def reset_cache() -> None:
 def build_team_stats(session: Session, season: str) -> TeamStatTable:
     """Every team's per-game stats and ranks, rebuilt only when games or stats change."""
     version = season_stats_version(session, season)
-    cached = _CACHE.get(season)
-    if cached is not None and cached[0] == version:
-        return cached[1]
-    table = _build(session, season)
-    _CACHE[season] = (version, table)
-    return table
+    return _CACHE.get(season, version, lambda: _build(session, season))
 
 
 def _build(session: Session, season: str) -> TeamStatTable:

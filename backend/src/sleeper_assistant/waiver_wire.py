@@ -28,6 +28,7 @@ from sleeper_assistant.alert_waiver import Pickup, WaiverBoard, capped
 from sleeper_assistant.constants import EASTERN
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerOwnershipRow, utcnow
 from sleeper_assistant.player_names import player_name
+from sleeper_assistant.utils.text import ordinal
 from sleeper_assistant.waiver_calendar import coming_week, day_name, waiver_day
 
 # how many of each position the page lists (a lineup can use more receivers than kickers)
@@ -81,12 +82,6 @@ def next_waiver_date(league: LeagueRow, now: datetime) -> date:
     return today + timedelta(days=(waiver_day(league) - sleeper_weekday) % 7 or 7)
 
 
-def _ordinal(n: int) -> str:
-    if 10 <= n % 100 <= 20:  # noqa: PLR2004
-        return f"{n}th"
-    return f"{n}{({1: 'st', 2: 'nd', 3: 'rd'}).get(n % 10, 'th')}"
-
-
 def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:  # noqa: PLR0912
     """The reasons for and against adding this player, only those that apply."""
     out = [
@@ -113,9 +108,9 @@ def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:  # noqa: PLR
     m = pick.matchup
     if m is not None and m.teams:
         if m.side == "offense":  # a team defense: the opponent's offense, fewest points first
-            text = f"{m.opponent} offense scores the {_ordinal(m.rank)}-fewest points of {m.teams}"
+            text = f"{m.opponent} offense scores the {ordinal(m.rank)}-fewest points of {m.teams}"
         else:
-            text = f"{m.opponent} gives up the {_ordinal(m.rank)}-most points to this position"
+            text = f"{m.opponent} gives up the {ordinal(m.rank)}-most points to this position"
         if m.rank <= m.teams * SOFT:
             out.append(Reason(stance="for", label="Soft matchup", detail=text))
         elif m.rank > m.teams * TOUGH:

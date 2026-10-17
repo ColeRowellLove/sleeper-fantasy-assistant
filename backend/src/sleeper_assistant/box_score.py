@@ -22,9 +22,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.constants import ESPN_SCOREBOARD_URL, ESPN_TEAM_CODES
+from sleeper_assistant.constants import ESPN_SCOREBOARD_URL
 from sleeper_assistant.db import PlayerRow
 from sleeper_assistant.espn import normalize_name
+from sleeper_assistant.utils.parse import espn_team_code, string_list
 
 log = logging.getLogger(__name__)
 
@@ -65,22 +66,12 @@ class BoxScore(BaseModel):
     teams: list[BoxTeam]  # away first, then home
 
 
-def _code(value: Any) -> str | None:
-    if not isinstance(value, str) or not value:
-        return None
-    return ESPN_TEAM_CODES.get(value, value)
-
-
-def _strings(values: Any) -> list[str]:
-    return [str(v) for v in values] if isinstance(values, list) else []
-
-
 def _row(entry: Any, width: int) -> BoxRow | None:
     athlete = entry.get("athlete") if isinstance(entry, dict) else None
     if not isinstance(athlete, dict):
         return None
     name = athlete.get("displayName") or athlete.get("shortName")
-    stats = _strings(entry.get("stats"))
+    stats = string_list(entry.get("stats"))
     if not isinstance(name, str) or not name or len(stats) != width:
         return None
     position = athlete.get("position")
@@ -95,14 +86,14 @@ def _row(entry: Any, width: int) -> BoxRow | None:
 def _table(block: Any) -> BoxTable | None:
     if not isinstance(block, dict):
         return None
-    labels = _strings(block.get("labels"))
+    labels = string_list(block.get("labels"))
     key = block.get("name")
     if not labels or not isinstance(key, str):
         return None
     rows = [r for e in block.get("athletes") or [] if (r := _row(e, len(labels))) is not None]
     if not rows:
         return None
-    totals = _strings(block.get("totals"))
+    totals = string_list(block.get("totals"))
     title = block.get("text") if isinstance(block.get("text"), str) else key.title()
     return BoxTable(
         key=key,
@@ -121,7 +112,7 @@ def parse_summary(payload: Any, home: str, away: str) -> BoxScore:
     by_team: dict[str, BoxTeam] = {}
     for side in players:
         team = side.get("team") if isinstance(side, dict) else None
-        code = _code(team.get("abbreviation")) if isinstance(team, dict) else None
+        code = espn_team_code(team.get("abbreviation")) if isinstance(team, dict) else None
         if code is None:
             continue
         tables = []
@@ -149,7 +140,7 @@ def find_event_id(scoreboard: Any, home: str, away: str) -> str | None:
     for event in scoreboard.get("events") or [] if isinstance(scoreboard, dict) else []:
         try:
             sides = {
-                c["homeAway"]: _code(c["team"]["abbreviation"])
+                c["homeAway"]: espn_team_code(c["team"]["abbreviation"])
                 for c in event["competitions"][0]["competitors"]
             }
         except (KeyError, IndexError, TypeError):
