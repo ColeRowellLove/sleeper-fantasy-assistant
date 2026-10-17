@@ -6,6 +6,7 @@ import RostersPanel from "../components/RostersPanel";
 import type { Dashboard, GameInfo } from "../lib/api";
 import {
   conditionsLabel,
+  weatherWord,
   formatGameDate,
   formatKickoff,
   gameLabel,
@@ -378,10 +379,21 @@ describe("game conditions", () => {
       line: "SF -3.5, O/U 44.5",
     });
     expect(conditionsLabel(outdoors, true)).toEqual({
-      setting: "28°F (freezing), wind 18 mph (windy)",
+      setting: "Freezing",
       surface: null,
       line: null,
     });
+  });
+
+  it("gives rows one general word, never numbers", () => {
+    const word = (conditions: Record<string, unknown>) =>
+      conditionsLabel({ ...outdoors, conditions }, true)?.setting;
+    expect(word({ roof: "outdoors", temp: 40, wind: 5 })).toBe("Cold");
+    expect(word({ roof: "outdoors", temp: 90, wind: 5 })).toBe("Hot");
+    expect(word({ roof: "outdoors", temp: 60, wind: 20 })).toBe("Windy");
+    expect(word({ roof: "outdoors", temp: 64, wind: 7 })).toBe("Mild");
+    expect(word({ roof: "outdoors", temp: 28, wind: 20 })).toBe("Freezing");
+    expect(weatherWord({})).toBeNull();
   });
 
   it("says dome or closed roof instead of weather", () => {

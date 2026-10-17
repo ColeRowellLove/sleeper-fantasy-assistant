@@ -149,6 +149,8 @@ export function matchupText(
 
 const WINDY_MPH = 15;
 const FREEZING_F = 32;
+const COLD_F = 45;
+const HOT_F = 85;
 
 /** "SF -3.5", "DAL +3.5" or "SF pick'em" for a team's spread. */
 export function spreadText(team: string | null | undefined, spread: number): string {
@@ -167,6 +169,25 @@ export interface ConditionsLabel {
 }
 
 /**
+ * One general word for the weather, for a row that has no room for numbers: Dome, Freezing, Cold,
+ * Hot, Windy or Mild (outdoors with nothing notable). The exact temperature and wind belong on the
+ * game screen. There is no rain or sun in the data, so the word never claims either.
+ */
+export function weatherWord(c: GameConditions): string | null {
+  if (c.roof === "dome") return "Dome";
+  if (c.roof === "closed") return "Closed roof";
+  const { temp, wind } = c;
+  if (temp !== null && temp !== undefined) {
+    if (temp <= FREEZING_F) return "Freezing";
+    if (temp <= COLD_F) return "Cold";
+    if (temp >= HOT_F) return "Hot";
+  }
+  if (wind !== null && wind !== undefined && wind >= WINDY_MPH) return "Windy";
+  if (temp !== null && temp !== undefined) return "Mild";
+  return c.roof === "outdoors" ? "Outdoors" : null;
+}
+
+/**
  * Plain words for a game's conditions. Weather only applies outdoors; a dome or closed roof says
  * so instead. Every state is text, so nothing relies on color.
  */
@@ -178,7 +199,9 @@ export function conditionsLabel(
   if (!game || !c || game.state === "bye") return null;
   const indoors = c.roof === "dome" || c.roof === "closed";
   let setting: string | null = null;
-  if (indoors) {
+  if (compact) {
+    setting = weatherWord(c); // rows get one word; the game screen gets the numbers
+  } else if (indoors) {
     setting = c.roof === "closed" ? "Closed roof" : "Dome";
   } else {
     const parts: string[] = [];
