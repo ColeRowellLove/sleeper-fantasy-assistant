@@ -11,6 +11,7 @@ import TeamDepthChart from "../../../components/TeamDepthChart";
 import TeamDialog from "../../../components/TeamDialog";
 import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
+import TrendingPanel from "../../../components/TrendingPanel";
 import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
 import LiveRefresh from "../../../components/LiveRefresh";
@@ -36,7 +37,7 @@ import type {
 } from "../../../lib/api";
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
-import { leaguePath, parseTab } from "../../../lib/league";
+import { LIVE_TABS, leaguePath, parseTab } from "../../../lib/league";
 import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
 import {
@@ -146,7 +147,7 @@ export default async function LeaguePage({
     tab === "settings"
       ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
       : Promise.resolve(null),
-    tab === "players"
+    tab === "players" || tab === "trending"
       ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
       : Promise.resolve(null),
     // an unknown or malformed ?player= simply opens nothing
@@ -257,7 +258,7 @@ export default async function LeaguePage({
     <main id="main" className="container">
       <LeagueHeader data={dashboard} myRosterId={myRosterId} />
       <LeagueTabs leagueId={leagueId} active={tab} unreadAlerts={newAlerts} />
-      <LiveRefresh active={liveNow} />
+      <LiveRefresh active={liveNow && LIVE_TABS.includes(tab)} />
       {tab === "standings" && (
         <StandingsTable
           leagueId={leagueId}
@@ -271,14 +272,19 @@ export default async function LeaguePage({
           key={`${myRosterId ?? "none"}-${linkedRosterId ?? "none"}`} // reset the selection when the team or the link changes
           initialRosterId={linkedRosterId}
           lineups={lineups}
+          standings={dashboard.standings}
           leagueId={leagueId}
           rosters={dashboard.rosters}
           myRosterId={myRosterId}
-          week={dashboard.week ?? null}
         />
       )}
       {tab === "lineups" && lineups && (
-        <WeeklyLineups data={lineups} leagueId={leagueId} myRosterId={myRosterId} />
+        <WeeklyLineups
+          data={lineups}
+          leagueId={leagueId}
+          myRosterId={myRosterId}
+          standings={dashboard.standings}
+        />
       )}
       {tab === "games" && games && (
         <GamesPanel data={games} leagueId={leagueId} myRosterId={myRosterId} />
@@ -326,6 +332,7 @@ export default async function LeaguePage({
       {tab === "players" && players && (
         <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />
       )}
+      {tab === "trending" && players && <TrendingPanel data={players} />}
       {tab === "teams" && (
         <>
           <TeamPicker leagueId={leagueId} selected={isTeamCode(team) ? team : null} />

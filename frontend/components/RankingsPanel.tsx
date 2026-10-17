@@ -3,11 +3,13 @@
 import { useState } from "react";
 
 import type { Rankings } from "../lib/api";
+import { fixed } from "../lib/format";
 import {
   RANK_POSITIONS,
   agreementText,
   sourcesQuery,
   rankedFor,
+  extraWhy,
   type RankAvailability,
   type RankPosition,
 } from "../lib/rankings";
@@ -18,6 +20,8 @@ import PlayerIdentity from "./PlayerIdentity";
 import StatTable from "./StatTable";
 import { leaguePath } from "../lib/league";
 import WeekChips from "./WeekChips";
+import NoteList from "./NoteList";
+import ReasonChips from "./ReasonChips";
 
 const AVAILABILITY: { value: RankAvailability; label: string }[] = [
   { value: "all", label: "All players" },
@@ -25,8 +29,7 @@ const AVAILABILITY: { value: RankAvailability; label: string }[] = [
   { value: "mine", label: "My team" },
 ];
 
-const number = (n: number | null | undefined, digits = 1) =>
-  n === null || n === undefined ? "–" : n.toFixed(digits);
+const number = fixed;
 
 /**
  * Weekly rankings by position: the consensus of several signals, with the numbers behind each
@@ -56,10 +59,13 @@ export default function RankingsPanel({
   return (
     <section aria-labelledby="rankings-heading">
       <h2 id="rankings-heading">Weekly rankings</h2>
-      <p className="note">
-        {data.week ? `Week ${data.week}. ` : ""}Each player is ranked by {labels.join(", ")} and the
-        consensus is the average of those ranks, using this league&apos;s scoring. Rank 1 is best.
-      </p>
+      <NoteList
+        items={[
+          `${data.week ? `Week ${data.week}: ` : ""}each player is ranked by ${labels.join(", ")}`,
+          "The consensus is the average of those ranks, using this league's scoring",
+          "Rank 1 is best",
+        ]}
+      />
       {data.weeks.length > 0 && (
         <WeekChips
           leagueId={leagueId}
@@ -94,11 +100,14 @@ export default function RankingsPanel({
               ))}
             </ul>
           </fieldset>
-          <button type="submit" className="btn">
-            Update rankings
+          <button type="submit" className="btn" aria-label="Update rankings">
+            Update
           </button>
           {data.unavailable && Object.keys(data.unavailable).length > 0 && (
-            <p className="note">Not included yet: {Object.values(data.unavailable).join(", ")}.</p>
+            <details className="rank-missing">
+              <summary>Not included yet</summary>
+              <p className="note">{Object.values(data.unavailable).join(", ")}.</p>
+            </details>
           )}
         </form>
       )}
@@ -171,7 +180,10 @@ export default function RankingsPanel({
                       )
                     }
                   >
-                    <span className="player-meta rank-why">{p.why}</span>
+                    <ReasonChips
+                      label={`Why ${p.name} is ranked here`}
+                      reasons={extraWhy(p.why).map((label) => ({ label }))}
+                    />
                   </PlayerIdentity>
                 </th>
                 <td>
@@ -198,10 +210,13 @@ export default function RankingsPanel({
           })}
         </tbody>
       </StatTable>
-      <p className="note">
-        Projections are Sleeper&apos;s, scored with this league&apos;s rules. Start % is ESPN-wide
-        and only shown for the current week. A smaller gap between sources means they agree more.
-      </p>
+      <NoteList
+        items={[
+          "Projections are Sleeper's, scored with this league's rules",
+          "Start % is ESPN-wide and only shown for the current week",
+          "A smaller gap between sources means they agree more",
+        ]}
+      />
     </section>
   );
 }

@@ -88,6 +88,20 @@ export function pairRows(left: TeamLineup, right: TeamLineup): PairedRow[] {
   return rows;
 }
 
+const SHORT_SLOTS: Record<string, string> = {
+  Bench: "BN",
+  Taxi: "TX",
+  FLEX: "FLX",
+  SUPER_FLEX: "SFLX",
+  REC_FLEX: "RFLX",
+  WRRB_FLEX: "WRRB",
+};
+
+/** A slot label short enough for a phone column: Bench becomes BN, FLEX becomes FLX. */
+export function slotShort(slot: string): string {
+  return SHORT_SLOTS[slot] ?? slot;
+}
+
 /** The team with more points, or null for a tie or when nobody has scored. */
 export function winnerId(a: TeamLineup, b: TeamLineup): number | null {
   if (a.points === b.points) return null;
@@ -125,4 +139,66 @@ export function projectionDelta(
   const diff = Math.round((actual - projected) * 10) / 10;
   if (diff === 0) return "0.0";
   return `${diff > 0 ? "+" : "-"}${Math.abs(diff).toFixed(1)}`;
+}
+
+/** True for a player whose game has not started, so his points are a dash rather than 0. */
+export function notPlayedYet(state: WeekState, game?: { state: string } | null): boolean {
+  return state === "upcoming" || game?.state === "upcoming";
+}
+
+const POSITION_ORDER = ["QB", "RB", "WR", "TE", "K", "DEF"];
+
+/**
+ * What a team still has to play, like Sleeper's "yet to play (10): QB, 2 RB, 4 WR, TE, K, DEF":
+ * its starters whose game is not over (upcoming or live), counted by position. Null when nobody is
+ * left (or when there is no schedule to tell).
+ */
+export function yetToPlay(team: TeamLineup): { count: number; text: string } | null {
+  const left = team.starters.filter(
+    (p) => p.game?.state === "upcoming" || p.game?.state === "live",
+  );
+  if (left.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const p of left) counts.set(p.position ?? "?", (counts.get(p.position ?? "?") ?? 0) + 1);
+  const order = [...counts.keys()].sort((x, y) => {
+    const ix = POSITION_ORDER.indexOf(x);
+    const iy = POSITION_ORDER.indexOf(y);
+    return (ix === -1 ? 99 : ix) - (iy === -1 ? 99 : iy) || x.localeCompare(y);
+  });
+  const text = order.map((pos) => ((counts.get(pos) ?? 0) > 1 ? `${counts.get(pos)} ${pos}` : pos));
+  return { count: left.length, text: text.join(", ") };
+}
+
+/** "3W" becomes "▲3W" and "2L" "▼2L" (the letter stays, so the arrow is never the only cue). */
+export function streakText(streak: string | null | undefined): string | null {
+  const match = /^(\d+)([WLT])$/i.exec(streak ?? "");
+  if (!match) return null;
+  const arrow = match[2].toUpperCase() === "W" ? "▲" : match[2].toUpperCase() === "L" ? "▼" : "";
+  return `${arrow}${match[1]}${match[2].toUpperCase()}`;
+}
+
+/** "Shough Around & Find Out" becomes "SA": up to two initials from the first two words. */
+export function teamInitials(name: string): string {
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .filter((w) => /[\p{L}\p{N}]/u.test(w));
+  const letters = words
+    .slice(0, 2)
+    .map((w) => Array.from(w.replace(/[^\p{L}\p{N}]/gu, ""))[0]?.toUpperCase() ?? "")
+    .join("");
+  return letters || Array.from(name.trim())[0] || "?"; // an emoji-only name keeps its first symbol
+}
+
+/** "88% Rostered | 53% Start" from ESPN's shares; null unless there is at least one number. */
+export function ownershipText(player: {
+  owned_pct?: number | null;
+  started_pct?: number | null;
+}): string | null {
+  const part = (n: number | null | undefined, word: string) =>
+    n === null || n === undefined ? null : `${Math.round(n)}% ${word}`;
+  const parts = [part(player.owned_pct, "Rostered"), part(player.started_pct, "Start")].filter(
+    (p): p is string => p !== null,
+  );
+  return parts.length > 0 ? parts.join(" | ") : null;
 }

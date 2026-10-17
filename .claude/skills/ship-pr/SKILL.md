@@ -7,14 +7,19 @@ description: Ship a change through this repo's required workflow - issue, typed 
 
 Follow CLAUDE.md "Workflow (required)". Steps:
 
+0. **Reuse first.** Search `backend/src/sleeper_assistant`, `frontend/lib` and `frontend/components` for
+   an existing helper or element before writing code; move logic needed twice into a shared util.
 1. **Issue first.** Every PR has exactly one issue. Find or create it (`gh issue create`) before coding.
-   Never bundle two issues in one PR.
+   Never bundle two issues in one PR. Give it labels and a milestone.
 2. **Branch from `develop`** with a type prefix: `feature/`, `bugfix/`, `chore/`, `docs/`,
    `refactor/`, `test/`. Never commit to `develop` or `main` directly.
 3. **Run the checks** with the `run-checks` skill. Everything must pass locally.
 4. **Review before pushing.** Run the `code-review` skill on the diff and fix its findings; also
    `a11y-enforcer:a11y-check` for UI changes and `security-review` for auth, user input, secrets or
-   external requests. Frontend changes need accessibility tests and (when feasible) screenshots.
+   external requests. Frontend changes need accessibility tests. Read the Screenshots workflow's comment on the PR
+   (phone first, then desktop) assuming the code does nothing until the visuals are good: fix what
+   looks off before merging, and open an issue (labels, milestone, screenshot) for anything you
+   cannot fix in this PR.
 5. **Ship** with `scripts/ship-pr.sh <issue> "<conventional title>" "<summary>"`. It commits,
    pushes, opens the PR into `develop`, waits for CI and squash merges. If CI fails, read the log
    (`gh run view --log-failed`), fix on the same branch and push again. Never `--admin`, never skip hooks.

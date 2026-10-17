@@ -1,13 +1,12 @@
 import Link from "next/link";
 
-import { alertsTabLabel } from "../lib/alerts";
-import { TABS, leaguePath, type TabKey } from "../lib/league";
+import { SECTIONS, leaguePath, sectionOf, type TabKey } from "../lib/league";
+import FilterChips from "./FilterChips";
 
 /**
- * Section navigation. Plain links (not ARIA tabs) so each tab is a real page that loads only its
- * data. The everyday sections sit in the bar; the rest are under "More", which is a native
- * disclosure (keyboard and screen-reader friendly, no script) and closes itself on navigation
- * (it is keyed on the open tab, so a client-side tab change remounts it closed).
+ * Navigation in two steps: a few sections, most important first, and under the open section its
+ * pages as chips. Plain links (not ARIA tabs) so each page is a real URL that loads only its own
+ * data; a section's link opens its first page.
  */
 export default function LeagueTabs({
   leagueId,
@@ -19,38 +18,43 @@ export default function LeagueTabs({
   /** New alerts for the viewer's team; shown in words on the Alerts tab. */
   unreadAlerts?: number;
 }) {
-  const main = TABS.filter((t) => t.group === "main");
-  const more = TABS.filter((t) => t.group === "more");
-  const activeMore = more.find((t) => t.key === active);
-
-  const link = (tab: (typeof TABS)[number]) => (
-    <Link
-      href={leaguePath(leagueId, `?tab=${tab.key}`)}
-      aria-current={tab.key === active ? "page" : undefined}
-    >
-      {tab.key === "alerts" ? alertsTabLabel(unreadAlerts) : tab.label}
-    </Link>
-  );
+  const open = sectionOf(active);
+  const href = (tab: TabKey) => leaguePath(leagueId, `?tab=${tab}`);
 
   return (
-    <nav className="tabs" aria-label="League sections">
-      <ul>
-        {main.map((tab) => (
-          <li key={tab.key}>{link(tab)}</li>
-        ))}
-        <li className="tabs-more">
-          <details key={active}>
-            <summary className={activeMore ? "current" : undefined}>
-              {activeMore ? `More: ${activeMore.label}` : "More"}
-            </summary>
-            <ul>
-              {more.map((tab) => (
-                <li key={tab.key}>{link(tab)}</li>
-              ))}
-            </ul>
-          </details>
-        </li>
-      </ul>
-    </nav>
+    <>
+      <nav className="tabs" aria-label="League sections">
+        <ul>
+          {SECTIONS.map((section) => (
+            <li key={section.key}>
+              <Link
+                href={href(section.key === open.key ? active : section.pages[0].key)}
+                aria-current={section.key === open.key ? "page" : undefined}
+                // the count is short on screen and in words for a screen reader (it starts with
+                // the visible text, as a name must)
+                aria-label={
+                  section.key === "alerts" && unreadAlerts > 0
+                    ? `Alerts ${unreadAlerts} new`
+                    : undefined
+                }
+              >
+                {section.label}
+                {section.key === "alerts" && unreadAlerts > 0 && (
+                  <span className="tab-count">{unreadAlerts}</span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      {open.pages.length > 1 && (
+        <FilterChips
+          label={`${open.label} pages`}
+          options={open.pages.map((p) => ({ value: p.key, label: p.label }))}
+          value={active}
+          hrefFor={href}
+        />
+      )}
+    </>
   );
 }

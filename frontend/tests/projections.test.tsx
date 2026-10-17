@@ -158,13 +158,25 @@ describe("win chance in the matchup", () => {
     expect(winPercent(Number.NaN)).toBeNull();
   });
 
+  it("says so when the chance is a rough estimate", async () => {
+    const rough = withChance(0.7, 0.3);
+    rough.teams = rough.teams.map((t) => ({ ...t, win_probability_rough: true }));
+    const card = <MatchupCard matchup={rough} state="upcoming" week={7} myRosterId={1} />;
+    render(card);
+    expect(
+      screen.getByText(/Rough estimate: some starters have no projection/),
+    ).toBeInTheDocument();
+    expect(document.querySelector(".win-bar")).toHaveClass("win-rough");
+    await expectNoA11yViolations(card);
+  });
+
   it("shows each team's chance with a full sentence for screen readers", () => {
     render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
-    expect(screen.getByText("Cole 62%")).toBeInTheDocument();
-    expect(screen.getByText("38% Dad")).toBeInTheDocument();
-    expect(screen.queryByText(/Win chance/)).not.toBeInTheDocument(); // not repeated under the scores
+    const [first, second] = [...document.querySelectorAll(".win-half")];
+    expect(first.querySelector(".win-label")?.textContent).toBe("62% WIN"); // on the first team's side
+    expect(second.querySelector(".win-label")?.textContent).toBe("38% WIN");
     expect(screen.getAllByText(/62/)).toHaveLength(2); // the bar end and the one spoken sentence
     expect(
       screen.getByText(
@@ -173,17 +185,16 @@ describe("win chance in the matchup", () => {
     ).toBeInTheDocument();
   });
 
-  it("draws a bar split in proportion to the chances, with each team's number at its end", () => {
+  it("draws one bar per team, each filled to its own chance, with its number above", () => {
     const { container } = render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
     const a = container.querySelector(".win-bar-a") as HTMLElement;
     const b = container.querySelector(".win-bar-b") as HTMLElement;
-    expect(a.style.width).toBe("62%");
-    expect(b.style.width).toBe("38%"); // the two always fill the track
-    expect(container.querySelector(".win-bar-labels")?.textContent).toBe("Cole 62%38% Dad");
+    expect(a.style.width).toBe("62%"); // of the first team's own half
+    expect(b.style.width).toBe("38%"); // of the second team's, filling from the right
     // the picture is decorative; the sentence carries it for screen readers
-    expect(container.querySelector(".win-bar-track")).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector(".win-halves")).toHaveAttribute("aria-hidden", "true");
     expect(
       screen.getByText(
         "Cole has a 62 percent chance to win and Dad has 38 percent, from projected points.",
@@ -191,24 +202,24 @@ describe("win chance in the matchup", () => {
     ).toBeInTheDocument();
   });
 
-  it("colours the team ahead green and the team behind red, and an even matchup neutral", () => {
+  it("marks the team ahead as the strong side, the team behind as the soft one, and an even matchup as even", () => {
     const ahead = render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
-    expect(ahead.container.querySelector(".win-bar-a")).toHaveClass("win-lead");
+    expect(ahead.container.querySelector(".win-bar-a")).not.toHaveClass("win-trail");
     expect(ahead.container.querySelector(".win-bar-b")).toHaveClass("win-trail");
     ahead.unmount();
     const behind = render(
       <MatchupCard matchup={withChance(0.3, 0.7)} state="upcoming" week={7} myRosterId={1} />,
     );
     expect(behind.container.querySelector(".win-bar-a")).toHaveClass("win-trail");
-    expect(behind.container.querySelector(".win-bar-b")).toHaveClass("win-lead");
+    expect(behind.container.querySelector(".win-bar-b")).not.toHaveClass("win-trail");
     behind.unmount();
     const even = render(
       <MatchupCard matchup={withChance(0.5, 0.5)} state="upcoming" week={7} myRosterId={1} />,
     );
-    expect(even.container.querySelector(".win-bar-a")).toHaveClass("win-even");
-    expect(even.container.querySelector(".win-bar-b")).toHaveClass("win-even");
+    expect(even.container.querySelector(".win-bar-a")).not.toHaveClass("win-trail");
+    expect(even.container.querySelector(".win-bar-b")).not.toHaveClass("win-trail");
   });
 
   it("never draws a bar that is all one colour, and fills the track for any chances", () => {
@@ -217,6 +228,17 @@ describe("win chance in the matchup", () => {
     );
     expect((container.querySelector(".win-bar-a") as HTMLElement).style.width).toBe("99%");
     expect((container.querySelector(".win-bar-b") as HTMLElement).style.width).toBe("1%");
+  });
+
+  it("has no accessibility violations and names both teams in the spoken sentence", async () => {
+    const ui = (
+      <MatchupCard matchup={withChance(0.54, 0.46)} state="upcoming" week={7} myRosterId={1} />
+    );
+    render(ui);
+    expect(
+      screen.getByText(/Cole has a 54 percent chance to win and Dad has 46 percent/),
+    ).toBeInTheDocument();
+    await expectNoA11yViolations(ui);
   });
 
   it("has no bar for a decided matchup or one with no chance to show", () => {
@@ -233,7 +255,7 @@ describe("win chance in the matchup", () => {
 
   it("is shown while the week is being played too", () => {
     render(<MatchupCard matchup={withChance(0.8, 0.2)} state="current" week={6} myRosterId={1} />);
-    expect(screen.getByText("Cole 80%")).toBeInTheDocument();
+    expect(screen.getByText("80%")).toBeInTheDocument();
   });
 
   it("is not shown once the matchup is played, or when there is no chance to show", () => {

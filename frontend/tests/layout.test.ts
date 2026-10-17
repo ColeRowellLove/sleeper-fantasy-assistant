@@ -20,17 +20,10 @@ ${selector} {`);
 }
 
 describe("scrollable rows containing screen-reader text", () => {
-  it.each([".week-chips"])("%s clips its own hidden text", (selector) => {
+  it.each([".week-chips", ".tabs > ul"])("%s clips its own hidden text", (selector) => {
     const body = rule(selector);
     expect(body).toContain("overflow-x: auto");
     expect(body).toContain("position: relative");
-  });
-
-  it(".tabs does not scroll sideways, so the More menu is never clipped", () => {
-    const body = rule(".tabs");
-    expect(body).not.toContain("overflow");
-    expect(body).toContain("position: relative");
-    expect(rule(".tabs > ul")).toContain("flex-wrap: wrap");
   });
 });
 
@@ -88,10 +81,27 @@ describe("Players list rows", () => {
 
 describe("roster row columns", () => {
   // each trailing column has a fixed width so numbers, slot and position line up from row to row
-  it("fixes the width of the points, projection, slot and position columns", () => {
-    for (const selector of [".player-proj", ".slot", ".player-chip"]) {
+  it("fixes the width of the points, projection and slot columns", () => {
+    for (const selector of [".player-proj"]) {
       expect(rule(selector)).toMatch(/flex: 0 0 [\d.]+rem/);
     }
+  });
+
+  it("puts points and projection in one fixed-width column, wider side by side than stacked", () => {
+    expect(rule(".player-nums")).toMatch(/flex: 0 0 [\d.]+rem/);
+    expect(css).toMatch(
+      /@media \(max-width: 40rem\)[\s\S]*?\.player-nums \{[^}]*flex-direction: column/,
+    );
+  });
+
+  it("keeps the position out of the columns, in the name's line, so a phone leaves the name room", () => {
+    expect(css).not.toContain(".player-chip");
+    // on a phone the three number columns together stay under 8rem (2.4 + 2.4 + 2.4)
+    expect(css).toMatch(
+      /@media \(max-width: 40rem\)[\s\S]*?\.player-proj \{\s*flex-basis: 2\.4rem/,
+    );
+    // an upcoming game's pill is only hidden when its time is there to say the same
+    expect(css).toContain(".player .game-upcoming .game-state:not(:only-child)");
   });
 });
 
@@ -109,5 +119,15 @@ describe("compact tables", () => {
     expect(css.indexOf(".h2h .avatar {\n  --size: 2.1rem;")).toBeLessThan(
       css.indexOf(".h2h .avatar {\n    --size: 2rem;"),
     );
+  });
+});
+
+describe("lineups on a phone", () => {
+  it("lays each row out as a grid so names and numbers cannot share a line", () => {
+    expect(css).toMatch(/@media \(max-width: 40rem\)[\s\S]*?\.h2h tbody tr \{[^}]*display: grid/);
+    expect(css).toMatch(/\.h2h \.pts-left \{[^}]*grid-row: 2/);
+    // the full name stays for screen readers on a phone (clipped, never display: none)
+    expect(css).toMatch(/@media \(max-width: 40rem\)[\s\S]*?\.name-full \{[^}]*clip-path/);
+    expect(css).toMatch(/\.name-short \{\s*display: none/);
   });
 });

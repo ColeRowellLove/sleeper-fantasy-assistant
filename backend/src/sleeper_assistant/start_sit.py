@@ -153,7 +153,7 @@ def _candidate(
     )
 
 
-def _line(c: Candidate) -> str:
+def candidate_line(c: Candidate) -> str:
     bits = []
     if c.projected is not None:
         bits.append(f"projected {c.projected:.1f}")
@@ -204,10 +204,10 @@ def compare_players(
         gap = (best.projected or 0.0) - (runner.projected or 0.0)
         same_score = best.score is not None and best.score == runner.score
         close = abs(gap) < CLOSE_CALL or same_score
-    why = f"Start {best.name}: {_line(best)}."
+    why = f"Start {best.name}: {candidate_line(best)}."
     if len(eligible) > 1 and gap is not None:
         runner = eligible[1]
-        why += f" Over {runner.name} by {gap:+.1f} projected points ({_line(runner)})."
+        why += f" Over {runner.name} by {gap:+.1f} projected points ({candidate_line(runner)})."
         if close:
             why += " This is a close call."
     skipped = [c for c in candidates if c.out is not None]
@@ -274,8 +274,8 @@ def best_lineup(
         )
     if changes:
         why = "; ".join(
-            f"start {c.start.name} ({_line(c.start)}) for {c.sit.name} ({_line(c.sit)}): "
-            f"{c.gain:+.1f}"
+            f"start {c.start.name} ({candidate_line(c.start)}) "
+            f"for {c.sit.name} ({candidate_line(c.sit)}): {c.gain:+.1f}"
             for c in changes
         )
     else:

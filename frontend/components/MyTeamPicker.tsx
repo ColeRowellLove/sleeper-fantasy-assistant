@@ -27,7 +27,9 @@ export default function MyTeamPicker({
 
   return (
     <div className="my-team">
-      <label htmlFor={id}>Your team</label>
+      <label htmlFor={id} className="my-team-label">
+        Your team
+      </label>
       <select
         id={id}
         value={selected}

@@ -96,8 +96,8 @@ class Rankings(BaseModel):
     players: list[RankedPlayer]
 
 
-def _order(values: Mapping[str, float]) -> dict[str, int]:
-    """1 for the highest value; tied values share a rank."""
+def _order[V: (float, tuple[float, ...])](values: Mapping[str, V]) -> dict[str, int]:
+    """1 for the highest value; tied values share a rank. A tuple breaks ties left to right."""
     ranked = sorted(values.values(), reverse=True)
     return {pid: 1 + sum(1 for v in ranked if v > value) for pid, value in values.items()}
 
@@ -259,7 +259,8 @@ def build_rankings(
         scores = consensus(pool)
         group = [pid for pid in pool if pid in scores]
         order = sorted(group, key=lambda pid: (scores[pid][1], -projections[pid], pid))
-        positions_rank = _order({pid: -scores[pid][1] for pid in group})  # ties share a rank
+        # consensus first, then projected points; only a tie on both shares a rank
+        positions_rank = _order({pid: (-scores[pid][1], projections[pid]) for pid in group})
         for pid in order:
             p = players[pid]
             ranks, score = scores[pid]
@@ -287,7 +288,7 @@ def build_rankings(
             )
     flex_group = [pid for pid, r in ranked.items() if r.position in FLEX_POSITIONS]
     flex_scores = consensus(flex_group)
-    flex_rank = _order({pid: -flex_scores[pid][1] for pid in flex_group})
+    flex_rank = _order({pid: (-flex_scores[pid][1], projections[pid]) for pid in flex_group})
     for pid in flex_group:
         ranked[pid].flex_rank = flex_rank[pid]
     sizes: dict[str, int] = defaultdict(int)

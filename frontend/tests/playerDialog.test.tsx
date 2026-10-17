@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,6 +40,8 @@ beforeEach(() => {
   replace.mockClear();
   search = "tab=players&week=6";
 });
+
+const openTab = (name: string) => fireEvent.click(screen.getByRole("tab", { name }));
 
 const detail: PlayerDetail = {
   player_id: "9493",
@@ -266,26 +268,39 @@ describe("PlayerDialog", () => {
     expect(within(dialog).getByText(/^On/)).toHaveTextContent("On Cole (colerowell)");
   });
 
-  it("shows the player's team stats with their league rank", () => {
+  it("shows the player's team rank chips with the per-game numbers", () => {
+    renderDialog();
+    openTab("Team");
+    const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
+    expect(within(dialog).getByRole("heading", { name: "LAR team rank" })).toBeInTheDocument();
+    const chip = within(dialog).getByText("Targets per game").closest("li");
+    expect(chip).toHaveTextContent("3rd");
+    expect(chip).toHaveTextContent("34.2");
+  });
+
+  it("heads the pop-up with the name split into a small and a large part, and the bio strip", () => {
     renderDialog();
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
-    expect(within(dialog).getByRole("heading", { name: "LAR team stats" })).toBeInTheDocument();
-    const row = within(dialog).getByRole("row", { name: /Targets per game/ });
-    expect(within(row).getByText("3rd of 32")).toBeInTheDocument();
+    const heading = within(dialog).getByRole("heading", { level: 2 });
+    expect(heading).toHaveTextContent("Puka Nacua");
+    expect(heading.querySelector(".pd-first")).toHaveTextContent("Puka");
+    expect(heading.querySelector(".pd-last")).toHaveTextContent("Nacua");
+    const strip = within(dialog).getByLabelText("Age, height, weight and experience");
+    expect(within(strip).getByText("Height").nextSibling).toHaveTextContent("6'2\"");
   });
 
   it("shows ESPN's ownership and start percentages, labelled as ESPN's", () => {
     renderDialog();
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
-    expect(within(dialog).getByText("Owned % (ESPN)").nextSibling).toHaveTextContent("99.9%");
-    expect(within(dialog).getByText("Started % (ESPN)").nextSibling).toHaveTextContent("25.9%");
+    expect(within(dialog).getByText("Owned").nextSibling).toHaveTextContent("99.9%");
+    expect(within(dialog).getByText("Started").nextSibling).toHaveTextContent("25.9%");
   });
 
   it("shows a dash, never 0, when ESPN has no number for the player", () => {
     renderDialog({ ...detail, owned_pct: null, started_pct: undefined });
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
-    expect(within(dialog).getByText("Owned % (ESPN)").nextSibling).toHaveTextContent("–");
-    expect(within(dialog).getByText("Started % (ESPN)").nextSibling).toHaveTextContent("–");
+    expect(within(dialog).getByText("Owned").nextSibling).toHaveTextContent("–");
+    expect(within(dialog).getByText("Started").nextSibling).toHaveTextContent("–");
   });
 
   it("links the owning team to its roster and says how long the player has been in the league", () => {
@@ -295,7 +310,7 @@ describe("PlayerDialog", () => {
       "href",
       "/league/L1?tab=rosters&roster=1",
     );
-    expect(within(dialog).getByText("3 years")).toBeInTheDocument();
+    expect(within(dialog).getByText("Exp").nextSibling).toHaveTextContent("3");
   });
 
   it("shows bio, season, projection, weekly log and past seasons", () => {
@@ -303,66 +318,70 @@ describe("PlayerDialog", () => {
     expect(screen.getByRole("heading", { name: "Bio" })).toBeInTheDocument();
     expect(screen.getByText("BYU")).toBeInTheDocument();
     expect(screen.getByText("WR1")).toBeInTheDocument(); // position rank
-    expect(screen.getAllByText("146.6").length).toBeGreaterThan(0); // the summary and the totals row
-    expect(screen.getByRole("heading", { name: "Projected, week 6" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "This week's game" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /projections by week/i })).toBeInTheDocument();
     expect(screen.getAllByText(/22\.5/).length).toBeGreaterThan(0); // the section and the table row
     expect(
       screen.getByText("Targets 10, Catches 6.6, Rec yds 106.8, Rec TD 0.8"),
     ).toBeInTheDocument();
+    openTab("Game log");
     const weeks = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
-    expect(within(weeks).getByText("vs SEA")).toBeInTheDocument();
-    expect(within(weeks).getByText("at SF")).toBeInTheDocument();
+    expect(within(weeks).getByText("SEA")).toBeInTheDocument(); // at home: the code alone
+    expect(within(weeks).getByText("@SF")).toBeInTheDocument(); // away: "@" like Sleeper
+    openTab("History");
     const past = screen.getByRole("table", { name: /under this league/i });
     expect(within(past).getByText("WR2")).toBeInTheDocument();
   });
 
   it("lays the weeks out as a stat table with one column per stat", () => {
     renderDialog();
+    openTab("Game log");
     const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
     const headers = within(table)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
     // a receiver: targets and catches first, then yards, touchdowns, then the rushing yards he earned
     expect(headers).toEqual([
-      "Week",
-      "Team",
-      "Opponent",
-      "Points",
+      "Wk",
+      "Opp",
+      "Pts",
+      "Rank",
       "Targets",
       "Catches",
       "Rec yds",
       "Rec TD",
       "Rush yds",
     ]);
-    const week1 = within(table).getByRole("row", { name: /^1 LAR vs SEA/ });
+    const week1 = within(table).getByRole("row", { name: /^1 SEA/ });
     expect(
       within(week1)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["LAR", "vs SEA", "24.5", "–", "7", "90", "–", "25"]);
-    const week2 = within(table).getByRole("row", { name: /^2 LAR at SF/ });
+    ).toEqual(["SEA", "24.5", "–", "–", "7", "90", "–", "25"]);
+    const week2 = within(table).getByRole("row", { name: /^2 @SF/ });
     expect(
       within(week2)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["LAR", "at SF", "6.0", "–", "3", "30", "–", "–"]);
+    ).toEqual(["@SF", "6.0", "–", "–", "3", "30", "–", "–"]);
   });
 
   it("adds a season totals row that matches the season points, and a projection row", () => {
     renderDialog();
+    openTab("Game log");
     const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
     const totals = within(table).getByRole("row", { name: /Season total/ });
     expect(
       within(totals)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["146.6", "–", "10", "120", "–", "25"]);
+    ).toEqual(["146.6", "1", "–", "10", "120", "–", "25"]);
     const projected = within(table).getByRole("row", {
       name: /Projected, week 6/,
     });
@@ -370,7 +389,7 @@ describe("PlayerDialog", () => {
       within(projected)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["22.5", "10", "6.6", "106.8", "0.8", "–"]);
+    ).toEqual(["22.5", "–", "10", "6.6", "106.8", "0.8", "–"]);
   });
 
   it("compares each finished week's points with its projection", () => {
@@ -382,28 +401,30 @@ describe("PlayerDialog", () => {
       ],
     };
     render(<PlayerDialog detail={withProjections} closeHref="/league/1?tab=players" />);
+    openTab("Game log");
     const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
     const headers = within(table)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headers.slice(0, 6)).toEqual(["Week", "Team", "Opponent", "Points", "Proj", "+/-"]);
-    const week1 = within(table).getByRole("row", { name: /^1 LAR vs SEA/ });
+    expect(headers.slice(0, 6)).toEqual(["Wk", "Opp", "Pts", "Rank", "Proj", "+/-"]);
+    const week1 = within(table).getByRole("row", { name: /^1 SEA/ });
     expect(
       within(week1)
         .getAllByRole("cell")
-        .slice(2, 5)
+        .slice(1, 5)
         .map((c) => c.textContent),
-    ).toEqual(["24.5", "14.0", "+10.5"]);
-    const week2 = within(table).getByRole("row", { name: /^2 LAR at SF/ });
+    ).toEqual(["24.5", "–", "14.0", "+10.5"]);
+    const week2 = within(table).getByRole("row", { name: /^2 @SF/ });
     expect(
       within(week2)
         .getAllByRole("cell")
-        .slice(2, 5)
+        .slice(1, 5)
         .map((c) => c.textContent),
     ).toEqual([
       "6.0",
+      "–",
       "9.5",
       "–", // not final yet
     ]);
@@ -412,15 +433,16 @@ describe("PlayerDialog", () => {
     expect(
       within(totals)
         .getAllByRole("cell")
-        .slice(0, 3)
+        .slice(0, 4)
         .map((c) => c.textContent),
-    ).toEqual(["146.6", "23.5", "–"]);
+    ).toEqual(["146.6", "1", "23.5", "–"]);
   });
 
   it("leaves the projection columns out when no week has a stored projection", () => {
     renderDialog();
+    openTab("Game log");
     const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
     const headers = within(table)
       .getAllByRole("columnheader")
@@ -441,6 +463,7 @@ describe("PlayerDialog", () => {
     });
     expect(screen.queryByRole("heading", { name: "Bio" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Projected/ })).not.toBeInTheDocument();
+    openTab("Game log");
     expect(screen.getByText("No games played yet this season.")).toBeInTheDocument();
     expect(screen.getByText("Available in this league")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Past seasons" })).not.toBeInTheDocument();
@@ -478,6 +501,7 @@ describe("past seasons, game by game", () => {
   const open = async () => {
     const user = userEvent.setup();
     render(<PlayerDialog detail={detail} closeHref="/league/1?tab=players" />);
+    openTab("History");
     const seasons = screen.getByRole("table", {
       name: /season totals under this league/i,
     });
@@ -492,17 +516,20 @@ describe("past seasons, game by game", () => {
     expect(links[0]).toHaveAttribute("href", expect.stringContaining("depth=LAR"));
   });
 
-  it("names the team for each week of this season too", async () => {
-    await open();
-    const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
-    });
+  it("names the team for each week only when he played for more than one that season", () => {
+    const traded: PlayerDetail = {
+      ...detail,
+      weeks: [detail.weeks[0], { ...detail.weeks[1], team: "SEA" }],
+    };
+    render(<PlayerDialog detail={traded} closeHref="/league/1?tab=players" />);
+    openTab("Game log");
+    const table = screen.getByRole("table", { name: /every week of the season/i });
     expect(
       within(table)
         .getAllByRole("columnheader")
         .map((h) => h.textContent)
         .slice(0, 3),
-    ).toEqual(["Week", "Team", "Opponent"]);
+    ).toEqual(["Wk", "Opp", "Team"]);
   });
 
   it("opens a season into a game-by-game table with the team and opponent for each game", async () => {
@@ -548,6 +575,7 @@ describe("past seasons, game by game", () => {
       past_seasons: [{ season: "2024", games: 8, points: 90, rank: 12, teams: [] }],
     };
     const { container, unmount } = render(<PlayerDialog detail={bare} closeHref="/x" />);
+    openTab("History");
     const seasons = within(container).getByRole("table", {
       name: /season totals under this league/i,
     });

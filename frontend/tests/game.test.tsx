@@ -6,6 +6,7 @@ import RostersPanel from "../components/RostersPanel";
 import type { Dashboard, GameInfo } from "../lib/api";
 import {
   conditionsLabel,
+  weatherWord,
   formatGameDate,
   formatKickoff,
   gameLabel,
@@ -229,20 +230,12 @@ describe("rosters with game status", () => {
   ];
 
   it("shows each player's game or bye and which NFL week it refers to", async () => {
-    render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} week={6} />);
-    expect(screen.getByText("Bye week")).toBeInTheDocument();
-    expect(screen.getByText("Sun, Sep 20 vs CHI")).toBeInTheDocument();
-    expect(screen.getByText(/NFL week 6/)).toBeInTheDocument();
-    expect(screen.getByText("3rd · Easy")).toBeInTheDocument(); // the opponent's rank for his position
-    expect(screen.getByText("CHI ranks 3rd against RBs (easy matchup)")).toBeInTheDocument();
-    await expectNoA11yViolations(
-      <RostersPanel leagueId="1" rosters={rosters} myRosterId={1} week={6} />,
-    );
-  });
-
-  it("omits the week note when the week is unknown", () => {
     render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
-    expect(screen.queryByText(/NFL week/)).not.toBeInTheDocument();
+    expect(screen.getByText("Bye week")).toBeInTheDocument();
+    expect(screen.getByText("CHI").closest(".game-line")).toHaveTextContent(/vs\s*CHI/);
+    expect(screen.getByText("CHI")).toHaveClass("diff-easy"); // the opponent is coloured by how easy it is
+    expect(screen.getByText(/CHI ranks 3rd against RBs/)).toBeInTheDocument();
+    await expectNoA11yViolations(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
   });
 });
 
@@ -386,10 +379,21 @@ describe("game conditions", () => {
       line: "SF -3.5, O/U 44.5",
     });
     expect(conditionsLabel(outdoors, true)).toEqual({
-      setting: "28°F (freezing), wind 18 mph (windy)",
+      setting: "Freezing",
       surface: null,
       line: null,
     });
+  });
+
+  it("gives rows one general word, never numbers", () => {
+    const word = (conditions: Record<string, unknown>) =>
+      conditionsLabel({ ...outdoors, conditions }, true)?.setting;
+    expect(word({ roof: "outdoors", temp: 40, wind: 5 })).toBe("Cold");
+    expect(word({ roof: "outdoors", temp: 90, wind: 5 })).toBe("Hot");
+    expect(word({ roof: "outdoors", temp: 60, wind: 20 })).toBe("Windy");
+    expect(word({ roof: "outdoors", temp: 64, wind: 7 })).toBeUndefined(); // nothing notable: no word
+    expect(word({ roof: "outdoors", temp: 28, wind: 20 })).toBe("Freezing");
+    expect(weatherWord({})).toBeNull();
   });
 
   it("says dome or closed roof instead of weather", () => {
@@ -405,9 +409,7 @@ describe("game conditions", () => {
     expect(conditionsLabel({ ...outdoors, conditions: {} })).toBeNull();
     expect(conditionsLabel({ ...outdoors, state: "bye" })).toBeNull();
     expect(conditionsLabel(null)).toBeNull();
-    expect(conditionsLabel({ ...outdoors, conditions: { roof: "outdoors" } }, true)?.setting).toBe(
-      "Outdoors",
-    );
+    expect(conditionsLabel({ ...outdoors, conditions: { roof: "outdoors" } }, true)).toBeNull();
   });
 
   it("is plain text on the badge and has no accessibility violations", async () => {

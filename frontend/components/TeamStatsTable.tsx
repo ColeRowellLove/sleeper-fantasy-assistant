@@ -1,5 +1,6 @@
 import type { TeamStat } from "../lib/api";
 import { ordinal } from "../lib/game";
+import NoteList from "./NoteList";
 
 /**
  * A team's per-game numbers with where they rank among the 32 teams. Rank 1 is always the best:
@@ -50,9 +51,11 @@ export default function TeamStatsTable({
           </tbody>
         </table>
       </div>
-      <p className="note">
-        Rank 1 is best: the most yards and touchdowns, the fewest points and yards allowed.
-      </p>
+      <NoteList
+        items={[
+          "Rank 1 is best: the most yards and touchdowns, the fewest points and yards allowed",
+        ]}
+      />
     </section>
   );
 }

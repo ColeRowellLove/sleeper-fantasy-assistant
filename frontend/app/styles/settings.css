@@ -16,6 +16,22 @@
   padding: 1rem 1.25rem 0.5rem;
 }
 
+.setting-merged {
+  column-gap: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+}
+
+.setting-sub + .setting-sub {
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 40rem) {
+  .setting-sub + .setting-sub {
+    margin-top: 0;
+  }
+}
+
 .setting-group h3 {
   font-size: 1rem;
   margin: 0 0 0.5rem;
@@ -94,7 +110,14 @@
   padding: 0.3rem 0.85rem;
 }
 
-.filter-chip[aria-pressed="true"] {
+a.filter-chip {
+  align-items: center;
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.filter-chip[aria-pressed="true"],
+.filter-chip[aria-current="page"] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
@@ -102,6 +125,7 @@
 
 .players-scroll {
   overflow-x: auto;
+  position: relative; /* keeps the screen-reader text inside a wide table from widening the page */
 }
 
 table.players {
@@ -269,11 +293,6 @@ dialog.player-dialog::backdrop {
 .player-dialog h3 {
   font-size: 1rem;
   margin: 0 0 0.5rem;
-}
-
-.pd-projected {
-  font-size: 1.1rem;
-  margin: 0 0 0.25rem;
 }
 
 table.players.pd-table {
@@ -541,4 +560,559 @@ dialog.team-dialog {
 td.season-log {
   background: color-mix(in srgb, var(--surface-2) 60%, transparent);
   padding: 0.5rem 0.75rem 1rem;
+}
+
+/* the players list on a phone: one scrolling row of filter chips each, and short rows */
+@media (max-width: 40rem) {
+  .players-controls {
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+
+  .players-controls .players-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    position: relative; /* clips the screen-reader text inside */
+  }
+
+  .players-controls .filter-chip {
+    flex: none;
+  }
+
+  .players-list tbody tr {
+    height: auto;
+  }
+
+  /* the row keeps the game's state; the time, score and opponent are on the Games screen */
+  .players-list .game-detail {
+    display: none;
+  }
+
+  .players-list .avatar {
+    --size: 2.1rem;
+  }
+}
+
+/* Game log: the whole season, the week and opponent stay in view, ranks tinted (number always shown) */
+.gamelog .gl-sticky {
+  background: var(--surface);
+  left: 0;
+  position: sticky;
+  z-index: 1;
+}
+
+.gamelog .gl-opp {
+  left: 2.6rem;
+}
+
+.gamelog .gl-week {
+  min-width: 2.6rem;
+  width: 2.6rem;
+}
+
+.gamelog .gl-opponent {
+  font-weight: 700;
+}
+
+.gamelog .gl-opponent a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.gamelog .diff-easy,
+.ps-opp.diff-easy {
+  color: var(--game-live);
+}
+
+.gamelog .diff-average,
+.ps-opp.diff-average {
+  color: var(--game-bye);
+}
+
+.gamelog .diff-tough,
+.ps-opp.diff-tough {
+  color: var(--injury-out);
+}
+
+.gamelog .gl-dash,
+.gamelog .gl-upcoming td {
+  color: var(--muted);
+}
+
+.gamelog .tone-great,
+.pd-table .tone-great,
+.rank-chip.tone-great {
+  background: color-mix(in srgb, var(--game-live) 28%, var(--surface));
+}
+
+.gamelog .tone-ok,
+.pd-table .tone-ok,
+.rank-chip.tone-ok {
+  background: color-mix(in srgb, var(--game-bye) 28%, var(--surface));
+}
+
+.gamelog .tone-poor,
+.pd-table .tone-poor,
+.rank-chip.tone-poor {
+  background: color-mix(in srgb, var(--injury-out) 26%, var(--surface));
+}
+
+.gamelog .gl-bye th,
+.gamelog .gl-bye td {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.gamelog .gl-bye-cell {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: left;
+}
+
+/* Player pop-up: header strip and tabs (Sleeper-style) */
+.pd-strip {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  text-align: center;
+}
+
+.pd-strip dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pd-strip dd {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.panel-tablist {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+.panel-tab {
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.25rem;
+  text-transform: uppercase;
+}
+
+.panel-tab:focus-visible {
+  outline: 2px solid var(--focus, currentColor);
+  outline-offset: -2px;
+}
+
+.panel-tab[aria-selected="true"] {
+  border-bottom-color: var(--text);
+  color: var(--text);
+}
+
+.panel-tabpanel {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: 1.25rem;
+}
+
+/* Player summary tab */
+.ps-stats {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  row-gap: 0.75rem;
+}
+
+.ps-note {
+  margin: -0.75rem 0 0;
+}
+
+.ps-stats dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ps-stats dd {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.15rem 0 0;
+}
+
+.ps-game {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.ps-week {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ps-proj {
+  margin: 0;
+}
+
+.ps-game .note {
+  margin: 0;
+}
+
+.ps-strip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.ps-strip {
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+}
+
+.ps-cards {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ps-card {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  flex: none;
+  gap: 0.25rem;
+  min-width: 6.5rem;
+  padding: 0.5rem 0.65rem;
+}
+
+.ps-card-head {
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+
+.ps-line {
+  display: flex;
+  font-variant-numeric: tabular-nums;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.ps-key {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ps-bye {
+  color: var(--muted);
+}
+
+.ps-card-bye {
+  font-weight: 700;
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+.ps-activity {
+  display: flex;
+  gap: 1.5rem;
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+}
+
+/* Player team tab: team rank chips and the highlighted depth-chart player */
+.rank-chips {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rank-chip {
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.rank-chip-label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rank-chip-rank {
+  font-weight: 700;
+}
+
+.depth-player.is-viewed .depth-name {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 4px;
+  padding: 0 0.25rem;
+}
+
+.history .move-added th {
+  color: var(--game-live);
+}
+
+.history .move-dropped th {
+  color: var(--injury-out);
+}
+
+.history td.num-col {
+  white-space: nowrap;
+}
+
+/* Player pop-up header: the team's colour behind a large face, small first name over a big last name */
+.pd-hero {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--team, var(--surface-2)) 30%, var(--surface)),
+    var(--surface) 80%
+  );
+  border-radius: var(--radius);
+  display: grid;
+  gap: 0.5rem 0.9rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 0.9rem;
+}
+
+.pd-hero .avatar {
+  --size: 4.5rem;
+}
+
+.pd-hero .avatar-initials {
+  font-size: 1.3rem;
+}
+
+.pd-hero .avatar-team {
+  height: 1.6rem;
+  width: 1.6rem;
+}
+
+.pd-hero .player-dialog-owner {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.player-dialog-title .pd-name {
+  display: grid;
+  line-height: 1.05;
+  margin: 0.1rem 0 0.4rem;
+}
+
+.pd-first {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pd-last {
+  font-size: 1.9rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.pd-hero-meta {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.pd-hero .pd-strip {
+  grid-column: 1 / -1;
+  text-align: left;
+}
+
+.pd-hero .status-owned {
+  display: block;
+  white-space: normal;
+}
+
+.pd-hero .player-dialog-close {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.pd-hero .pd-strip {
+  grid-row: 2;
+}
+
+.pd-hero-meta {
+  grid-row: 3;
+}
+
+/* Trending page */
+.trend-list {
+  display: grid;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.trend-row {
+  align-items: start;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  padding: 0.6rem 0;
+}
+
+.trend-rank {
+  color: var(--muted);
+  font-weight: 700;
+  padding-top: 0.35rem;
+  text-align: right;
+}
+
+.trend-stats {
+  color: var(--muted);
+  display: flex;
+  font-size: 0.8rem;
+  gap: 1rem;
+  margin: 0.3rem 0 0;
+}
+
+.trend-stats dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.trend-stats dd {
+  color: var(--text);
+  font-weight: 700;
+  margin: 0;
+}
+
+.trend-count {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: end;
+  min-width: 5.5rem;
+}
+
+.trend-count strong {
+  font-size: 1.05rem;
+}
+
+.trend-adds strong {
+  color: var(--game-live);
+}
+
+.trend-drops strong {
+  color: var(--injury-out);
+}
+
+.trend-bar {
+  background: var(--surface-2);
+  border-radius: 999px;
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  width: 5.5rem;
+}
+
+.trend-bar > span {
+  background: currentColor;
+  display: block;
+  height: 100%;
+}
+
+.trend-adds .trend-bar {
+  color: var(--game-live);
+}
+
+.trend-drops .trend-bar {
+  color: var(--injury-out);
+}
+
+.trend-owner {
+  font-size: 0.75rem;
+}
+
+.trend-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+}
+
+.trend-head h2 {
+  margin: 0;
+}
+
+.trending .players-filter {
+  margin: 0;
+}
+
+/* the positions stay on one line and scroll sideways instead of wrapping into rows */
+.trend-positions {
+  margin: 0.6rem 0 0.25rem;
+  overflow-x: auto;
+}
+
+.trend-positions .players-filter {
+  flex-wrap: nowrap;
+  width: max-content;
+}
+
+.trend-about {
+  margin-top: 1rem;
+}
+
+.trend-about > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.depth-chart > * + * {
+  margin-top: 1rem;
+}
+
+.depth-all-stats {
+  margin-top: 0.75rem;
+}
+
+.depth-all-stats > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
 }

@@ -19,7 +19,8 @@ class SleeperUser(BaseModel):
     user_id: str
     username: str | None = None
     display_name: str
-    metadata: dict[str, Any] | None = None  # includes the manager's chosen "team_name"
+    avatar: str | None = None  # Sleeper's avatar id
+    metadata: dict[str, Any] | None = None  # includes the chosen "team_name" and "avatar"
 
 
 class SleeperLeague(BaseModel):
@@ -66,6 +67,8 @@ class SleeperTransaction(BaseModel):
     status: str
     leg: int = Field(description="Week the transaction belongs to")
     created: int | None = None
+    adds: dict[str, int] | None = None  # player id -> the roster that got him
+    drops: dict[str, int] | None = None  # player id -> the roster that let him go
 
 
 class SleeperGame(BaseModel):

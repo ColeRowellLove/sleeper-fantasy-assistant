@@ -1,21 +1,22 @@
-import Link from "next/link";
-
-import type { LineupPlayer, Lineups, TeamLineup } from "../lib/api";
-import { rosterPath } from "../lib/league";
+import type { LineupPlayer, Lineups, StandingsRow } from "../lib/api";
+import { abbreviateName } from "../lib/game";
+import { positionClass } from "../lib/positions";
 import {
   formatPoints,
-  formatProjection,
+  notPlayedYet,
   pairRows,
-  projectionDelta,
+  slotShort,
   winnerId,
   type WeekState,
 } from "../lib/lineups";
-import GameBadge from "./GameBadge";
+import GameLine from "./GameLine";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
+import PlayerStatLine from "./PlayerStatLine";
 import TeamLink from "./TeamLink";
-import PositionChip from "./PositionChip";
+import MatchupHeader from "./MatchupHeader";
+import Projection from "./Projection";
 import WinBar from "./WinBar";
 
 type Matchup = Lineups["matchups"][number];
@@ -28,78 +29,10 @@ interface Props {
   mine?: boolean;
   /** When given, each team's name links to that team's roster. */
   leagueId?: string;
+  /** The standings, for each team's record, streak and seed under its name. */
+  standings?: StandingsRow[];
   /** Eager-load avatars (use for the first card on the page). */
   priority?: boolean;
-}
-
-/** "Projected 127.27 (+3.2)": the delta only once there is something to compare. */
-function Projection({
-  projected,
-  compareWith,
-  actual,
-  state,
-  label,
-}: {
-  projected: number | null | undefined;
-  /** The projection frozen before kickoff: a finished week's score is compared with this one. */
-  compareWith?: number | null;
-  actual: number | null;
-  state: WeekState;
-  label: string;
-}) {
-  const text = formatProjection(projected);
-  if (text === null) return null;
-  const delta = projectionDelta(actual, compareWith ?? projected, state);
-  return (
-    <span className="proj">
-      {label} {text}
-      {delta && (
-        <span className="proj-delta">
-          {" "}
-          ({delta}
-          <span className="visually-hidden"> against projection</span>)
-        </span>
-      )}
-    </span>
-  );
-}
-
-function TeamScore({
-  team,
-  state,
-  isWinner,
-  isMe,
-  leagueId,
-}: {
-  team: TeamLineup;
-  state: WeekState;
-  isWinner: boolean;
-  isMe: boolean;
-  leagueId?: string;
-}) {
-  return (
-    <div className={`team-score${isWinner ? " winner" : ""}`}>
-      <span className="team-name">
-        {leagueId ? (
-          <Link href={rosterPath(leagueId, team.roster_id)} className="member-link">
-            {team.team}
-          </Link>
-        ) : (
-          team.team
-        )}
-        {isMe && <span className="you">You</span>}
-      </span>
-      <span className="score num">{state === "upcoming" ? "–" : team.points.toFixed(2)}</span>
-      <Projection
-        projected={team.projected}
-        compareWith={team.projected_pregame}
-        actual={team.points}
-        state={state}
-        label="Projected"
-      />
-      {isWinner && <span className="win-tag">Winner</span>}
-    </div>
-  );
 }
 
 function Cell({
@@ -121,9 +54,11 @@ function Cell({
       </>
     );
   }
+  // a dash for anyone whose game has not started, even in a week that is under way
+  const notPlayed = notPlayedYet(state, player.game);
   const points = (
     <td className={`pts-cell pts-${side} num`}>
-      {state === "upcoming" ? "–" : formatPoints(player.points)}
+      {notPlayed ? "–" : formatPoints(player.points)}
       <Projection
         projected={player.projected}
         compareWith={player.projected_pregame}
@@ -148,35 +83,37 @@ function Cell({
         <span className="cell-text">
           <span className="cell-name">
             {player.player_id ? (
-              <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
+              <PlayerLink playerId={player.player_id}>
+                <span className="name-full">{player.name}</span>
+                <span className="name-short" aria-hidden="true">
+                  {abbreviateName(player.name)}
+                </span>
+              </PlayerLink>
             ) : (
               player.name
             )}
           </span>
           <span className="cell-meta">
-            <PositionChip position={player.position} />
+            <span className={`pos-text ${positionClass(player.position)}`}>
+              {player.position ?? "–"}
+            </span>
+            {player.team && (
+              <>
+                <span className="dot" aria-hidden="true">
+                  •
+                </span>
+                <span className="cell-team">
+                  <TeamLink team={player.team}>{player.team}</TeamLink>
+                </span>
+              </>
+            )}
             {/* the designation is the current one, so it is not shown against weeks already played */}
             {state !== "played" && <InjuryBadge injury={player.injury} />}
           </span>
-          <span className="cell-meta">
-            {player.team && (
-              <span className="cell-team">
-                <TeamLink team={player.team}>{player.team}</TeamLink>
-              </span>
-            )}
-            <GameBadge
-              game={player.game}
-              matchup={player.matchup}
-              position={player.position}
-              conditions="compact"
-            />
+          <span className="cell-meta cell-game">
+            <GameLine game={player.game} matchup={player.matchup} position={player.position} />
           </span>
-          {player.stat_line && (
-            <span className="stat-line">
-              <span className="visually-hidden">Stats this week: </span>
-              {player.stat_line}
-            </span>
-          )}
+          <PlayerStatLine line={player.stat_line} projected={player.stat_line_projected} />
         </span>
       </div>
     </td>
@@ -202,6 +139,7 @@ export default function MatchupCard({
   myRosterId,
   mine = false,
   leagueId,
+  standings,
   priority = false,
 }: Props) {
   const [a, b] = matchup.teams;
@@ -219,6 +157,45 @@ export default function MatchupCard({
   const winner = state === "played" ? winnerId(a, b) : null;
   const rows = pairRows(a, b);
 
+  const table = (
+    <table className="h2h">
+      <caption className="visually-hidden">
+        {a.team} versus {b.team}: lineups by slot, then bench
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">{a.team}</th>
+          <th scope="col" className="num-col">
+            Pts
+          </th>
+          <th scope="col" className="slot-col">
+            Slot
+          </th>
+          <th scope="col" className="num-col">
+            Pts
+          </th>
+          <th scope="col" className="right-col">
+            {b.team}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={`${row.slot}-${i}`} className={row.kind === "starter" ? undefined : row.kind}>
+            <Cell player={row.left} state={state} side="left" priority={priority} />
+            <th scope="row" className="slot-cell">
+              <span className={`slot-chip ${positionClass(row.slot)}`}>
+                <span className="visually-hidden">{row.slot}</span>
+                <span aria-hidden="true">{slotShort(row.slot)}</span>
+              </span>
+            </th>
+            <Cell player={row.right} state={state} side="right" priority={priority} />
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
   return (
     <article className={`matchup-card${mine ? " mine" : ""}`} aria-labelledby={id}>
       <header className="scoreboard">
@@ -226,60 +203,30 @@ export default function MatchupCard({
         <h3 id={id} className="visually-hidden">
           {a.team} versus {b.team}
         </h3>
-        <div className="score-row">
-          <TeamScore
-            team={a}
-            state={state}
-            isWinner={winner === a.roster_id}
-            isMe={a.roster_id === myRosterId}
-            leagueId={leagueId}
-          />
-          <span className="vs" aria-hidden="true">
-            vs
-          </span>
-          <TeamScore
-            team={b}
-            state={state}
-            isWinner={winner === b.roster_id}
-            isMe={b.roster_id === myRosterId}
-            leagueId={leagueId}
-          />
-        </div>
+        <MatchupHeader
+          a={a}
+          b={b}
+          state={state}
+          winner={winner}
+          myRosterId={myRosterId}
+          leagueId={leagueId}
+          standings={standings}
+        />
         <WinBar a={a} b={b} state={state} />
       </header>
-      <table className="h2h">
-        <caption className="visually-hidden">
-          {a.team} versus {b.team}: lineups by slot, then bench
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">{a.team}</th>
-            <th scope="col" className="num-col">
-              Pts
-            </th>
-            <th scope="col" className="slot-col">
-              Slot
-            </th>
-            <th scope="col" className="num-col">
-              Pts
-            </th>
-            <th scope="col" className="right-col">
-              {b.team}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={`${row.slot}-${i}`} className={row.kind === "starter" ? undefined : row.kind}>
-              <Cell player={row.left} state={state} side="left" priority={priority} />
-              <th scope="row" className="slot-cell">
-                {row.slot}
-              </th>
-              <Cell player={row.right} state={state} side="right" priority={priority} />
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {mine || myRosterId === null ? (
+        table
+      ) : (
+        <details className="matchup-lineups">
+          <summary>
+            Lineups
+            <span className="visually-hidden">
+              : {a.team} versus {b.team}
+            </span>
+          </summary>
+          {table}
+        </details>
+      )}
     </article>
   );
 }

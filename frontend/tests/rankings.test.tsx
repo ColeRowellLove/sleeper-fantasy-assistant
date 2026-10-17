@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -11,6 +11,8 @@ import {
   parseSources,
   rankedFor,
   sourcesQuery,
+  extraWhy,
+  whyParts,
 } from "../lib/rankings";
 import { expectNoA11yViolations } from "./a11y";
 
@@ -196,9 +198,37 @@ describe("choosing which sources the ranks use", () => {
 
   it("says which sources are not connected instead of faking them", () => {
     render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+    const missing = screen.getByText("Not included yet").closest("details") as HTMLElement;
+    expect(missing).not.toHaveAttribute("open"); // folded away: it is not what the page is for
+    expect(within(missing).getByText(/FantasyPros \(needs a paid license\)/)).toBeInTheDocument();
+  });
+
+  it("shows why a player is ranked as separate chips, not one long sentence", () => {
+    render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
+    // the fixture's only reason is the projection, which has its own column: no chips repeat it
+    expect(screen.queryByRole("list", { name: /^Why .* is ranked here$/ })).not.toBeInTheDocument();
+    const withVegas = {
+      ...withSources,
+      players: withSources.players.map((p) => ({
+        ...p,
+        why: `${p.why}; Vegas has SF scoring 24.0`,
+      })),
+    };
+    cleanup();
+    render(<RankingsPanel data={withVegas} leagueId="1" myRosterId={1} />);
+    const lists = screen.getAllByRole("list", { name: /^Why .* is ranked here$/ });
+    expect(within(lists[0]).getByText("Vegas has SF scoring 24.0")).toBeInTheDocument();
+    expect(whyParts("projected 16.8 (5th RB); started in 17% of ESPN leagues.")).toEqual([
+      "projected 16.8 (5th RB)",
+      "started in 17% of ESPN leagues",
+    ]);
+    expect(whyParts(null)).toEqual([]);
+    // numbers that already have a column are not repeated as chips
     expect(
-      screen.getByText(/Not included yet: FantasyPros \(needs a paid license\)/),
-    ).toBeInTheDocument();
+      extraWhy(
+        "projected 16.8 (5th RB); 18.2 a game over his last 3; started in 17% of ESPN leagues; Vegas has SEA scoring 24.0; DAL defense ranks 4th of 8",
+      ),
+    ).toEqual(["Vegas has SEA scoring 24.0", "DAL defense ranks 4th of 8"]);
   });
 
   it("keeps the source choices keyboard reachable and accessible, and the empty states too", async () => {

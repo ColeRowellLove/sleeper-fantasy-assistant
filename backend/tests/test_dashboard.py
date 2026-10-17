@@ -1,7 +1,14 @@
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.dashboard import build_dashboard, build_lineups
-from sleeper_assistant.db import LeagueRow, MatchupRow, PlayerRow, RosterRow, SleeperUserRow
+from sleeper_assistant.db import (
+    LeagueRow,
+    MatchupRow,
+    PlayerOwnershipRow,
+    PlayerRow,
+    RosterRow,
+    SleeperUserRow,
+)
 
 
 def _league(positions: list[str] | None = None) -> LeagueRow:
@@ -71,6 +78,20 @@ def test_standings_order_and_team_names(session: Session) -> None:
     assert [s.rank for s in dash.standings] == [1, 2, 3]
     teams = {s.roster_id: s.team for s in dash.standings}
     assert teams == {1: "Cole", 2: "Team 2", 3: "Team 3"}
+
+
+def test_rostered_players_carry_espn_owned_and_started_shares(session: Session) -> None:
+    league = _league(["RB", "BN"])
+    session.add(league)
+    session.add_all([_player("10", "Star RB", "RB", "SF"), _player("11", "Bench WR", "WR", "MIN")])
+    session.add(_roster(1, None, players=["10", "11"], starters=["10"]))
+    session.add(PlayerOwnershipRow(player_id="10", owned=88.0, started=53.0))
+    session.commit()
+
+    players = {p.name: p for p in build_dashboard(session, league).rosters[0].players}
+
+    assert (players["Star RB"].owned_pct, players["Star RB"].started_pct) == (88.0, 53.0)
+    assert players["Bench WR"].owned_pct is None  # no ESPN number: nothing claimed
 
 
 def test_roster_groups_starters_bench_ir_taxi(session: Session) -> None:
