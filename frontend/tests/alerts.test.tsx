@@ -205,9 +205,12 @@ describe("AlertsPanel", () => {
     expect(details).toHaveAttribute("open"); // open when there are no alerts yet
     const group = within(details).getByRole("group", { name: "Alert types to show" });
     const boxes = within(group).getAllByRole("checkbox");
-    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([true, true, true]);
+    expect(boxes.map((b) => (b as HTMLInputElement).checked)).toEqual([true, true, true, true]);
     expect(within(group).getByRole("checkbox", { name: /ruled out/ })).toBeInTheDocument();
     expect(within(group).getByRole("checkbox", { name: /on a bye/ })).toBeInTheDocument();
+    expect(
+      within(group).getByRole("checkbox", { name: /higher than a starter/ }),
+    ).toBeInTheDocument();
     expect(within(group).getByText(/9 am Eastern the day before/)).toBeInTheDocument();
     expect(within(details).getByText(/Not on yet/)).toBeInTheDocument();
     expect(within(details).getByText(/kept in this browser/)).toBeInTheDocument();

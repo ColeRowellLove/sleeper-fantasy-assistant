@@ -123,6 +123,11 @@ export const ALERT_TYPES = [
     text: "Once per player and week: who in your lineup has no game, the slot they leave empty and the best healthy bench player who could take it.",
   },
   {
+    kind: "lineup_move",
+    title: "A bench player projects higher than a starter",
+    text: "In the two days before your week's first game: who to start over whom, with both projections and the gain. Only when a swap adds at least 3 points, and never for a player whose game has started.",
+  },
+  {
     kind: "waiver_targets",
     title: "Waiver targets",
     text: "From 9 am Eastern the day before your league's waiver day: the best available pickups for your lineup, each with its projected points and what it adds over the player it would replace.",
