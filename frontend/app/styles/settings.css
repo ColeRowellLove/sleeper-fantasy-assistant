@@ -625,16 +625,19 @@ td.season-log {
 }
 
 .gamelog .tone-great,
+.pd-table .tone-great,
 .rank-chip.tone-great {
   background: color-mix(in srgb, var(--game-live) 28%, var(--surface));
 }
 
 .gamelog .tone-ok,
+.pd-table .tone-ok,
 .rank-chip.tone-ok {
   background: color-mix(in srgb, var(--game-bye) 28%, var(--surface));
 }
 
 .gamelog .tone-poor,
+.pd-table .tone-poor,
 .rank-chip.tone-poor {
   background: color-mix(in srgb, var(--injury-out) 26%, var(--surface));
 }
@@ -866,4 +869,16 @@ td.season-log {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
   border-radius: 4px;
   padding: 0 0.25rem;
+}
+
+.history .move-added th {
+  color: var(--game-live);
+}
+
+.history .move-dropped th {
+  color: var(--injury-out);
+}
+
+.history td.num-col {
+  white-space: nowrap;
 }

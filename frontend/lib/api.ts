@@ -110,6 +110,14 @@ export interface PlayerDetail {
     bye?: boolean;
     matchup?: MatchupRank | null;
   }[];
+  /** His adds and drops in this league, newest first. */
+  history?: {
+    kind: "added" | "dropped";
+    source: "waivers" | "free_agency" | "trade" | "commissioner";
+    manager?: string | null;
+    date?: string | null;
+    week: number;
+  }[];
   past_seasons: {
     season: string;
     games: number;

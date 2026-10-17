@@ -67,6 +67,8 @@ class SleeperTransaction(BaseModel):
     status: str
     leg: int = Field(description="Week the transaction belongs to")
     created: int | None = None
+    adds: dict[str, int] | None = None  # player id -> the roster that got him
+    drops: dict[str, int] | None = None  # player id -> the roster that let him go
 
 
 class SleeperGame(BaseModel):

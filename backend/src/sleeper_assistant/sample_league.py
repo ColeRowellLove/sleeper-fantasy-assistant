@@ -28,6 +28,7 @@ from sleeper_assistant.db import (
     RosterRow,
     SleeperUserRow,
     TeamDepthChartRow,
+    TransactionRow,
     UserLeagueRow,
     database_url,
     make_engine,
@@ -186,6 +187,30 @@ def _players(rng: random.Random) -> list[PlayerRow]:
     return players
 
 
+def _transactions(session: Session, now: datetime) -> None:
+    """A few adds and drops of the first player, so the pop-up's History tab has something."""
+    day = 86_400_000
+    ms = int(now.timestamp() * 1000)
+    moves = [
+        ("t1", "waiver", 12 * day, None, {"s1": 1}),
+        ("t2", "waiver", 9 * day, {"s1": 1}, None),
+        ("t3", "free_agent", 5 * day, None, {"s1": 4}),
+        ("t4", "trade", 2 * day, {"s1": 4}, {"s1": 3}),
+    ]
+    for tx_id, kind, ago, drops, adds in moves:
+        session.add(
+            TransactionRow(
+                league_id=LEAGUE_ID,
+                transaction_id=tx_id,
+                type=kind,
+                status="complete",
+                week=CURRENT_WEEK,
+                created_ms=ms - ago,
+                payload={"adds": adds, "drops": drops},
+            )
+        )
+
+
 def _depth_charts(session: Session, players: list[PlayerRow], now: datetime) -> None:
     """A simple depth chart per team: its QBs, RBs, WRs (split over three slots) and TEs."""
     for team in TEAMS:
@@ -274,6 +299,7 @@ def seed(session: Session) -> None:
     session.flush()
     for i, name in enumerate(MANAGERS):
         session.add(UserLeagueRow(user_id=f"u{i}", league_id=LEAGUE_ID, team_name=name))
+    _transactions(session, now)
 
     for i, roster in enumerate(rosters):
         session.add(

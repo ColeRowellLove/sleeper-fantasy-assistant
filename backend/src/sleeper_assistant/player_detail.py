@@ -39,6 +39,7 @@ from sleeper_assistant.matchup_rank import (
     build_defense_table,
     matchup_rank,
 )
+from sleeper_assistant.player_history import HistoryEvent, build_history
 from sleeper_assistant.players_view import _name
 from sleeper_assistant.projections import score_projection, score_stats
 from sleeper_assistant.team_depth import TeamDepth, build_team_depth
@@ -117,6 +118,7 @@ class PlayerDetail(BaseModel):
     season: SeasonSummary
     projected: ProjectedLine | None = None
     schedule: list[ScheduleWeek] = []  # every week of the season, for the game log
+    history: list[HistoryEvent] = []  # his adds and drops in this league, newest first
     weeks: list[WeekLine]
     past_seasons: list[SeasonLine]
 
@@ -318,6 +320,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
         ),
         projected=projected,
         schedule=_schedule(session, season, player, defense),
+        history=build_history(session, league, player_id),
         weeks=weeks,
         past_seasons=_past_seasons(session, scoring, player, position_of),
     )
