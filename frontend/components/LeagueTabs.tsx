@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { alertsTabLabel } from "../lib/alerts";
 import { SECTIONS, leaguePath, sectionOf, type TabKey } from "../lib/league";
 import FilterChips from "./FilterChips";
 
@@ -31,8 +30,16 @@ export default function LeagueTabs({
               <Link
                 href={href(section.key === open.key ? active : section.pages[0].key)}
                 aria-current={section.key === open.key ? "page" : undefined}
+                // the count is short on screen and in words for a screen reader (it starts with
+                // the visible text, as a name must)
+                aria-label={
+                  section.key === "alerts" && unreadAlerts > 0
+                    ? `Alerts ${unreadAlerts} new`
+                    : undefined
+                }
               >
-                {section.key === "alerts" ? alertsTabLabel(unreadAlerts) : section.label}
+                {section.label}
+                {section.key === "alerts" && unreadAlerts > 0 && ` ${unreadAlerts}`}
               </Link>
             </li>
           ))}

@@ -518,6 +518,10 @@
   padding: 0;
 }
 
+.pick-rows > li {
+  min-width: 0; /* a grid item otherwise grows to its widest content and widens the page */
+}
+
 .pick-row {
   position: relative;
   align-items: center;
@@ -598,6 +602,12 @@
   content: "";
   inset: 0;
   position: absolute;
+}
+
+.pick-main .player-meta,
+.pick-main .player-meta .game {
+  flex-wrap: wrap; /* a pick row has the room to wrap; the table rows do not */
+  white-space: normal;
 }
 
 .pick-main {

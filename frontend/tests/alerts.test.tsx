@@ -8,7 +8,6 @@ import type { AlertsData, Dashboard } from "../lib/api";
 import {
   alertAdvice,
   alertTime,
-  alertsTabLabel,
   newestAlertTime,
   parseOff,
   parseSeen,
@@ -81,11 +80,6 @@ describe("alert helpers", () => {
     expect(newestAlertTime([])).toBeNull();
   });
 
-  it("puts the new count in words on the tab", () => {
-    expect(alertsTabLabel(0)).toBe("Alerts");
-    expect(alertsTabLabel(3)).toBe("Alerts (3 new)");
-  });
-
   it("writes times in UTC so the server and the browser agree", () => {
     expect(alertTime("2026-10-17T16:05:00Z")).toBe("Sat, Oct 17, 4:05 PM UTC");
     expect(alertTime("nonsense")).toBe("");
@@ -99,7 +93,7 @@ describe("alert helpers", () => {
 describe("LeagueTabs", () => {
   it("shows how many alerts are new on the Alerts tab, in words", () => {
     render(<LeagueTabs leagueId="1" active="standings" unreadAlerts={2} />);
-    expect(screen.getByRole("link", { name: "Alerts (2 new)" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Alerts 2 new" })).toHaveAttribute(
       "href",
       "/league/1?tab=alerts",
     );

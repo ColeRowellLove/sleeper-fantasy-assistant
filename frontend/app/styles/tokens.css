@@ -196,3 +196,15 @@ a {
 fieldset {
   min-width: 0;
 }
+
+/* columns that a phone has no room for (the same data is on the player's own page) */
+@media (max-width: 40rem) {
+  .hide-narrow {
+    display: none;
+  }
+}
+
+/* text directly inside a flush card keeps the card's inset */
+.card.flush > .note {
+  padding: 0 1.25rem;
+}

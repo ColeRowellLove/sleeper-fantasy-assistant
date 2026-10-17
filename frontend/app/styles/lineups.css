@@ -308,7 +308,7 @@ table.h2h {
 @media (max-width: 40rem) {
   .h2h th,
   .h2h td {
-    padding: 0.5rem 0.3rem;
+    padding: 0.5rem 0.4rem;
   }
 
   .h2h tr > :first-child {
@@ -321,9 +321,9 @@ table.h2h {
 
   .h2h .slot-col,
   .h2h .slot-cell {
-    padding-left: 0.4rem;
-    padding-right: 0.4rem;
-    width: 3.6rem;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+    width: 3rem;
   }
 
   .h2h .pts-cell,
