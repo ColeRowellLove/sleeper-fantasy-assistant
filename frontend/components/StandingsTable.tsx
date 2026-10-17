@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { fixed, fractionPercent } from "../lib/format";
 import type { StandingsRow } from "../lib/api";
 import { formatRecord, rosterPath } from "../lib/league";
 import NoteList from "./NoteList";
@@ -31,10 +32,8 @@ const ACCURACY_COLUMNS: typeof COLUMNS = [
 ];
 const ALL_COLUMNS = [...COLUMNS, ...ACCURACY_COLUMNS];
 
-const percent = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : `${(n * 100).toFixed(1)}%`;
-const points = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : n.toFixed(1);
+const percent = fractionPercent;
+const points = fixed;
 
 function StreakBadge({ streak }: { streak: string | null | undefined }) {
   const parsed = parseStreak(streak);

@@ -32,12 +32,19 @@ Inspiration only: no logos, names, fonts or assets from those apps.
   projected values clearly marked.
 - **Filter chips:** position, availability, week; same look and keyboard behaviour everywhere.
 - **Notes:** explanatory text is 2 to 4 short bullets in `NoteList`, never a paragraph wall.
+- **Tabs in a pop-up:** `PanelTabs` (Summary, Game log, Team, History); only the open panel renders.
+- **Reason chips:** `ReasonChips` for the short why behind a recommendation (waiver wire, rankings);
+  `TeamRankChips` for a team's ranks, coloured by thirds of the league.
+- **Team and player headers:** `TeamHeader` (picture, record, place, PF/PA) and the player pop-up's
+  hero (team colour tint, small first name over a large last name, bio strip).
+- **Times:** `LocalTime` (the visitor's own zone, UTC until the browser wakes up) and `lib/time.ts`.
+- **Numbers:** `lib/format.ts` (`fixed`, `percent`, `count`...): a missing number is a dash, never 0.
 - **Cards and disclosure:** one spacing scale; detail in a native `<details>` where it helps.
 
 ## Reuse first
 
 Before building anything, find the nearest existing piece (`PlayerIdentity`, `PlayerStatLine`,
-`StatTable`, `FilterChips`, `GameBadge`, `WinBar`, the tokens in `app/styles/tokens.css`) and use or
+`StatTable`, `FilterChips`, `GameBadge`, `GameLine`, `WinBar`, `PanelTabs`, `ReasonChips`, `LocalTime`, the tokens in `app/styles/tokens.css`) and use or
 extend it. A layout fix that applies to one screen usually applies to all of them: make it in the
 shared component or token. One content width (`.container`), one spacing scale, one set of chips.
 

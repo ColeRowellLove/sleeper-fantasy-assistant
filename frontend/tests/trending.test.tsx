@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import TrendingPanel from "../components/TrendingPanel";
 import type { PlayerListing, PlayersData } from "../lib/api";
 import { parseTab } from "../lib/league";
-import { formatTrendCount, pointsFigure, rosterShare, trendRows } from "../lib/trending";
+import { fixed, percentWhole } from "../lib/format";
+import { formatTrendCount, trendRows } from "../lib/trending";
 import { expectNoA11yViolations } from "./a11y";
 
 const p = (id: string, name: string, position: string, extra: Partial<PlayerListing> = {}) =>
@@ -70,10 +71,10 @@ describe("trending helpers", () => {
   });
 
   it("shows a dash, never zero, for a missing number", () => {
-    expect(rosterShare(null)).toBe("–");
-    expect(rosterShare(64.1)).toBe("64%");
-    expect(pointsFigure(undefined)).toBe("–");
-    expect(pointsFigure(13.54)).toBe("13.5");
+    expect(percentWhole(null)).toBe("–");
+    expect(percentWhole(64.1)).toBe("64%");
+    expect(fixed(undefined)).toBe("–");
+    expect(fixed(13.54)).toBe("13.5");
   });
 
   it("is a page of the league", () => {

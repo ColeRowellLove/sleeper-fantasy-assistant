@@ -1,11 +1,11 @@
+import { fixed } from "../lib/format";
 import type { GameCard, GamePlayer } from "../lib/api";
 import { GROUPS, playersFor, type StatGroup } from "../lib/gameStats";
 import PlayerIdentity from "./PlayerIdentity";
 import StatTable from "./StatTable";
 import TeamLogo from "./TeamLogo";
 
-const points = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : n.toFixed(1);
+const points = fixed;
 
 function Owner({ player, mine }: { player: GamePlayer; mine: boolean }) {
   if (mine) {
