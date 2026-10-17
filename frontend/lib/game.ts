@@ -169,9 +169,10 @@ export interface ConditionsLabel {
 }
 
 /**
- * One general word for the weather, for a row that has no room for numbers: Dome, Freezing, Cold,
- * Hot, Windy or Mild (outdoors with nothing notable). The exact temperature and wind belong on the
- * game screen. There is no rain or sun in the data, so the word never claims either.
+ * One general word for the weather, for a row that has no room for numbers: Dome, Closed roof,
+ * Freezing, Cold, Hot or Windy. Nothing notable (mild, or nothing known) gives null, so a row says
+ * nothing rather than "Mild" on every line. The exact temperature and wind belong on the game
+ * screen. There is no rain or sun in the data, so the word never claims either.
  */
 export function weatherWord(c: GameConditions): string | null {
   if (c.roof === "dome") return "Dome";
@@ -183,8 +184,7 @@ export function weatherWord(c: GameConditions): string | null {
     if (temp >= HOT_F) return "Hot";
   }
   if (wind !== null && wind !== undefined && wind >= WINDY_MPH) return "Windy";
-  if (temp !== null && temp !== undefined) return "Mild";
-  return c.roof === "outdoors" ? "Outdoors" : null;
+  return null;
 }
 
 /**
