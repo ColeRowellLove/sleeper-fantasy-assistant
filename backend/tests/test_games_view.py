@@ -239,3 +239,24 @@ def test_a_games_played_count_stored_as_text_still_decides_who_played(session: S
     session.commit()
     early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
     assert "inactive" not in {p.player_id for p in early.players}
+
+
+def test_each_card_carries_both_teams_records_when_every_score_is_stored(
+    session: Session,
+) -> None:
+    league = _setup(session)
+    early = next(g for g in build_games(session, league, 2).games if g.game_id == "early")
+    assert early.home_record is None  # week 1's finished game has no stored score: no guess
+    old = session.get(NflGameRow, "old")
+    assert old is not None
+    old.home_score, old.away_score = 10, 7  # AAA beat CCC
+    session.commit()
+    cards = {g.game_id: g for g in build_games(session, league, 2).games}
+    record = cards["early"].home_record
+    assert record is not None and (record.wins, record.losses) == (2, 0)  # AAA: both wins
+    away = cards["early"].away_record
+    assert away is not None and (away.wins, away.losses) == (0, 1)  # BBB lost this game
+    late_away = cards["late"].away_record
+    assert late_away is None  # DDD has not played
+    late_home = cards["late"].home_record
+    assert late_home is not None and (late_home.wins, late_home.losses) == (0, 1)  # CCC lost

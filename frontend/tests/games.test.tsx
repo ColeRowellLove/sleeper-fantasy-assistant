@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import GamesPanel from "../components/GamesPanel";
 import type { GameCard, GameInfo, GamePlayer, Games } from "../lib/api";
 import { cardScores } from "../lib/game";
+import { groupGames, teamNickname } from "../lib/games";
 import { parseTab } from "../lib/league";
 import { orderGames, yourPlayersText } from "../lib/games";
 import { expectNoA11yViolations } from "./a11y";
@@ -124,10 +125,16 @@ describe("game ordering", () => {
 });
 
 describe("GamesPanel", () => {
+  it("groups the games by day under a heading, your games first", () => {
+    render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings[0]).toBe("Your games");
+  });
+
   it("lists every game with the state, line and conditions in words", () => {
     render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
-    expect(screen.getByText("Played")).toBeInTheDocument();
-    expect(screen.getByText("Final, KC 27 - DEN 20")).toBeInTheDocument();
+    expect(screen.getAllByText("Played").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Final, KC 27 - DEN 20").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/53°F, wind 3 mph · SF -3.5, O\/U 44.5/).length).toBeGreaterThan(0);
   });
 
@@ -139,7 +146,7 @@ describe("GamesPanel", () => {
       "You 1 of your player",
     ]);
     const first = document.querySelector("details summary .game-teams");
-    expect(first).toHaveTextContent("DEN20–27KC"); // away score, dash, home score // the game with two of your players leads
+    expect(first).toHaveTextContent(/Broncos.*20.*Chiefs.*27/); // away over home, with scores
   });
 
   it("lays out every stat like a box score, with your players highlighted and named", () => {
@@ -242,5 +249,43 @@ describe("cardScores", () => {
     });
     expect(cardScores(card({ state: "upcoming", team_score: 0, opponent_score: 0 }))).toBeNull();
     expect(cardScores(card({ team_score: null, opponent_score: null }))).toBeNull();
+  });
+});
+
+describe("groupGames", () => {
+  const card = (id: string, date: string | null): GameCard =>
+    ({
+      game_id: id,
+      week: 1,
+      home: "KC",
+      away: "DEN",
+      game: { state: "upcoming", date, opponent: null, home: null } as GameInfo,
+      players: [],
+    }) as GameCard;
+  const og = (id: string, date: string | null, mine = 0) => ({
+    card: card(id, date),
+    mine: Array.from({ length: mine }, () => ({}) as GamePlayer),
+  });
+
+  it("puts your games first, then one section per day in date order, undated last", () => {
+    const sections = groupGames([
+      og("a", "2026-10-19"),
+      og("b", "2026-10-18"),
+      og("c", null),
+      og("d", "2026-10-18", 1),
+      og("e", "2026-10-18"),
+    ]);
+    expect(sections.map((s) => s.title)).toEqual([
+      "Your games",
+      "Sunday, Oct 18",
+      "Monday, Oct 19",
+      "Date to be set",
+    ]);
+    expect(sections[1].games.map((g) => g.card.game_id)).toEqual(["b", "e"]);
+  });
+
+  it("writes a team's nickname, or its code when unknown", () => {
+    expect(teamNickname("HOU")).toBe("Texans");
+    expect(teamNickname("XXX")).toBe("XXX");
   });
 });
