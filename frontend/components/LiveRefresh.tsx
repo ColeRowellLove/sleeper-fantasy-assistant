@@ -11,8 +11,9 @@ export const REFRESH_SECONDS = 15;
  * data in place (no reload, so scroll position and open sections stay). It does nothing when no
  * game is live, waits while the tab is hidden and catches up the moment it is shown again.
  *
- * Auto-updating content must be stoppable (WCAG 2.2.2), so there is a Pause button. The status
- * line is a plain paragraph, not a live region, so a screen reader is not interrupted every tick.
+ * It is always on while a game is live (live scores are the point of the page). It never moves
+ * focus or scroll and the status line is a plain paragraph, not a live region, so a screen reader
+ * is not interrupted every tick.
  */
 export default function LiveRefresh({
   active,
@@ -22,11 +23,10 @@ export default function LiveRefresh({
   seconds?: number;
 }) {
   const router = useRouter();
-  const [paused, setPaused] = useState(false);
   const [updated, setUpdated] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!active || paused) return;
+    if (!active) return;
     let last = Date.now();
     const refresh = () => {
       // a tick right after a catch-up refresh (or the other way round) would double the request
@@ -41,25 +41,15 @@ export default function LiveRefresh({
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [active, paused, seconds, router]);
+  }, [active, seconds, router]);
 
   if (!active) return null;
   return (
     <p className="live-refresh">
       <span className="live-dot" aria-hidden="true" />
-      <strong>{paused ? "Paused" : "Live"}</strong>
-      <span className="visually-hidden">
-        {paused ? " Live updates paused." : `: updating every ${seconds} seconds.`}
-      </span>
-      {updated && !paused && <span className="muted">Updated {updated}</span>}
-      <button
-        type="button"
-        className="btn btn-quiet"
-        aria-label={paused ? "Resume live updates" : "Pause live updates"}
-        onClick={() => setPaused((p) => !p)}
-      >
-        {paused ? "Resume" : "Pause"}
-      </button>
+      <strong>Live</strong>
+      <span className="visually-hidden">: updating every {seconds} seconds.</span>
+      {updated && <span className="muted">Updated {updated}</span>}
     </p>
   );
 }

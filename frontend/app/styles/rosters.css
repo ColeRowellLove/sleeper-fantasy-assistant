@@ -370,10 +370,6 @@
   margin: 0.4rem 0;
 }
 
-.live-refresh .btn {
-  margin-left: auto;
-}
-
 .live-dot {
   background: var(--game-live);
   border-radius: 50%;
