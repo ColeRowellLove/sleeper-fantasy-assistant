@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import AutoSubmitForm from "./AutoSubmitForm";
 import { useState } from "react";
 
 import type { Dashboard, WaiverWireData, WireEntry } from "../lib/api";
@@ -48,7 +48,7 @@ function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
         label={`Reasons for and against: ${reasonCounts(entry)}`}
         reasons={entry.reasons.filter((r) => r.stance !== "info")}
       />
-      <details className="wire-why">
+      <details className="fold">
         <summary>Details</summary>
         <ul className="wire-signals">
           {entry.reasons.map((r) => (
@@ -82,7 +82,6 @@ export default function WaiverWirePanel({
   rosterId: number | null;
   myRosterId: number | null;
 }) {
-  const router = useRouter();
   const [view, setView] = useState<WireView>("top");
   const entries = data ? entriesFor(data, view) : [];
   return (
@@ -109,17 +108,15 @@ export default function WaiverWirePanel({
         <p className="note">The waiver wire could not be loaded. Try again in a moment.</p>
       )}
 
-      <form method="get" action={leaguePath(leagueId)} className="inline-form">
+      <AutoSubmitForm
+        action={leaguePath(leagueId)}
+        className="inline-form"
+        submitLabel="Show waiver wire"
+      >
         <input type="hidden" name="tab" value="waiver" />
         <label>
           Team{" "}
-          <select
-            name="roster"
-            defaultValue={rosterId === null ? "" : String(rosterId)}
-            onChange={(event) =>
-              router.push(leaguePath(leagueId, `?tab=waiver&roster=${event.target.value}`))
-            }
-          >
+          <select name="roster" defaultValue={rosterId === null ? "" : String(rosterId)}>
             {rosters.map((r) => (
               <option key={r.roster_id} value={r.roster_id}>
                 {r.team}
@@ -128,12 +125,7 @@ export default function WaiverWirePanel({
             ))}
           </select>
         </label>
-        <noscript>
-          <button type="submit" className="btn">
-            Show waiver wire
-          </button>
-        </noscript>
-      </form>
+      </AutoSubmitForm>
 
       {data && data.entries.length > 0 && (
         <FilterChips label="Position" options={VIEWS} value={view} onChange={setView} />

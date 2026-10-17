@@ -180,10 +180,12 @@ describe("AlertsPanel", () => {
 
   it("shows the chosen team's alerts as soon as it is picked, with no button", async () => {
     const user = userEvent.setup();
+    const submit = vi.fn();
+    HTMLFormElement.prototype.requestSubmit = submit;
     render(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
     expect(screen.queryByRole("button", { name: "Show alerts" })).not.toBeInTheDocument();
     await user.selectOptions(screen.getByRole("combobox", { name: /Team/ }), "2");
-    expect(push).toHaveBeenCalledWith("/league/1?tab=alerts&roster=2");
+    expect(submit).toHaveBeenCalled();
   });
 
   it("explains an empty feed", () => {

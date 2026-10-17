@@ -1,8 +1,8 @@
+import AutoSubmitForm from "./AutoSubmitForm";
 import { TEAM_CODES, TEAM_NAMES } from "../lib/depth";
 
 /**
- * Picks an NFL team with a plain form (it works without JavaScript): choosing a team and pressing
- * the button loads ?tab=teams&team=CODE.
+ * Picks an NFL team with a plain form (it works without JavaScript): choosing a team loads ?tab=teams&team=CODE.
  */
 export default function TeamPicker({
   leagueId,
@@ -12,7 +12,11 @@ export default function TeamPicker({
   selected: string | null;
 }) {
   return (
-    <form className="team-picker" method="get" action={`/league/${encodeURIComponent(leagueId)}`}>
+    <AutoSubmitForm
+      className="team-picker"
+      action={`/league/${encodeURIComponent(leagueId)}`}
+      submitLabel="Show depth chart"
+    >
       <input type="hidden" name="tab" value="teams" />
       <label>
         <span className="team-picker-label">NFL team</span>
@@ -27,9 +31,6 @@ export default function TeamPicker({
           ))}
         </select>
       </label>
-      <button type="submit" className="btn btn-quiet">
-        Show depth chart
-      </button>
-    </form>
+    </AutoSubmitForm>
   );
 }

@@ -41,6 +41,41 @@
   --font-body: var(--font-body-face), system-ui, sans-serif;
   --radius: 14px;
   --radius-sm: 10px;
+  --disclosure-pad: 0.6rem 0.8rem; /* the bar of a card that opens: game card, matchup lineups */
+
+  /* each NFL team's main colour; tints the player pop-up header and top-performer cards only */
+  --team-ari: #97233f;
+  --team-atl: #a71930;
+  --team-bal: #5a3fc0;
+  --team-buf: #00338d;
+  --team-car: #0085ca;
+  --team-chi: #c83803;
+  --team-cin: #fb4f14;
+  --team-cle: #ff3c00;
+  --team-dal: #003594;
+  --team-den: #fb4f14;
+  --team-det: #0076b6;
+  --team-gb: #2f6b57;
+  --team-hou: #a71930;
+  --team-ind: #1f5fa8;
+  --team-jax: #006778;
+  --team-kc: #e31837;
+  --team-lv: #a5acaf;
+  --team-lac: #0080c6;
+  --team-lar: #2a5db0;
+  --team-mia: #008e97;
+  --team-min: #4f2683;
+  --team-ne: #1c4a8a;
+  --team-no: #d3bc8d;
+  --team-nyg: #2a4ab5;
+  --team-nyj: #125740;
+  --team-phi: #004c54;
+  --team-pit: #ffb612;
+  --team-sf: #aa0000;
+  --team-sea: #69be28;
+  --team-tb: #d50a0a;
+  --team-ten: #4b92db;
+  --team-was: #773141;
 }
 
 @media (prefers-color-scheme: light) {

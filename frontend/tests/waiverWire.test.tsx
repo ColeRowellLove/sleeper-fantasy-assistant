@@ -149,10 +149,11 @@ describe("waiver wire", () => {
 
   it("shows the chosen team's wire as soon as it is picked", async () => {
     const user = userEvent.setup();
-    push.mockClear();
+    const submit = vi.fn();
+    HTMLFormElement.prototype.requestSubmit = submit;
     render(panel(data));
     await user.selectOptions(screen.getByRole("combobox", { name: /Team/ }), "2");
-    expect(push).toHaveBeenCalledWith("/league/1?tab=waiver&roster=2");
+    expect(submit).toHaveBeenCalled();
   });
 
   it("reaches the team picker and the position chips with the keyboard", async () => {

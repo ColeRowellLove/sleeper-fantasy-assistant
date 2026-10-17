@@ -469,25 +469,6 @@
   font-weight: 600;
 }
 
-.wire-why,
-.alert-more {
-  margin: 0.35rem 0 0;
-}
-
-.wire-why summary,
-.alert-more summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 0.25rem 0;
-}
-
-.wire-why[open] > summary,
-.alert-more[open] > summary {
-  margin-bottom: 0.25rem;
-}
-
 /* Start/Sit: one row per player, the checkbox beside his face, name, matchup and projection */
 .pick-rows {
   display: grid;

@@ -72,7 +72,7 @@
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 0.6rem 0.9rem;
+  padding: var(--disclosure-pad);
   text-transform: uppercase;
 }
 
@@ -786,7 +786,7 @@ table.h2h {
   display: grid;
   gap: 0.5rem 0.9rem;
   grid-template-columns: minmax(0, 1fr) auto;
-  padding: 0.6rem 0.8rem;
+  padding: var(--disclosure-pad);
 }
 
 .game-team {
