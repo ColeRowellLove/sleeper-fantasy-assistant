@@ -1,4 +1,5 @@
 import type { GameConditions, GameInfo, MatchupRank } from "./api";
+import { localDateTime } from "./time";
 
 /** "Sun, Sep 20" from an ISO date. Always UTC so server and browser render the same text. */
 export function formatGameDate(date: string | null): string | null {
@@ -18,17 +19,7 @@ export function formatGameDate(date: string | null): string | null {
  * server does not know the viewer's zone, so server output would differ from the first client render.
  */
 export function formatKickoff(kickoff: string | null | undefined): string | null {
-  if (!kickoff) return null;
-  const parsed = new Date(kickoff);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
+  return localDateTime(kickoff) || null;
 }
 
 export interface GameLabel {
