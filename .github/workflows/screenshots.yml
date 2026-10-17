@@ -36,7 +36,7 @@ jobs:
           uv run alembic upgrade head
           uv run python -m sleeper_assistant.sample_league
           nohup uv run uvicorn sleeper_assistant.api:app --port 8000 > api.log 2>&1 &
-          for i in $(seq 1 30); do curl -fs localhost:8000/health && exit 0; sleep 1; done
+          for _ in $(seq 1 30); do curl -fs localhost:8000/health && exit 0; sleep 1; done
           cat api.log; exit 1
       - name: Build the web app
         working-directory: frontend
@@ -80,7 +80,13 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
-        run: scripts/post-pr-screenshots.sh shots "$PR"
+        run: |
+          # the script comes from the base branch, so the first PR that adds it has none yet
+          if [ -x scripts/post-pr-screenshots.sh ]; then
+            scripts/post-pr-screenshots.sh shots "$PR"
+          else
+            echo "::notice::scripts/post-pr-screenshots.sh is not on the base branch yet; nothing posted"
+          fi
 
   cleanup:
     name: Remove screenshot branch
