@@ -17,10 +17,10 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.dashboard import (
     GameInfo,
     InjuryInfo,
-    _injury,
-    _team_names,
     current_week,
     games_for_week,
+    injury_info,
+    team_names,
 )
 from sleeper_assistant.db import (
     LeagueRow,
@@ -62,7 +62,7 @@ class PlayersResponse(BaseModel):
     players: list[PlayerListing]
 
 
-def _name(player: PlayerRow) -> str:
+def player_name(player: PlayerRow) -> str:
     """Sleeper sometimes has no full name (team defenses, brand-new players): never show a blank."""
     if player.full_name:
         return player.full_name
@@ -102,7 +102,7 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team_name, _ = _team_names(session, rosters)
+    team_name, _ = team_names(session, rosters)
     owner: dict[str, int] = {}
     for roster in rosters:
         for pid in [*roster.players, *roster.reserve, *roster.taxi]:
@@ -140,10 +140,10 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
         listings.append(
             PlayerListing(
                 player_id=p.player_id,
-                name=_name(p),
+                name=player_name(p),
                 position=p.position or "",
                 team=p.team,
-                injury=_injury({p.player_id: p}, p.player_id),
+                injury=injury_info({p.player_id: p}, p.player_id),
                 game=games.get(p.team) if p.team else None,
                 owner_roster_id=roster_id,
                 owner_team=team_name.get(roster_id) if roster_id is not None else None,

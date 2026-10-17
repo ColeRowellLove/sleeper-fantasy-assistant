@@ -189,9 +189,7 @@ def starter_slots(league: LeagueRow) -> list[str]:
     return [p for p in league.roster_positions if p not in NON_STARTER_SLOTS]
 
 
-def _team_names(
-    session: Session, rosters: list[RosterRow]
-) -> tuple[dict[int, str], dict[int, str]]:
+def team_names(session: Session, rosters: list[RosterRow]) -> tuple[dict[int, str], dict[int, str]]:
     """(roster_id -> team name, roster_id -> manager's username). The team name is what the
     manager chose in Sleeper, falling back to their username."""
     owner_ids = {r.owner_id for r in rosters if r.owner_id}
@@ -225,7 +223,7 @@ def _players(session: Session, player_ids: set[str]) -> dict[str, PlayerRow]:
 _HIDDEN_INJURY_STATUSES = {"", "NA"}
 
 
-def _injury(players: dict[str, PlayerRow], pid: str) -> InjuryInfo | None:
+def injury_info(players: dict[str, PlayerRow], pid: str) -> InjuryInfo | None:
     p = players.get(pid)
     if p is None or not p.injury_status or p.injury_status in _HIDDEN_INJURY_STATUSES:
         return None
@@ -340,7 +338,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team, manager = _team_names(session, rosters)
+    team, manager = team_names(session, rosters)
     owners = {r.roster_id: r.owner_id for r in rosters}
     players = _players(session, {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]})
     slots = starter_slots(league)
@@ -495,7 +493,7 @@ def _roster_players(  # noqa: PLR0913, PLR0917
             status=status,
             slot=slot,
             game=game,
-            injury=_injury(players, pid),
+            injury=injury_info(players, pid),
             projected=_live(pregame, scored, game),
             projected_pregame=pregame,
             points=scored,
@@ -541,7 +539,7 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team, _ = _team_names(session, rosters)
+    team, _ = team_names(session, rosters)
     avatars = team_avatars(session, rosters)
     owners = {r.roster_id: r.owner_id for r in rosters}
     players = _players(session, {pid for m in week_rows for pid in [*m.starters, *m.players]})
@@ -677,7 +675,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 team=nfl_team,
                 points=None if value is None else float(value),
                 game=game,
-                injury=_injury(players, pid),
+                injury=injury_info(players, pid),
                 projected=_live(pregame, None if value is None else float(value), game),
                 projected_pregame=pregame,
                 projection_missing=pid not in projected,
@@ -703,7 +701,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 team=nfl_team,
                 points=pts(pid),
                 game=game,
-                injury=_injury(players, pid),
+                injury=injury_info(players, pid),
                 projected=_live(pregame, pts(pid), game),
                 projected_pregame=pregame,
                 projection_missing=pid not in projected,
