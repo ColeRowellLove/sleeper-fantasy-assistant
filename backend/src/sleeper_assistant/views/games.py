@@ -8,6 +8,9 @@ highlights their players, so every player names the roster that owns them.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
+
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -76,6 +79,136 @@ class Games(BaseModel):
     games: list[GameCard]  # kickoff order
 
 
+def _actual_lines(session: Session, season: str, week: int) -> dict[str, dict[str, float]]:
+    """Each player's stored stat line for the week: finite numbers, no did-not-play rows."""
+    # stored lines come from Sleeper's JSON: keep only the finite numbers (a null is not fatal)
+    cleaned = {
+        row.player_id: finite_numbers(row.stats)
+        for row in session.scalars(
+            select(PlayerWeekStatsRow).where(
+                PlayerWeekStatsRow.season == season, PlayerWeekStatsRow.week == week
+            )
+        )
+    }
+    return {pid: line for pid, line in cleaned.items() if line.get("gp") is None or line["gp"] > 0}
+
+
+def _projected_lines(
+    session: Session, season: str, week: int, wanted: set[str]
+) -> dict[str, dict[str, float]]:
+    if not wanted:
+        return {}
+    return {
+        row.player_id: finite_numbers(row.stats)
+        for row in session.scalars(
+            select(PlayerProjectionRow).where(
+                PlayerProjectionRow.season == season,
+                PlayerProjectionRow.week == week,
+                PlayerProjectionRow.player_id.in_(wanted),
+            )
+        )
+    }
+
+
+def _top_projected(
+    candidates: list[PlayerRow],
+    upcoming: set[str],
+    scored: Mapping[str, float],
+    owner: Mapping[str, int],
+) -> set[str]:
+    """The best-projected unrostered players of each position, for each team that has not played."""
+    groups: dict[tuple[str, str], list[PlayerRow]] = {}
+    for p in candidates:  # one pass: (team, position) -> the unrostered players with a projection
+        if p.team in upcoming and p.player_id in scored and p.player_id not in owner:
+            groups.setdefault((p.team, p.position or ""), []).append(p)
+    top: set[str] = set()
+    for (_team, position), members in groups.items():
+        members.sort(key=lambda p: (-scored[p.player_id], p.player_id))
+        top |= {p.player_id for p in members[: PROJECTED_PER_POSITION.get(position, 0)]}
+    return top
+
+
+@dataclass
+class _Lines:
+    """What each player did (or is projected to do) in the week's games."""
+
+    actual: Mapping[str, dict[str, float]]
+    projected: Mapping[str, dict[str, float]]
+    scored: Mapping[str, float]  # projected points
+    upcoming: set[str]  # teams whose game has not started
+
+
+def _game_player(
+    p: PlayerRow,
+    lines: _Lines,
+    owner: Mapping[str, int],
+    team_name: Mapping[int, str],
+    scoring: Mapping[str, float],
+) -> GamePlayer:
+    line = lines.actual.get(p.player_id)
+    # a projection stands in only before the game: after kickoff no line means he did not play
+    projected_line = (
+        lines.projected.get(p.player_id) if not line and p.team in lines.upcoming else None
+    )
+    roster_id = owner.get(p.player_id)
+    shown_stats = line or projected_line or {}
+    return GamePlayer(
+        player_id=p.player_id,
+        name=player_name(p),
+        position=p.position or "",
+        team=p.team or "",
+        injury=injury_info({p.player_id: p}, p.player_id),
+        owner_roster_id=roster_id,
+        owner_team=team_name.get(roster_id) if roster_id is not None else None,
+        points=(
+            score_stats(line, scoring)
+            if line
+            else (lines.scored.get(p.player_id) if projected_line else None)
+        ),
+        stat_line=stat_line(p.position, line, scoring) if line else None,
+        stats={k: shown_stats[k] for k in STAT_KEYS if k in shown_stats},
+        projected=line is None and projected_line is not None,
+    )
+
+
+def _players_by_team(
+    session: Session,
+    league: LeagueRow,
+    week: int,
+    teams: set[str],
+    info: Mapping[str, GameInfo],
+) -> dict[str, list[GamePlayer]]:
+    rosters = league_rosters(session, league.league_id)
+    team_name, _ = team_names(session, rosters)
+    owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    actual = _actual_lines(session, league.season, week)
+    upcoming = {t for t in teams if t in info and info[t].state == "upcoming"}
+    candidates = list(
+        session.scalars(
+            select(PlayerRow).where(
+                PlayerRow.team.in_(teams),
+                PlayerRow.position.in_(FANTASY_POSITIONS),
+            )
+        )
+    )
+    # projections stand in only before kickoff: load and score just the players of upcoming games
+    wanted = {p.player_id for p in candidates if p.team in upcoming}
+    projected = _projected_lines(session, league.season, week, wanted)
+    scored = {
+        pid: score_projection(line, league.scoring_settings) for pid, line in projected.items()
+    }
+    lines = _Lines(actual, projected, scored, upcoming)
+    top = _top_projected(candidates, upcoming, scored, owner)
+    by_team: dict[str, list[GamePlayer]] = {t: [] for t in teams}
+    for p in candidates:
+        if p.team is None:
+            continue
+        if p.player_id not in actual and p.player_id not in owner and p.player_id not in top:
+            continue
+        by_team[p.team].append(_game_player(p, lines, owner, team_name, league.scoring_settings))
+    return by_team
+
+
 def build_games(session: Session, league: LeagueRow, week: int | None = None) -> Games:
     season = league.season
     now = current_week(session, season)
@@ -91,91 +224,7 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
     )
     info = games_for_week(session, season, chosen)
     teams = {t for g in games for t in (g.home, g.away)}
-
-    rosters = league_rosters(session, league.league_id)
-    team_name, _ = team_names(session, rosters)
-    owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
-
-    # stored lines come from Sleeper's JSON: keep only the finite numbers (a null is not fatal)
-    cleaned = {
-        row.player_id: finite_numbers(row.stats)
-        for row in session.scalars(
-            select(PlayerWeekStatsRow).where(
-                PlayerWeekStatsRow.season == season, PlayerWeekStatsRow.week == chosen
-            )
-        )
-    }
-    stats = {pid: line for pid, line in cleaned.items() if line.get("gp") is None or line["gp"] > 0}
-    upcoming = {t for t in teams if t in info and info[t].state == "upcoming"}
-    candidates = list(
-        session.scalars(
-            select(PlayerRow).where(
-                PlayerRow.team.in_(teams),
-                PlayerRow.position.in_(FANTASY_POSITIONS),
-            )
-        )
-    )
-    by_team: dict[str, list[GamePlayer]] = {t: [] for t in teams}
-    # projections stand in only before kickoff: load and score just the players of upcoming games
-    wanted = {p.player_id for p in candidates if p.team in upcoming}
-    projections = (
-        {
-            row.player_id: finite_numbers(row.stats)
-            for row in session.scalars(
-                select(PlayerProjectionRow).where(
-                    PlayerProjectionRow.season == season,
-                    PlayerProjectionRow.week == chosen,
-                    PlayerProjectionRow.player_id.in_(wanted),
-                )
-            )
-        }
-        if wanted
-        else {}
-    )
-    scored = {
-        pid: score_projection(line, league.scoring_settings) for pid, line in projections.items()
-    }
-    groups: dict[tuple[str, str], list[PlayerRow]] = {}
-    for p in candidates:  # one pass: (team, position) -> the unrostered players with a projection
-        if p.team in upcoming and p.player_id in scored and p.player_id not in owner:
-            groups.setdefault((p.team, p.position or ""), []).append(p)
-    top_projected: set[str] = set()
-    for (_team, position), members in groups.items():
-        members.sort(key=lambda p: (-scored[p.player_id], p.player_id))
-        top_projected |= {p.player_id for p in members[: PROJECTED_PER_POSITION.get(position, 0)]}
-    for p in candidates:
-        if p.team is None:
-            continue
-        if (
-            p.player_id not in stats
-            and p.player_id not in owner
-            and p.player_id not in top_projected
-        ):
-            continue
-        line = stats.get(p.player_id)
-        # a projection stands in only before the game: after kickoff no line means he did not play
-        projected_line = projections.get(p.player_id) if not line and p.team in upcoming else None
-        roster_id = owner.get(p.player_id)
-        shown_stats = line or projected_line or {}
-        by_team[p.team].append(
-            GamePlayer(
-                player_id=p.player_id,
-                name=player_name(p),
-                position=p.position or "",
-                team=p.team,
-                injury=injury_info({p.player_id: p}, p.player_id),
-                owner_roster_id=roster_id,
-                owner_team=team_name.get(roster_id) if roster_id is not None else None,
-                points=(
-                    score_stats(line, league.scoring_settings)
-                    if line
-                    else (scored.get(p.player_id) if projected_line else None)
-                ),
-                stat_line=stat_line(p.position, line, league.scoring_settings) if line else None,
-                stats={k: shown_stats[k] for k in STAT_KEYS if k in shown_stats},
-                projected=line is None and projected_line is not None,
-            )
-        )
+    by_team = _players_by_team(session, league, chosen, teams, info)
 
     cards: list[GameCard] = []
     for g in games:
