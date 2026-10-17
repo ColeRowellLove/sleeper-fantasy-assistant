@@ -62,9 +62,13 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
 ```bash
 make setup     # once: install backend and frontend dependencies
 make dev       # migrates ./backend/dev.db, then runs the API (:8000) and the web app (:3000)
+SLEEPER_USERNAME=yourname make dev   # also loads every league of that user on boot
 ```
 
-For a first look without Sleeper, run `make preview-data` once: it loads a made-up league (id 100001,
+On boot, `SLEEPER_USERNAME` (every league of that user) or `SLEEPER_LEAGUE_ID` (one league) loads the
+league, Sleeper's player list and the schedule, then runs one worker batch for projections, rankings
+and depth charts, so every page has data without connecting by hand. With neither set, an empty
+database gets the made-up sample league. For a first look without Sleeper, `make preview-data` also loads it: it loads a made-up league (id 100001,
 open http://localhost:3000/league/100001). Or open http://localhost:3000 and connect your Sleeper username once to load a league (the first
 connect also loads Sleeper's player list). The worker is not needed for a first look; run
 `uv run python -m sleeper_assistant.worker --once` in `backend/` to fetch projections and rankings.
