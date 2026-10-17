@@ -1,10 +1,11 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { FavouriteProvider } from "../components/FavouriteProvider";
 import NewsPanel from "../components/NewsPanel";
 import type { NewsData, NewsItem } from "../lib/api";
-import { newsFlags, sortNews, sourceNote, topicLabels } from "../lib/news";
+import { filterNews, newsFlags, sortNews, sourceNote, topicLabels } from "../lib/news";
 import { expectNoA11yViolations } from "./a11y";
 
 const item = (over: Partial<NewsItem>): NewsItem => ({
@@ -79,5 +80,34 @@ describe("NewsPanel", () => {
   it("says so when there is no news yet", () => {
     render(<NewsPanel data={{ items: [], sources: [] }} myRosterId={null} />);
     expect(screen.getByText(/No headlines have been collected/)).toBeInTheDocument();
+  });
+});
+
+describe("news filters", () => {
+  it("keeps only headlines about your players or your favourite team", () => {
+    expect(filterNews(data.items, "all", 2, "PHI")).toHaveLength(3);
+    expect(filterNews(data.items, "mine", 2, "PHI").map((i) => i.id)).toEqual(["b"]);
+    expect(filterNews(data.items, "favourite", 2, "PHI").map((i) => i.id)).toEqual(["c"]);
+    expect(filterNews(data.items, "mine", null, null)).toEqual([]);
+  });
+
+  it("buttons switch the list and say what is missing", async () => {
+    const user = userEvent.setup();
+    render(
+      <FavouriteProvider favourite={null}>
+        <NewsPanel data={data} myRosterId={2} />
+      </FavouriteProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "My players" }));
+    expect(screen.getByRole("button", { name: "My players" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getAllByRole("listitem").some((li) => li.textContent?.includes("Daniels"))).toBe(
+      true,
+    );
+    expect(screen.queryByText("Eagles news")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Favourite team" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Pick a favourite NFL team");
   });
 });
