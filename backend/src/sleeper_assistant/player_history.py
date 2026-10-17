@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import LeagueRow, RosterRow, SleeperUserRow, TransactionRow
+from sleeper_assistant.db import LeagueRow, SleeperUserRow, TransactionRow
+from sleeper_assistant.rosters import league_rosters
 
 Source = Literal["waivers", "free_agency", "trade", "commissioner"]
 _SOURCES: dict[str, Source] = {
@@ -37,10 +38,7 @@ def transaction_date(created_ms: int | None) -> str | None:
 
 def build_history(session: Session, league: LeagueRow, player_id: str) -> list[HistoryEvent]:
     """The player's completed adds and drops in this league, newest first (at most 30)."""
-    owner_of = {
-        r.roster_id: r.owner_id
-        for r in session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    }
+    owner_of = {r.roster_id: r.owner_id for r in league_rosters(session, league.league_id)}
     names = {
         u.user_id: u.username or u.display_name
         for u in session.scalars(

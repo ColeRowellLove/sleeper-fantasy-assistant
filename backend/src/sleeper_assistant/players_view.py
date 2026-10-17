@@ -21,11 +21,12 @@ from sleeper_assistant.db import (
     PlayerRow,
     PlayerTrendRow,
     PlayerWeekStatsRow,
-    RosterRow,
 )
 from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.projections import projected_points, score_stats
 from sleeper_assistant.roster_players import InjuryInfo, injury_info
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_names import team_names
 
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
@@ -57,15 +58,6 @@ class PlayersResponse(BaseModel):
     players: list[PlayerListing]
 
 
-def player_name(player: PlayerRow) -> str:
-    """Sleeper sometimes has no full name (team defenses, brand-new players): never show a blank."""
-    if player.full_name:
-        return player.full_name
-    if player.position == "DEF" and player.team:
-        return f"{player.team} defense"
-    return player.player_id
-
-
 def _season_totals(session: Session, season: str, scoring: dict[str, float]) -> dict[str, float]:
     totals: dict[str, float] = defaultdict(float)
     for row in session.scalars(
@@ -94,9 +86,7 @@ def _last_week_points(
 
 
 def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     team_name, _ = team_names(session, rosters)
     owner: dict[str, int] = {}
     for roster in rosters:

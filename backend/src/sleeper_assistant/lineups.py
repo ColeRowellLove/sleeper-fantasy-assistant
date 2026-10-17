@@ -12,7 +12,6 @@ from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
     PlayerRow,
-    RosterRow,
 )
 from sleeper_assistant.lineup_slots import starter_slots
 from sleeper_assistant.matchup_rank import (
@@ -33,6 +32,7 @@ from sleeper_assistant.roster_players import (
     projection_now,
     week_lines,
 )
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_avatar import team_avatars
 from sleeper_assistant.team_names import team_names
 from sleeper_assistant.win_probability import StarterState, matchup_chances
@@ -108,9 +108,7 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
         return Lineups(week=None, current_week=current, weeks=weeks, matchups=[])
 
     week_rows = [m for m in rows if m.week == week]
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     team, _ = team_names(session, rosters)
     avatars = team_avatars(session, rosters)
     owners = {r.roster_id: r.owner_id for r in rosters}

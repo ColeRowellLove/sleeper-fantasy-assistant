@@ -10,6 +10,11 @@ A detector's dedupe key must name the *occurrence*, not just the subject:
 ``injury_out:<player>`` would never alert that team about him a second time. Old alerts are pruned
 after ``KEEP``, so keys only need to be unique within that time.
 
+A detector module follows the same pattern as the others: a ``KIND`` constant used for the
+registered name, the alert's ``kind`` and its key (``alert_key(KIND, ...)``); the window check
+``lineup_week`` when the alert is only useful close to kickoff; ``player_tag`` for how a title
+names a player; and a ``why`` that is one line with the numbers behind it (see ``alert_helpers``).
+
 How an alert reaches a person outside the app (email, push, SMS) is a separate step on top of the
 stored alerts; this module only decides *what* is worth saying and says it once.
 """

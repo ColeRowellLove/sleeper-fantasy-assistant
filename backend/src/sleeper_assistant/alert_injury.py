@@ -21,14 +21,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import alert_advice
+from sleeper_assistant.alert_helpers import alert_key, player_tag
 from sleeper_assistant.alerts import NewAlert, needs_advice, register, register_pre_run
 from sleeper_assistant.db import LeagueRow, PlayerInjuryRow, PlayerRow, RosterRow, as_utc
 from sleeper_assistant.injury_status import UNLIKELY_TO_PLAY
 from sleeper_assistant.lineup_slots import eligible_positions, starter_slots
 from sleeper_assistant.nfl_games import current_week, games_for_week
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.projections import projected_points
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_depth import build_team_depth
 
+KIND = "injury_out"
 OUT = "Out"
 RECENT_RULING = timedelta(hours=48)  # a ruling older than this is no longer news
 _NO_STATUS = {"", "NA"}  # Sleeper's markers for "nothing to report"
@@ -187,7 +191,7 @@ def suggested_switch(
     if best is None:
         return None, False  # candidates exist but none has a projection: say nothing, not a guess
     return (
-        f"Best replacement on your bench: {best.full_name or best.player_id} "
+        f"Best replacement on your bench: {player_name(best)} "
         f"({best.position}, projected {projections[best.player_id]:.1f}).",
         False,
     )
@@ -237,16 +241,14 @@ def _all(roster: RosterRow) -> list[str]:
     return [*roster.players, *roster.reserve, *roster.taxi]
 
 
-@register("injury_out")
+@register(KIND)
 def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list[NewAlert]:
     news = _ruled_out(session, now)
     if not news:
         return []
     week = current_week(session, league.season)
     slots = starter_slots(league.roster_positions)
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     # only players some team in this league has matter: no depth chart work for the rest
     rostered = [
         (injury, player, [r for r in rosters if player.player_id in _all(r)])
@@ -270,7 +272,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
     taken = {pid for r in rosters for pid in _all(r)}
     raised: list[NewAlert] = []
     for injury, player, owners in rostered:
-        name = player.full_name or player.player_id
+        name = player_name(player)
         part = (
             f" with a {player.injury_body_part.lower()} injury" if player.injury_body_part else ""
         )
@@ -301,7 +303,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                 sentences.append("He is on your bench.")
             if nu and player.team and not said_next_up:
                 sentences.append(_where_is_next_up(nu, player.team, roster))
-            key = f"injury_out:{player.player_id}:{ruled_at}"
+            key = alert_key(KIND, player.player_id, ruled_at)
             advice = None
             if (
                 starts
@@ -316,9 +318,9 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
             raised.append(
                 NewAlert(
                     roster_id=roster.roster_id,
-                    kind="injury_out",
+                    kind=KIND,
                     dedupe_key=key,
-                    title=f"{name} ({player.position}, {player.team}) was ruled out",
+                    title=f"{player_tag(player)} was ruled out",
                     why=" ".join(sentences),
                     player_id=player.player_id,
                     data={

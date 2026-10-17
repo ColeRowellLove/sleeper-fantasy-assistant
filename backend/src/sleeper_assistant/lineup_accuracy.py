@@ -9,10 +9,10 @@ shows; a team whose roster carries no potential points shows no accuracy rather 
 from __future__ import annotations
 
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import LeagueRow, RosterRow
+from sleeper_assistant.db import LeagueRow
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_names import team_names
 
 
@@ -31,9 +31,7 @@ class LineupAccuracy(BaseModel):
 
 
 def build_lineup_accuracy(session: Session, league: LeagueRow) -> LineupAccuracy:
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     team, _ = team_names(session, rosters)
     teams: list[TeamAccuracy] = []
     for roster in rosters:

@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import alert_advice
+from sleeper_assistant.alert_helpers import alert_key
 from sleeper_assistant.alerts import NewAlert, needs_advice, register
 from sleeper_assistant.db import (
     LeagueRow,
@@ -43,22 +44,18 @@ from sleeper_assistant.matchup_rank import (
     matchup_rank,
 )
 from sleeper_assistant.nfl_games import games_for_week
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.rankings import recent_form
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_depth import build_team_depth
 from sleeper_assistant.waiver_calendar import coming_week, day_name, waiver_date_if_tomorrow
 
+KIND = "waiver_targets"
 TARGETS = 5  # how many pickups an alert lists
 ALERT_CAPS = {"QB": 2, "TE": 2, "K": 1, "DEF": 1}  # one slot each: do not list four defenses
 MIN_GAIN = 1.0  # projected points a pickup must add to be worth a mention
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
-
-
-def display_name(p: PlayerRow) -> str:
-    """A player's name for people: a team defense is "CLE defense", not just "CLE"."""
-    if p.position == "DEF" and p.team:
-        return f"{p.team} defense"
-    return p.full_name or p.player_id
 
 
 def capped(picks: list[Pickup], caps: dict[str, int], limit: int | None = None) -> list[Pickup]:
@@ -185,9 +182,7 @@ class WaiverBoard:
 
     def __init__(self, session: Session, league: LeagueRow, week: int) -> None:
         self.session, self.league, self.week = session, league, week
-        self.rosters = list(
-            session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-        )
+        self.rosters = league_rosters(session, league.league_id)
         taken = {pid for r in self.rosters for pid in [*r.players, *r.reserve, *r.taxi]}
         projected_ids = set(
             session.scalars(
@@ -290,7 +285,7 @@ class WaiverBoard:
             if holder is None:
                 over = f"at an open {slot} spot"
             else:
-                over = f"over {display_name(self.players[holder])} at {slot}"
+                over = f"over {player_name(self.players[holder])} at {slot}"
             trend = self.trends.get(p.player_id)
             found.append(
                 Pickup(
@@ -304,7 +299,7 @@ class WaiverBoard:
                     None,
                     None,
                     p.injury_status or None,
-                    display_name(self.players[holder]) if holder else None,
+                    player_name(self.players[holder]) if holder else None,
                 )
             )
         found.sort(key=lambda x: (-x.gain, -x.projected, x.player.player_id))
@@ -328,7 +323,7 @@ class WaiverBoard:
         )
 
 
-@register("waiver_targets")
+@register(KIND)
 def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) -> list[NewAlert]:
     waiver = waiver_date_if_tomorrow(league, now)
     week = coming_week(session, league.season, waiver) if waiver else None
@@ -349,7 +344,7 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
         targets: list[dict[str, object]] = []
         for pick in top:
             p, pid = pick.player, pick.player.player_id
-            name = display_name(p)
+            name = player_name(p)
             detail = (
                 f"({p.position}, {p.team}): projected {pick.projected:.1f}, "
                 f"+{pick.gain:.1f} {pick.over}."
@@ -371,7 +366,7 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
                     "line": f"{name} {detail}",
                 }
             )
-        key = f"waiver_targets:{league.league_id}:{waiver.isoformat()}"
+        key = alert_key(KIND, league.league_id, waiver.isoformat())
         advice = _advice(
             session,
             league,
@@ -388,7 +383,7 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
         raised.append(
             NewAlert(
                 roster_id=roster.roster_id,
-                kind="waiver_targets",
+                kind=KIND,
                 dedupe_key=key,
                 title=f"Top waiver targets for {when}",
                 why=" ".join(f"{i}. {line}" for i, line in enumerate(lines, start=1)),

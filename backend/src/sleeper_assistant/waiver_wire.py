@@ -24,8 +24,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.alert_waiver import Pickup, WaiverBoard, capped, display_name
+from sleeper_assistant.alert_waiver import Pickup, WaiverBoard, capped
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerOwnershipRow, utcnow
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.waiver_calendar import EASTERN, coming_week, day_name, waiver_day
 
 # how many of each position the page lists (a lineup can use more receivers than kickers)
@@ -210,7 +211,7 @@ def build_waiver_wire(
         wire.entries.append(
             WireEntry(
                 player_id=p.player_id,
-                name=display_name(p),
+                name=player_name(p),
                 position=p.position,
                 team=p.team,
                 projected=round(pick.projected, 1),

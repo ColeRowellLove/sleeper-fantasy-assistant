@@ -21,12 +21,12 @@ from sleeper_assistant.db import (
     PlayerProjectionRow,
     PlayerRow,
     PlayerWeekStatsRow,
-    RosterRow,
 )
 from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
-from sleeper_assistant.players_view import player_name
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.projections import score_projection, score_stats
 from sleeper_assistant.roster_players import InjuryInfo, injury_info
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.stat_lines import stat_line
 from sleeper_assistant.team_depth import TeamRecord, team_record
 from sleeper_assistant.team_names import team_names
@@ -109,9 +109,7 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
     info = games_for_week(session, season, chosen)
     teams = {t for g in games for t in (g.home, g.away)}
 
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     team_name, _ = team_names(session, rosters)
     owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
 

@@ -8,36 +8,30 @@ cannot tell a bye from missing data.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.alert_helpers import alert_key, lineup_week, player_tag
 from sleeper_assistant.alert_injury import Spot, suggested_switch
 from sleeper_assistant.alerts import NewAlert, register
-from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow
+from sleeper_assistant.db import LeagueRow, PlayerRow
 from sleeper_assistant.lineup_slots import starter_slots
-from sleeper_assistant.nfl_games import current_week, games_for_week
+from sleeper_assistant.nfl_games import games_for_week
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.projections import projected_points
+from sleeper_assistant.rosters import league_rosters
 
+KIND = "bye_week"
 TELL_BEFORE = timedelta(days=3)  # said this long before the week's first game, not the week before
 
 
-def _first_game(session: Session, season: str, week: int) -> date | None:
-    days = session.scalars(
-        select(NflGameRow.game_date).where(NflGameRow.season == season, NflGameRow.week == week)
-    ).all()
-    return min((date.fromisoformat(d[:10]) for d in days if d), default=None)
-
-
-@register("bye_week")
+@register(KIND)
 def detect_bye_week(session: Session, league: LeagueRow, now: datetime) -> list[NewAlert]:
-    week = current_week(session, league.season)
+    week = lineup_week(session, league, now, TELL_BEFORE)
     if not week:
-        return []
-    first = _first_game(session, league.season, week)
-    if first is None or now.date() < first - TELL_BEFORE:
-        return []  # too early to be useful: the lineup is not being set yet
+        return []  # no current week, or too early: the lineup is not being set yet
     byes = frozenset(
         team for team, game in games_for_week(session, league.season, week).items()
         if game.state == "bye"
@@ -45,9 +39,7 @@ def detect_bye_week(session: Session, league: LeagueRow, now: datetime) -> list[
     if not byes:
         return []
     slots = starter_slots(league.roster_positions)
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     starting = {pid for r in rosters for pid in r.starters}
     players = {
         p.player_id: p
@@ -65,7 +57,7 @@ def detect_bye_week(session: Session, league: LeagueRow, now: datetime) -> list[
             if player is None:
                 continue
             slot = slots[index] if index < len(slots) else None
-            name = player.full_name or pid
+            name = player_name(player)
             sentences = [f"{name} ({player.team}) is on a bye in week {week}."]
             if slot:
                 sentences.append(f"He is in your {slot} spot and will score nothing.")
@@ -77,9 +69,9 @@ def detect_bye_week(session: Session, league: LeagueRow, now: datetime) -> list[
             raised.append(
                 NewAlert(
                     roster_id=roster.roster_id,
-                    kind="bye_week",
-                    dedupe_key=f"bye_week:{pid}:{league.season}:{week}",
-                    title=f"{name} ({player.position}, {player.team}) is on a bye in week {week}",
+                    kind=KIND,
+                    dedupe_key=alert_key(KIND, pid, league.season, week),
+                    title=f"{player_tag(player)} is on a bye in week {week}",
                     why=" ".join(sentences),
                     player_id=pid,
                     data={"week": week, "slot": slot},
