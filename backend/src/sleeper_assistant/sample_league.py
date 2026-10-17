@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import (
     AlertRow,
-    Base,
     LeagueRow,
     MatchupRow,
     NflGameRow,
@@ -29,6 +28,7 @@ from sleeper_assistant.db import (
     RosterRow,
     SleeperUserRow,
     UserLeagueRow,
+    database_url,
     make_engine,
     make_session_factory,
 )
@@ -282,7 +282,8 @@ def _schedule(session: Session, now: datetime) -> None:
     for week in range(1, CURRENT_WEEK + 3):
         games = pairs if week != CURRENT_WEEK else pairs[:3]
         for j, (home, away) in enumerate(games):
-            day = datetime(2026, 9, 10, tzinfo=UTC) + timedelta(days=7 * (week - 1) + j % 3 * 3)
+            # week 7 is this week, so a live or upcoming game is never months in the past
+            day = now + timedelta(days=7 * (week - CURRENT_WEEK) + j % 3 - 1)
             status = "complete" if week < CURRENT_WEEK else "pre_game"
             if week == CURRENT_WEEK:
                 status = ["complete", "in_game", "pre_game"][j]
@@ -421,8 +422,10 @@ def _alerts(session: Session, rosters: list[list[PlayerRow]], now: datetime) -> 
 
 
 def main() -> None:
-    engine = make_engine(None)
-    Base.metadata.create_all(engine)
+    url = database_url()
+    if not url.startswith("sqlite"):
+        raise SystemExit("the sample league only loads into a SQLite database, never a shared one")
+    engine = make_engine(url)
     with make_session_factory(engine)() as session:
         if session.get(LeagueRow, LEAGUE_ID) is not None:
             print(f"league {LEAGUE_ID} is already loaded")

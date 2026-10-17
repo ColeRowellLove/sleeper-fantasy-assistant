@@ -11,8 +11,7 @@ on:
     paths: ["frontend/**", "backend/**", ".github/workflows/screenshots.yml"]
 
 permissions:
-  contents: write # the pictures are pushed to a screenshots/pr-<n> branch
-  pull-requests: write # and linked in a comment
+  contents: read
 
 jobs:
   screenshots:
@@ -37,7 +36,8 @@ jobs:
           uv run alembic upgrade head
           uv run python -m sleeper_assistant.sample_league
           nohup uv run uvicorn sleeper_assistant.api:app --port 8000 > api.log 2>&1 &
-          for i in $(seq 1 30); do curl -fs localhost:8000/health && break; sleep 1; done
+          for i in $(seq 1 30); do curl -fs localhost:8000/health && exit 0; sleep 1; done
+          cat api.log; exit 1
       - name: Build the web app
         working-directory: frontend
         run: |
@@ -57,15 +57,35 @@ jobs:
             frontend/screenshots/*.png
             frontend/screenshots/layout-problems.txt
           retention-days: 14
-      - name: Post the pictures on the pull request
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository
-        env:
+
+  # A separate job holds the write token: it runs the script from the base branch, never code from
+  # the pull request, and only handles the pictures the first job made.
+  post:
+    name: Post screenshots
+    needs: screenshots
+    if: always() && needs.screenshots.result != 'skipped' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the pictures go to a screenshots/pr-<n> branch
+      pull-requests: write # and are linked in a comment
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+      - uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: frontend-screenshots
+          path: shots
+      - env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
-        run: scripts/post-pr-screenshots.sh frontend/screenshots "$PR"
+        run: scripts/post-pr-screenshots.sh shots "$PR"
 
   cleanup:
     name: Remove screenshot branch
+    permissions:
+      contents: write
     if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:

@@ -42,7 +42,11 @@ const apiUp = await fetch(`${API_URL}/health`).then(
   (r) => r.ok,
   () => false,
 );
-if (!apiUp) console.warn(`API not reachable at ${API_URL}: league pages are skipped`);
+if (!apiUp) {
+  // in CI a missing API must fail the run, or a green check would mean only the home page was looked at
+  if (process.env.CI) throw new Error(`API not reachable at ${API_URL}`);
+  console.warn(`API not reachable at ${API_URL}: league pages are skipped`);
+}
 
 // Fail loudly instead of screenshotting a stale server that is already on the port.
 const alreadyUp = await fetch(`http://localhost:${PORT}/`).then(
@@ -115,7 +119,8 @@ try {
       const page = await context.newPage();
       for (const p of PAGES) {
         if (p.league && !apiUp) continue;
-        await page.goto(`http://localhost:${PORT}${p.path}`, { waitUntil: "networkidle" });
+        await page.goto(`http://localhost:${PORT}${p.path}`);
+        await page.waitForTimeout(400); // images and the client render settle (live pages keep polling)
         const height = await page.evaluate(() => document.documentElement.scrollHeight);
         await page.screenshot({
           path: `screenshots/${p.name}-${vp.name}-${theme}.png`,

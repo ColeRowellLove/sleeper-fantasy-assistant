@@ -72,7 +72,8 @@ npm run dev
   shoots every page against the made-up sample league (`backend/src/sleeper_assistant/sample_league.py`)
   and posts the images on the PR; read the phone ones first. Locally: `make preview-data`, `make dev-api`,
   then `npm run screenshots` in `frontend/`. The run also checks the layout at phone width against
-  `frontend/scripts/layout-baseline.json`, a list of known problems that may only shrink. Tooling:
+  `frontend/scripts/layout-baseline.json`, a list of known problems that may only shrink; the job is
+  "Frontend screenshots" and must be a required check in branch protection to block merging. Tooling:
   `tests/a11y.ts` (`expectNoA11yViolations`) and Testing Library.
 - **Review before pushing.** Run the `code-review` skill on the branch diff before pushing code
   changes and fix its findings first. Also run `a11y-enforcer:a11y-check` for UI changes and

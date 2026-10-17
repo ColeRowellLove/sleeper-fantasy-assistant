@@ -44,7 +44,8 @@ for mobile in "$dir"/*-mobile-light.png; do
 done
 
 existing=$(gh api "repos/${repo}/issues/${pr}/comments" --paginate \
-  --jq ".[] | select(.body | startswith(\"${marker}\")) | .id" | head -n1)
+  --jq ".[] | select(.body | startswith(\"${marker}\")) | .id" || true)
+existing=${existing%%$'\n'*} # the first match, without a pipe that pipefail would trip on
 if [ -n "$existing" ]; then
   gh api -X PATCH "repos/${repo}/issues/comments/${existing}" -f body="$body" >/dev/null
 else
