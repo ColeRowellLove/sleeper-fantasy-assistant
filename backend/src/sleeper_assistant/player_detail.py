@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import GAME_COMPLETE
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -186,9 +187,9 @@ def _opponents(
     )
     return {
         g.week: (
-            (g.away, True, g.status == "complete")
+            (g.away, True, g.status == GAME_COMPLETE)
             if g.home == team
-            else (g.home, False, g.status == "complete")
+            else (g.home, False, g.status == GAME_COMPLETE)
         )
         for g in games
     }

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import FANTASY_POSITIONS
 from sleeper_assistant.db import (
     LeagueRow,
     PlayerOwnershipRow,
@@ -28,8 +29,6 @@ from sleeper_assistant.projections import projected_points, score_stats
 from sleeper_assistant.roster_players import InjuryInfo, injury_info
 from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_names import team_names
-
-POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
 
 
 class PlayerListing(BaseModel):
@@ -115,7 +114,7 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     candidates = session.scalars(
         select(PlayerRow).where(
             PlayerRow.player_id.in_(relevant),
-            PlayerRow.position.in_(POSITIONS),
+            PlayerRow.position.in_(FANTASY_POSITIONS),
         )
     )
     listings: list[PlayerListing] = []

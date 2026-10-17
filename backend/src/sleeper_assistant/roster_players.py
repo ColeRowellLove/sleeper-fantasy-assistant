@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import EMPTY_SLOT
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -23,10 +24,6 @@ from sleeper_assistant.matchup_rank import (
 )
 from sleeper_assistant.nfl_games import GameInfo
 from sleeper_assistant.stat_lines import projected_stat_lines, week_stat_lines
-
-# Sleeper marks an empty starter slot with the player id "0".
-EMPTY_SLOT = "0"
-
 
 Status = Literal["starter", "bench", "ir", "taxi"]
 

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import EMPTY_SLOT, FANTASY_POSITIONS
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow
 from sleeper_assistant.injury_status import WILL_NOT_PLAY
 from sleeper_assistant.lineup_slots import assign_lineup, starter_slots
@@ -32,7 +33,7 @@ from sleeper_assistant.roster_players import InjuryInfo, injury_info
 # designations that mean a player will not play
 CLOSE_CALL = 1.5  # projected points apart, or fewer, is a close call
 MAX_COMPARE = 6
-_POSITION_ORDER = {pos: i for i, pos in enumerate(("QB", "RB", "WR", "TE", "K", "DEF"))}
+_POSITION_ORDER = {pos: i for i, pos in enumerate(FANTASY_POSITIONS)}
 
 
 class Candidate(BaseModel):
@@ -230,7 +231,7 @@ def best_lineup(
     rankings = build_rankings(session, league, week)
     ranked = {p.player_id: p for p in rankings.players}
     parked = set(roster.reserve) | set(roster.taxi)
-    ids = [pid for pid in roster.players if pid not in parked and pid != "0"]
+    ids = [pid for pid in roster.players if pid not in parked and pid != EMPTY_SLOT]
     info = {
         p.player_id: p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))

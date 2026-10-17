@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import GAME_COMPLETE
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, TeamDepthChartRow
 from sleeper_assistant.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
 from sleeper_assistant.injury_status import WILL_NOT_PLAY
@@ -70,7 +71,7 @@ def team_record(session: Session, season: str, team: str) -> TeamRecord | None:
         session.scalars(
             select(NflGameRow).where(
                 NflGameRow.season == season,
-                NflGameRow.status == "complete",
+                NflGameRow.status == GAME_COMPLETE,
                 (NflGameRow.home == team) | (NflGameRow.away == team),
             )
         )

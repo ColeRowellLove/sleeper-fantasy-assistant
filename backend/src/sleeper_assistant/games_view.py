@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import FANTASY_POSITIONS
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -31,7 +32,6 @@ from sleeper_assistant.stat_lines import stat_line
 from sleeper_assistant.team_depth import TeamRecord, team_record
 from sleeper_assistant.team_names import team_names
 
-POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
 # the stat lines the page lays out, by Sleeper's own names; anything else is left out
 STAT_KEYS = (
     "pass_cmp", "pass_att", "pass_yd", "pass_td", "pass_int", "rush_att", "rush_yd", "rush_td",
@@ -128,7 +128,7 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
         session.scalars(
             select(PlayerRow).where(
                 PlayerRow.team.in_(teams),
-                PlayerRow.position.in_(POSITIONS),
+                PlayerRow.position.in_(FANTASY_POSITIONS),
             )
         )
     )

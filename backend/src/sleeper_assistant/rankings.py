@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import FANTASY_POSITIONS, FLEX_POSITIONS
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -41,8 +42,6 @@ from sleeper_assistant.roster_players import InjuryInfo, injury_info
 from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_names import team_names
 
-POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
-FLEX_POSITIONS = frozenset({"RB", "WR", "TE"})
 FORM_GAMES = 3
 SIGNALS = ("projection", "form", "start", "vegas")
 SIGNAL_LABELS = {
@@ -214,7 +213,7 @@ def build_rankings(
         p.player_id: p
         for p in session.scalars(
             select(PlayerRow).where(
-                PlayerRow.player_id.in_(candidates), PlayerRow.position.in_(POSITIONS)
+                PlayerRow.player_id.in_(candidates), PlayerRow.position.in_(FANTASY_POSITIONS)
             )
         )
     }

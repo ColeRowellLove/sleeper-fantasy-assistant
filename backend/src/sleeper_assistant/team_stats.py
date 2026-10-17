@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import GAME_COMPLETE
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
 from sleeper_assistant.stats_version import season_stats_version
 
@@ -105,7 +106,9 @@ def _build(session: Session, season: str) -> TeamStatTable:
     finished = {
         (team, g.week)
         for g in session.scalars(
-            select(NflGameRow).where(NflGameRow.season == season, NflGameRow.status == "complete")
+            select(NflGameRow).where(
+                NflGameRow.season == season, NflGameRow.status == GAME_COMPLETE
+            )
         )
         for team in (g.home, g.away)
     }

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import EMPTY_SLOT
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -23,7 +24,6 @@ from sleeper_assistant.matchup_rank import (
 from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.roster_players import (
-    EMPTY_SLOT,
     InjuryInfo,
     Line,
     display,

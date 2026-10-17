@@ -20,16 +20,16 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel
 
+from sleeper_assistant.constants import ESPN_SCOREBOARD_URL, ESPN_TEAM_CODES
+
 log = logging.getLogger(__name__)
 
-SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 CACHE_SECONDS = 15.0  # a viewer sees a score at most this old (only asked for during live windows)
 STALE_SECONDS = 600.0  # if ESPN is down, a score this old is still better than none
 WINDOW_BEFORE = timedelta(hours=1)  # start looking this long before a kickoff
 WINDOW_AFTER = timedelta(hours=5)  # a game is over well within this long after kickoff
 
 # ESPN's team codes where they differ from Sleeper's
-_CODES = {"WSH": "WAS", "JAC": "JAX", "LA": "LAR"}
 _STATES: dict[str, Literal["upcoming", "live", "final"]] = {
     "pre": "upcoming",
     "in": "live",
@@ -62,7 +62,7 @@ class LiveGame(BaseModel):
 def _code(value: Any) -> str | None:
     if not isinstance(value, str) or not value:
         return None
-    return _CODES.get(value, value)
+    return ESPN_TEAM_CODES.get(value, value)
 
 
 def _score(value: Any) -> int | None:
@@ -165,7 +165,7 @@ def parse_scoreboard(payload: Any) -> list[LiveGame]:
 def fetch_scoreboard() -> list[LiveGame]:
     """One request for the current week's whole slate."""
     with httpx.Client(timeout=5.0) as http:
-        response = http.get(SCOREBOARD_URL)
+        response = http.get(ESPN_SCOREBOARD_URL)
         response.raise_for_status()
         return parse_scoreboard(response.json())
 

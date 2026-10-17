@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import FANTASY_POSITIONS
 from sleeper_assistant.db import CrosswalkRow, PlayerRow
 
 # source name -> CrosswalkRow column
@@ -26,7 +27,6 @@ SOURCE_COLUMNS = {
 SLEEPER_SOURCES = ("gsis", "espn", "yahoo", "sportradar")
 
 # Positions that matter for fantasy; others (OL, LB, ...) are not expected to match.
-FANTASY_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DEF"}
 # Kickers and defenses have no gsis id in Sleeper's data; only skill positions must have one,
 # and only those count toward the match rate.
 REQUIRE_GSIS = {"QB", "RB", "WR", "TE"}

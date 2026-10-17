@@ -11,6 +11,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import live
+from sleeper_assistant.constants import ESPN_SCOREBOARD_URL
 from sleeper_assistant.db import NflGameRow
 from sleeper_assistant.kickoffs import parse_scores, sync_kickoffs
 from sleeper_assistant.live import (
@@ -236,7 +237,7 @@ def test_scoreboard_fetch_asks_espn_once(monkeypatch: pytest.MonkeyPatch) -> Non
         live.httpx, "Client", lambda **kw: real(transport=httpx.MockTransport(handler), **kw)
     )
     assert len(live.fetch_scoreboard()) == 3
-    assert seen == [live.SCOREBOARD_URL]
+    assert seen == [ESPN_SCOREBOARD_URL]
 
 
 def _live_event(situation: Any, state: str = "in") -> dict[str, Any]:

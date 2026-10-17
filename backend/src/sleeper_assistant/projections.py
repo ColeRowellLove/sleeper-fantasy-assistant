@@ -13,12 +13,12 @@ from collections.abc import Iterable, Mapping
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import GAME_PRE
 from sleeper_assistant.db import NflGameRow, PlayerProjectionRow, utcnow
 from sleeper_assistant.defense import parse_tier, points_allowed_score
 from sleeper_assistant.sleeper import SleeperClient
 
 # a game in any other state has kicked off (or finished), so its projections are frozen
-_OPEN_STATUS = "pre_game"
 
 
 def score_stats(stats: Mapping[str, float], scoring: Mapping[str, float]) -> float:
@@ -77,7 +77,7 @@ def sync_projections(session: Session, client: SleeperClient, season: str, week:
             )
             changed += 1
             continue
-        if p.team and status_by_team.get(p.team, _OPEN_STATUS) != _OPEN_STATUS:
+        if p.team and status_by_team.get(p.team, GAME_PRE) != GAME_PRE:
             continue  # the game has started: keep the pre-kickoff projection
         row.team = p.team
         row.stats = p.stats

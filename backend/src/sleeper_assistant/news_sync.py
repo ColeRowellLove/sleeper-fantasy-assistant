@@ -11,6 +11,7 @@ import httpx
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import PLAYER_POSITIONS
 from sleeper_assistant.db import NewsItemRow, PlayerRow, RawSnapshotRow, utcnow
 from sleeper_assistant.espn import normalize_name
 from sleeper_assistant.news_feed import NewsEntry, configured_feeds, fetch_feed
@@ -21,7 +22,6 @@ log = logging.getLogger(__name__)
 KEEP = timedelta(days=14)  # older headlines are deleted
 SNAPSHOT_KEEP = timedelta(days=2)  # raw lists are only for debugging a parse problem
 MAX_NAME_WORDS = 4
-_FANTASY_POSITIONS = {"QB", "RB", "WR", "TE", "K"}
 TOPICS: dict[str, re.Pattern[str]] = {
     "injury": re.compile(
         r"\b(injur\w*|questionable|doubtful|ruled out|out for|inactive|hamstring|concussion)\b",
@@ -45,7 +45,7 @@ def name_index(session: Session) -> dict[str, str]:
             PlayerRow.team.is_not(None)
         )
     ):
-        if not name or position not in _FANTASY_POSITIONS:
+        if not name or position not in PLAYER_POSITIONS:
             continue
         key = normalize_name(name)
         if len(key.split()) < 2:  # noqa: PLR2004 - a single word names nobody reliably
