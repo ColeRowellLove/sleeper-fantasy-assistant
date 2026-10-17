@@ -173,9 +173,9 @@ describe("win chance in the matchup", () => {
     render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
-    expect(screen.getByText("Cole 62%")).toBeInTheDocument();
-    expect(screen.getByText("38% Dad")).toBeInTheDocument();
-    expect(screen.queryByText(/Win chance/)).not.toBeInTheDocument(); // not repeated under the scores
+    expect(screen.getByText("62%")).toBeInTheDocument();
+    expect(screen.getByText("38%")).toBeInTheDocument();
+    expect(screen.getByText("Win chance")).toBeInTheDocument(); // the bar's caption
     expect(screen.getAllByText(/62/)).toHaveLength(2); // the bar end and the one spoken sentence
     expect(
       screen.getByText(
@@ -192,7 +192,7 @@ describe("win chance in the matchup", () => {
     const b = container.querySelector(".win-bar-b") as HTMLElement;
     expect(a.style.width).toBe("62%");
     expect(b.style.width).toBe("38%"); // the two always fill the track
-    expect(container.querySelector(".win-bar-labels")?.textContent).toBe("Cole 62%38% Dad");
+    expect(container.querySelector(".win-bar-labels")?.textContent).toBe("62%Win chance38%");
     // the picture is decorative; the sentence carries it for screen readers
     expect(container.querySelector(".win-bar-track")).toHaveAttribute("aria-hidden", "true");
     expect(
@@ -202,7 +202,7 @@ describe("win chance in the matchup", () => {
     ).toBeInTheDocument();
   });
 
-  it("colours the team ahead green and the team behind red, and an even matchup neutral", () => {
+  it("marks the team ahead as the strong side, the team behind as the soft one, and an even matchup as even", () => {
     const ahead = render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
@@ -244,7 +244,7 @@ describe("win chance in the matchup", () => {
 
   it("is shown while the week is being played too", () => {
     render(<MatchupCard matchup={withChance(0.8, 0.2)} state="current" week={6} myRosterId={1} />);
-    expect(screen.getByText("Cole 80%")).toBeInTheDocument();
+    expect(screen.getByText("80%")).toBeInTheDocument();
   });
 
   it("is not shown once the matchup is played, or when there is no chance to show", () => {
