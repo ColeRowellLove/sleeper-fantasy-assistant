@@ -54,6 +54,27 @@ export function bioRows(bio: Bio): BioRow[] {
     .map(([label, value]) => ({ label, value }));
 }
 
+/** Age, height, weight and experience for the header strip (short values, no units in words). */
+export function bioStrip(bio: Bio): BioRow[] {
+  if (!bio) return [];
+  const years = text(bio.years_exp);
+  const rows: [string, string | null][] = [
+    ["Age", text(bio.age)],
+    ["Height", formatHeight(bio.height)],
+    ["Weight", text(bio.weight) ? `${text(bio.weight)} lbs` : null],
+    ["Exp", years],
+  ];
+  return rows
+    .filter((r): r is [string, string] => r[1] !== null)
+    .map(([label, value]) => ({ label, value }));
+}
+
+/** The bio facts that are not in the header strip: college, jersey and depth chart slot. */
+export function bioDetails(bio: Bio): BioRow[] {
+  const strip = new Set(["Age", "Height", "Weight", "Years in league"]);
+  return bioRows(bio).filter((row) => !strip.has(row.label));
+}
+
 const SHORT: Record<string, string> = {
   rec: "Catches",
   rec_yd: "Rec yds",
