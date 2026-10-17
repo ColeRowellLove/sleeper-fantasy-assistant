@@ -16,7 +16,7 @@ BACKOFF_BASE_SECONDS = 30
 STALE_AFTER = timedelta(minutes=10)
 
 
-def enqueue(  # noqa: PLR0913
+def enqueue(  # noqa: PLR0913 - the optional settings of a job are keyword-only
     session: Session,
     kind: str,
     payload: dict[str, Any] | None = None,

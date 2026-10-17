@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -68,15 +69,19 @@ def quotable(facts: object) -> object:
     return facts
 
 
-def free_agents(  # noqa: PLR0913, PLR0917
-    session: Session,
-    league: LeagueRow,
-    week: int,
-    taken: set[str],
-    positions: set[str],
-    byes: set[str],
+@dataclass(frozen=True)
+class Unavailable:
+    """Who cannot be offered as a pickup: rostered somewhere in the league, or on a bye."""
+
+    taken: set[str]
+    byes: set[str]
+
+
+def free_agents(
+    session: Session, league: LeagueRow, week: int, unavailable: Unavailable, positions: set[str]
 ) -> list[dict[str, object]]:
     """The best available players at the positions, healthy, playing, with a projection."""
+    taken, byes = unavailable.taken, unavailable.byes
     ids = (
         set(
             session.scalars(

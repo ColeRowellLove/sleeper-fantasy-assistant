@@ -200,7 +200,7 @@ class Budget:
             return True
 
 
-def ask[T: BaseModel](  # noqa: PLR0913
+def ask[T: BaseModel](  # noqa: PLR0913 - the optional settings of a call are keyword-only
     client: LlmClient | None,
     prompt: str,
     facts: object,

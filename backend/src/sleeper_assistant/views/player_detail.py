@@ -119,7 +119,7 @@ class PlayerDetail(BaseModel):
     past_seasons: list[SeasonLine]
 
 
-def _game_log(  # noqa: PLR0913
+def _game_log(  # noqa: PLR0913 - the season, the player and how to score him are all needed
     session: Session,
     season: str,
     player_id: str,

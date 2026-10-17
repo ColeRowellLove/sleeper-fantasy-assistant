@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Literal, NamedTuple
 
 from pydantic import BaseModel
@@ -111,20 +112,25 @@ def points_so_far(game: GameInfo | None, value: float | None) -> float | None:
     return round(value, 2)
 
 
-def roster_players(  # noqa: PLR0913, PLR0917
-    roster: RosterRow,
-    players: dict[str, PlayerRow],
-    slots: list[str],
-    games: dict[str, GameInfo],
-    projected: dict[str, float],
-    earned: dict[str, float],
-    defense: DefenseTable,
-    lines: dict[str, Line],
+@dataclass
+class RosterContext:
+    """What building any roster's rows for the current week needs."""
+
+    players: dict[str, PlayerRow]
+    slots: list[str]
+    games: dict[str, GameInfo]
+    projected: dict[str, float]
+    defense: DefenseTable
+    lines: dict[str, Line]
+
+
+def roster_players(
+    roster: RosterRow, ctx: RosterContext, earned: dict[str, float]
 ) -> list[RosterPlayer]:
     def make(pid: str, status: Status, slot: str | None = None) -> RosterPlayer:
-        name, position, nfl_team = display(players, pid)
-        game = games.get(nfl_team) if nfl_team else None
-        pregame = projected.get(pid, 0.0)
+        name, position, nfl_team = display(ctx.players, pid)
+        game = ctx.games.get(nfl_team) if nfl_team else None
+        pregame = ctx.projected.get(pid, 0.0)
         scored = points_so_far(game, earned.get(pid))
         return RosterPlayer(
             player_id=pid,
@@ -134,19 +140,19 @@ def roster_players(  # noqa: PLR0913, PLR0917
             status=status,
             slot=slot,
             game=game,
-            injury=injury_info(players, pid),
+            injury=injury_info(ctx.players, pid),
             projected=projection_now(pregame, scored, game),
             projected_pregame=pregame,
             points=scored,
-            matchup=matchup_rank(defense, position, game.opponent if game else None),
-            stat_line=lines[pid].text if pid in lines else None,
-            stat_line_projected=pid in lines and lines[pid].projected,
+            matchup=matchup_rank(ctx.defense, position, game.opponent if game else None),
+            stat_line=ctx.lines[pid].text if pid in ctx.lines else None,
+            stat_line_projected=pid in ctx.lines and ctx.lines[pid].projected,
         )
 
     out: list[RosterPlayer] = []
     for i, pid in enumerate(roster.starters):
         if pid != EMPTY_SLOT:
-            out.append(make(pid, "starter", slots[i] if i < len(slots) else None))
+            out.append(make(pid, "starter", ctx.slots[i] if i < len(ctx.slots) else None))
 
     placed = set(roster.starters) | set(roster.reserve) | set(roster.taxi)
     bench = [make(pid, "bench") for pid in roster.players if pid not in placed]

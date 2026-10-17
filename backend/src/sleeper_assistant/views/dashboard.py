@@ -17,8 +17,10 @@ from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import (
     LeagueRow,
     PlayerOwnershipRow,
+    RosterRow,
 )
 from sleeper_assistant.views.roster_players import (
+    RosterContext,
     RosterPlayer,
     load_players,
     roster_players,
@@ -57,40 +59,17 @@ class Dashboard(BaseModel):
     rosters: list[RosterView]
 
 
-def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
-    rosters = league_rosters(session, league.league_id)
-    team, manager = team_names(session, rosters)
-    owners = {r.roster_id: r.owner_id for r in rosters}
-    players = load_players(
-        session, {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
-    )
-    slots = starter_slots(league.roster_positions)
-    week = current_week(session, league.season)
-    games = games_for_week(session, league.season, week) if week else {}
-    defense = build_defense_table(session, league.season, league.scoring_settings)
-    projected = (
-        projected_points(
-            session,
-            league.season,
-            week,
-            league.scoring_settings,
-            {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]},
-        )
-        if week
-        else {}
-    )
-
-    earned = week_points(session, league.league_id, week) if week else {}
-    lines = week_lines(session, league, week, players, games) if week else {}
-
+def _standings(
+    rosters: list[RosterRow], team: dict[int, str], manager: dict[int, str]
+) -> list[StandingsRow]:
     ordered = sorted(rosters, key=lambda r: (-r.wins, r.losses, -r.ties, -r.points_for))
-    standings = [
+    return [
         StandingsRow(
             rank=i,
             roster_id=r.roster_id,
             team=team[r.roster_id],
             manager=manager[r.roster_id],
-            owner_id=owners[r.roster_id],
+            owner_id=r.owner_id,
             wins=r.wins,
             losses=r.losses,
             ties=r.ties,
@@ -101,16 +80,43 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
         for i, r in enumerate(ordered, start=1)
     ]
 
+
+def _roster_context(
+    session: Session, league: LeagueRow, rosters: list[RosterRow], week: int | None
+) -> tuple[RosterContext, dict[int, dict[str, float]]]:
+    """The week's games, projections and stat lines, and what each roster has earned so far."""
+    ids = {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    players = load_players(session, ids)
+    games = games_for_week(session, league.season, week) if week else {}
+    ctx = RosterContext(
+        players=players,
+        slots=starter_slots(league.roster_positions),
+        games=games,
+        projected=(
+            projected_points(session, league.season, week, league.scoring_settings, ids)
+            if week
+            else {}
+        ),
+        defense=build_defense_table(session, league.season, league.scoring_settings),
+        lines=week_lines(session, league, week, players, games) if week else {},
+    )
+    earned = week_points(session, league.league_id, week) if week else {}
+    return ctx, earned
+
+
+def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
+    rosters = league_rosters(session, league.league_id)
+    team, manager = team_names(session, rosters)
+    week = current_week(session, league.season)
+    ctx, earned = _roster_context(session, league, rosters, week)
     views = [
         RosterView(
             roster_id=r.roster_id,
             team=team[r.roster_id],
-            owner_id=owners[r.roster_id],
-            players=roster_players(
-                r, players, slots, games, projected, earned.get(r.roster_id, {}), defense, lines
-            ),
+            owner_id=r.owner_id,
+            players=roster_players(r, ctx, earned.get(r.roster_id, {})),
         )
-        for r in sorted(rosters, key=lambda r: r.roster_id)
+        for r in rosters  # already by roster id
     ]
     _add_ownership(session, views)
     return Dashboard(
@@ -118,7 +124,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
         name=league.name,
         season=league.season,
         week=week,
-        standings=standings,
+        standings=_standings(rosters, team, manager),
         rosters=views,
     )
 

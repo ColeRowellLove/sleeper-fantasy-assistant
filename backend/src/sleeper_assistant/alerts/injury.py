@@ -222,7 +222,7 @@ def _advice(
     ]
     positions = eligible_positions(spot.slot, spot.out.position or "")
     options += alert_advice.free_agents(
-        session, ctx.league, ctx.week, ctx.taken, set(positions), ctx.byes
+        session, ctx.league, ctx.week, alert_advice.Unavailable(ctx.taken, ctx.byes), set(positions)
     )
     for o in options:
         o["next_up"] = bool(nu and nu.player_id and o["player_id"] == nu.player_id)
