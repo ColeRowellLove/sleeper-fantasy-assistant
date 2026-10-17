@@ -112,6 +112,8 @@ export interface PlayerDetail {
     bye?: boolean;
     matchup?: MatchupRank | null;
   }[];
+  /** Recent headlines that name him. */
+  news?: NewsItem[];
   /** His adds and drops in this league, newest first. */
   history?: {
     kind: "added" | "dropped";
@@ -626,6 +628,24 @@ export interface TransactionItem {
   week: number;
   created_at?: string | null;
   moves: TeamMove[];
+}
+
+export interface NewsItem {
+  id: string;
+  source: string;
+  title: string;
+  link: string;
+  published_at?: string | null;
+  players: { player_id: string; name: string; position?: string | null; team?: string | null }[];
+  teams: string[];
+  topics: string[];
+  roster_ids: number[];
+}
+
+export interface NewsData {
+  league_id?: string | null;
+  items: NewsItem[];
+  sources: string[];
 }
 
 export interface TransactionsData {

@@ -42,6 +42,7 @@ Connect a league by Sleeper username and the app shows, for each league:
 - **Player pop-up:** click any player (rosters, lineups, Players tab) for their bio, position rank, week-by-week points with the team and opponent for each game and every stat that counted, this week's projected stats, and past seasons with the teams he played for and each season open game by game (regular season only), all scored with your league's rules.
 - **Projections:** projected points (scored with your league's own rules) next to actual points on rosters and lineups, updated live while a game is played (what he has scored plus the rest of the projection by the game clock, and exactly his score once the game is over; the pre-game projection stays frozen for comparing), with a team total in each matchup and a win chance for each team (a simple model from the two projected totals; see `backend/src/sleeper_assistant/win_probability.py` for the assumptions).
 - **Teams:** any NFL team's full depth chart (offense including the line, defense and special teams) with injuries, who is next up when a starter is out, and which of the players are on your league's rosters.
+- **News:** NFL headlines from public RSS feeds, kept when they name a player or team, labelled by source and linked back to the article (never copied); headlines about your players are marked, and each player's pop-up lists the news about him.
 - **Settings:** the league's rules and scoring as Sleeper reports them.
 
 Dark and light themes, phone and desktop layouts, and keyboard and screen-reader support throughout.
@@ -107,6 +108,7 @@ npm run dev                          # http://localhost:3000
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `DATABASE_URL` | SQLAlchemy URL for the app and migrations | `sqlite:///./dev.db` |
+| `NEWS_FEEDS` | News feeds as `name\|url,name\|url` (headline, source, time and link only; check each feed's terms before use) | ESPN and CBS Sports NFL RSS |
 | `TEST_DATABASE_URL` | Run the test suite against Postgres | in-memory SQLite |
 
 Never commit secrets; put keys in environment variables or a git-ignored `.env`.

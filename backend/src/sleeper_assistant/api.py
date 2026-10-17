@@ -32,6 +32,7 @@ from sleeper_assistant.games_view import Games, build_games
 from sleeper_assistant.ingest import finish_connect, sync_league
 from sleeper_assistant.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
 from sleeper_assistant.live_window import live_window_cached
+from sleeper_assistant.news_view import NewsView, build_news
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
 from sleeper_assistant.players_view import PlayersResponse, build_players
 from sleeper_assistant.rankings import Rankings, build_rankings
@@ -282,6 +283,16 @@ def get_league_transactions(
         raise HTTPException(status_code=404, detail="League not connected yet")
     response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_transactions(session, row)
+
+
+@app.get("/api/leagues/{league_id}/news")
+def get_league_news(league_id: LeagueId, session: SessionDep, response: Response) -> NewsView:
+    """Recent headlines about players and teams, from the configured public feeds."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = read_cache(session, row.season)
+    return build_news(session, row)
 
 
 PlayerId = Annotated[str, Path(pattern=r"^[A-Za-z0-9]{1,12}$")]

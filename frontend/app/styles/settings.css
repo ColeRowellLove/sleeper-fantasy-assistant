@@ -1235,3 +1235,27 @@ td.season-log {
   cursor: pointer;
   font-size: 0.85rem;
 }
+
+/* News */
+.news-list {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.news-item {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.5rem;
+}
+
+.news-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.news-meta {
+  font-size: 0.8rem;
+  margin: 0.15rem 0 0;
+}
