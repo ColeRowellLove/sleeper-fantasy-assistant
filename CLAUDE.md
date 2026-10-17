@@ -50,7 +50,7 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
     wire the features together and may import any of them. Code only one feature uses stays in that feature.
   - `utils/` generic helpers that know nothing about fantasy football: reading untrusted JSON, text, time, caches.
   - `core/` the fantasy and NFL logic every feature builds on:
-    `core/league` (rules, rosters, team and player names, lineup slots, start/sit, rankings, the waiver board),
+    `core/league` (rules, rosters and ownership, team and player names, shared loaders, lineup slots, start/sit, rankings, the waiver board),
     `core/scoring` (scoring stats and projections, stat lines, live projections, win chances, recent form),
     `core/nfl` (games and schedule, teams, depth charts, injury statuses, matchup ranks, team stats, waiver calendar),
     `core/sources` (outside services: Sleeper, ESPN scoreboard, ownership and box score, news feeds, and the

@@ -12,11 +12,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import EMPTY_SLOT, FANTASY_POSITIONS
 from sleeper_assistant.core.league.lineup_slots import assign_lineup, starter_slots
+from sleeper_assistant.core.league.loaders import players_by_id
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rankings import RankedPlayer, Rankings, build_rankings
 from sleeper_assistant.core.models.games import GameInfo
@@ -172,10 +172,7 @@ def compare_players(
     rankings = build_rankings(session, league, week)
     ranked = {p.player_id: p for p in rankings.players}
     ids = list(dict.fromkeys(player_ids))[:MAX_COMPARE]
-    info = {
-        p.player_id: p
-        for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
-    }
+    info = players_by_id(session, ids)
     extra = _extra(session, league, rankings, ids, set(ranked))
     candidates = [_candidate(pid, ranked, info, extra) for pid in ids]
     eligible = [c for c in candidates if c.out is None and c.projected is not None]
@@ -290,10 +287,7 @@ def best_lineup(
     ranked = {p.player_id: p for p in rankings.players}
     parked = set(roster.reserve) | set(roster.taxi)
     ids = [pid for pid in roster.players if pid not in parked and pid != EMPTY_SLOT]
-    info = {
-        p.player_id: p
-        for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
-    }
+    info = players_by_id(session, ids)
     extra = _extra(session, league, rankings, ids, set(ranked))
     cands = {pid: _candidate(pid, ranked, info, extra) for pid in ids}
     usable = [

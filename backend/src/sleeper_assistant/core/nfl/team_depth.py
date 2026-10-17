@@ -17,6 +17,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_COMPLETE
+from sleeper_assistant.core.league.loaders import players_by_id
+from sleeper_assistant.core.league.ownership import roster_owners
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_names import team_names
 from sleeper_assistant.core.models.games import GameInfo
@@ -197,10 +199,7 @@ def depth_groups(
         for e in players
         if e.get("sleeper_id")
     }
-    sleeper = {
-        p.player_id: p
-        for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
-    }
+    sleeper = players_by_id(session, ids)
     return _depth_groups(chart, sleeper, owner or {}, team_name or {}), row
 
 
@@ -213,7 +212,7 @@ def build_team_depth(
     """
     rosters = rosters if rosters is not None else league_rosters(session, league.league_id)
     team_name, _ = team_names(session, rosters)
-    owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    owner = roster_owners(rosters)
     groups, row = depth_groups(session, team, owner, team_name)
     week = current_week(session, league.season)
     game = games_for_week(session, league.season, week).get(team) if week else None

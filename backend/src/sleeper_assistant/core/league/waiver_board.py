@@ -18,7 +18,7 @@ from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.models.matchup import MatchupRank
 from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY
 from sleeper_assistant.core.nfl.matchup_rank import DefenseTable, build_defense_table, matchup_rank
-from sleeper_assistant.core.nfl.nfl_games import games_for_week
+from sleeper_assistant.core.nfl.nfl_games import bye_teams, games_for_week
 from sleeper_assistant.core.nfl.team_depth import depth_groups
 from sleeper_assistant.core.scoring.form import recent_form
 from sleeper_assistant.core.scoring.projections import projected_points
@@ -133,7 +133,7 @@ class WaiverBoard:
             session, league.season, week, league.scoring_settings, projected_ids
         )
         self.games = games_for_week(session, league.season, week)
-        self.byes = {t for t, g in self.games.items() if g.state == "bye"}
+        self.byes = bye_teams(self.games)
         self._defense: DefenseTable | None = None
         self._form: dict[str, float] | None = None
         self.players = {

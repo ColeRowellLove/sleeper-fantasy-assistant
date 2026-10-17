@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import FANTASY_POSITIONS
+from sleeper_assistant.core.league.ownership import roster_owners
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_names import team_names
@@ -180,7 +181,7 @@ def _players_by_team(
 ) -> dict[str, list[GamePlayer]]:
     rosters = league_rosters(session, league.league_id)
     team_name, _ = team_names(session, rosters)
-    owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    owner = roster_owners(rosters)
     actual = _actual_lines(session, league.season, week)
     upcoming = {t for t in teams if t in info and info[t].state == "upcoming"}
     candidates = list(

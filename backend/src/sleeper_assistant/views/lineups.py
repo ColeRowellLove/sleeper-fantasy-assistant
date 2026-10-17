@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import EMPTY_SLOT
 from sleeper_assistant.core.league.lineup_slots import starter_slots
+from sleeper_assistant.core.league.loaders import players_by_id
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_avatar import team_avatars
 from sleeper_assistant.core.league.team_names import team_names
@@ -28,13 +29,7 @@ from sleeper_assistant.db import (
     PlayerRow,
     RosterRow,
 )
-from sleeper_assistant.views.roster_players import (
-    Line,
-    display,
-    load_players,
-    projection_now,
-    week_lines,
-)
+from sleeper_assistant.views.roster_players import Line, display, projection_now, week_lines
 
 # Matchup `players` also lists IR and taxi players; they are shown after the bench, not as bench.
 _PARKED_ORDER = {"BN": 0, "IR": 1, "TAXI": 2}
@@ -123,7 +118,7 @@ def _load_week(
 ) -> _Week:
     team, _ = team_names(session, rosters)
     ids = {pid for m in week_rows for pid in [*m.starters, *m.players]}
-    players = load_players(session, ids)
+    players = players_by_id(session, ids)
     games = games_for_week(session, league.season, week)
     return _Week(
         team=team,

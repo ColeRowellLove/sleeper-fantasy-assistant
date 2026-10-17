@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -109,3 +111,14 @@ def games_for_week(session: Session, season: str, week: int) -> dict[str, GameIn
         for team in all_teams - playing:
             out[team] = GameInfo(state="bye")
     return out
+
+
+def current_week_games(session: Session, season: str) -> tuple[int | None, dict[str, GameInfo]]:
+    """The current week and its games by team; no games when no week is known."""
+    week = current_week(session, season)
+    return week, (games_for_week(session, season, week) if week else {})
+
+
+def bye_teams(games: Mapping[str, GameInfo]) -> set[str]:
+    """The NFL teams that have no game in the week."""
+    return {team for team, game in games.items() if game.state == "bye"}

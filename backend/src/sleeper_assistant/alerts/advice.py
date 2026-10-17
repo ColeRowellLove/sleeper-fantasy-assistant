@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.alerts.engine import register_pre_run
+from sleeper_assistant.core.league.loaders import players_by_id
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY
 from sleeper_assistant.core.scoring.projections import projected_points
@@ -126,10 +127,7 @@ def roster_facts(
 ) -> list[dict[str, object]]:
     """Every player the team has, with where he sits and how he is projected."""
     ids = [*roster.players, *roster.reserve, *roster.taxi]
-    players = {
-        p.player_id: p
-        for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
-    }
+    players = players_by_id(session, ids)
     facts: list[dict[str, object]] = []
     for pid in dict.fromkeys(ids):
         p = players.get(pid)

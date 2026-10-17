@@ -8,9 +8,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.league.loaders import players_by_id
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
-from sleeper_assistant.db import LeagueRow, NewsItemRow, PlayerRow, as_utc
+from sleeper_assistant.db import LeagueRow, NewsItemRow, as_utc
 
 LIMIT = 80
 PLAYER_LIMIT = 10
@@ -45,10 +46,7 @@ class NewsView(BaseModel):
 
 def _view(rows: list[NewsItemRow], session: Session, owners: dict[str, int]) -> list[NewsEntryView]:
     ids = {pid for row in rows for pid in row.player_ids}
-    players = {
-        p.player_id: p
-        for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
-    }
+    players = players_by_id(session, ids)
     out = []
     for row in rows:
         named = [players[pid] for pid in row.player_ids if pid in players]

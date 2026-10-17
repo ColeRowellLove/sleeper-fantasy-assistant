@@ -9,10 +9,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.league.loaders import players_by_id
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_names import team_names
-from sleeper_assistant.db import LeagueRow, PlayerRow, TransactionRow
+from sleeper_assistant.db import LeagueRow, TransactionRow
 
 Kind = Literal["waiver", "free_agent", "trade", "commissioner"]
 _KINDS: set[str] = {"waiver", "free_agent", "trade", "commissioner"}
@@ -69,10 +70,7 @@ def build_transactions(session: Session, league: LeagueRow) -> TransactionsView:
     rosters = league_rosters(session, league.league_id)
     team, manager = team_names(session, rosters)
     ids = {pid for r in rows for key in ("adds", "drops") for pid in (r.payload.get(key) or {})}
-    players = {
-        p.player_id: p
-        for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
-    }
+    players = players_by_id(session, ids)
 
     def moved(pid: str) -> MovedPlayer:
         p = players.get(pid)

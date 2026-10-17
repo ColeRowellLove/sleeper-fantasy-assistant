@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.core.league.lineup_slots import starter_slots
+from sleeper_assistant.core.league.loaders import players_by_id
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_names import team_names
 from sleeper_assistant.core.nfl.matchup_rank import (
@@ -22,7 +23,6 @@ from sleeper_assistant.db import (
 from sleeper_assistant.views.roster_players import (
     RosterContext,
     RosterPlayer,
-    load_players,
     roster_players,
     week_lines,
     week_points,
@@ -86,7 +86,7 @@ def _roster_context(
 ) -> tuple[RosterContext, dict[int, dict[str, float]]]:
     """The week's games, projections and stat lines, and what each roster has earned so far."""
     ids = {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
-    players = load_players(session, ids)
+    players = players_by_id(session, ids)
     games = games_for_week(session, league.season, week) if week else {}
     ctx = RosterContext(
         players=players,
