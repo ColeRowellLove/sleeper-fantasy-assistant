@@ -208,3 +208,15 @@ fieldset {
 .card.flush > .note {
   padding: 0.5rem 1.25rem;
 }
+
+/* NoteList: short bullets that explain a screen */
+.note-list {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.note-list li {
+  margin: 0.15rem 0;
+}

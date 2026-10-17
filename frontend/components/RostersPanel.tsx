@@ -26,14 +26,12 @@ const GROUPS: { status: RosterStatus; title: string; note: string }[] = [
 export default function RostersPanel({
   rosters,
   myRosterId,
-  week = null,
   initialRosterId = null,
   lineups = null,
   leagueId,
 }: {
   rosters: Roster[];
   myRosterId: number | null;
-  week?: number | null;
   /** The team to start on (from a link); your own team when absent or unknown. */
   initialRosterId?: number | null;
   /** This week's lineups: the selected team's matchup and win chance come from here. */
@@ -72,10 +70,6 @@ export default function RostersPanel({
       </div>
 
       <RosterMatchup lineups={lineups} rosterId={selected.roster_id} leagueId={leagueId} />
-
-      {week !== null && (
-        <p className="note">Game status is for NFL week {week}: upcoming, live, played, or bye.</p>
-      )}
 
       <p role="status" className="visually-hidden">
         Showing {selected.team}: {selected.players.filter((p) => p.status === "starter").length}{" "}

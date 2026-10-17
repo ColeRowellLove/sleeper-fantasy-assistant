@@ -7,6 +7,7 @@ import { leaguePath } from "../lib/league";
 import { VIEWS, entriesFor, stanceWord, type WireView } from "../lib/waiverView";
 import FilterChips from "./FilterChips";
 import PlayerIdentity from "./PlayerIdentity";
+import NoteList from "./NoteList";
 
 /** "Tue, Oct 20" from an ISO date, the same on the server and in the browser. */
 export function waiverDateLabel(iso: string): string {
@@ -90,12 +91,17 @@ export default function WaiverWirePanel({
     <section aria-labelledby="wire-heading">
       <h2 id="wire-heading">Waiver wire</h2>
       {data ? (
-        <p className="note">
-          Best adds for the {data.waiver_day} ({waiverDateLabel(data.waiver_date)}) waivers
-          {data.week !== null && `, scored for week ${data.week}`}. Only players available in this
-          league, scored with its rules, and compared with the selected team&apos;s lineup. The list
-          starts over each waiver cycle.
-        </p>
+        <NoteList
+          items={[
+            <>
+              Best adds for the {data.waiver_day} ({waiverDateLabel(data.waiver_date)}) waivers
+              {data.week !== null && `, scored for week ${data.week}`}
+            </>,
+            "Only players available in this league, scored with its rules",
+            "Compared with the selected team's lineup",
+            "The list starts over each waiver cycle",
+          ]}
+        />
       ) : (
         <p className="note">The waiver wire could not be loaded. Try again in a moment.</p>
       )}

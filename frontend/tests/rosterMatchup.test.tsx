@@ -122,9 +122,7 @@ describe("the Rosters tab", () => {
   ];
 
   it("puts the selected team's matchup above its roster", () => {
-    render(
-      <RostersPanel rosters={rosters} myRosterId={1} lineups={lineups()} leagueId="9" week={6} />,
-    );
+    render(<RostersPanel rosters={rosters} myRosterId={1} lineups={lineups()} leagueId="9" />);
     const section = screen.getByRole("heading", { name: "Week 6 matchup" }).closest("section");
     expect(section).not.toBeNull();
     expect(

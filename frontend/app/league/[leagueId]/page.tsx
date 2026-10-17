@@ -274,7 +274,6 @@ export default async function LeaguePage({
           leagueId={leagueId}
           rosters={dashboard.rosters}
           myRosterId={myRosterId}
-          week={dashboard.week ?? null}
         />
       )}
       {tab === "lineups" && lineups && (

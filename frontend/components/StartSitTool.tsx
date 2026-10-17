@@ -7,6 +7,7 @@ import PlayerIdentity from "./PlayerIdentity";
 import PlayerLink from "./PlayerLink";
 import PositionChip from "./PositionChip";
 import StatTable from "./StatTable";
+import NoteList from "./NoteList";
 
 const number = (n: number | null | undefined) =>
   n === null || n === undefined ? "–" : n.toFixed(1);
@@ -69,10 +70,13 @@ export default function StartSitTool({
   return (
     <section aria-labelledby="startsit-heading">
       <h2 id="startsit-heading">Start/Sit</h2>
-      <p className="note">
-        Compare players for a lineup spot or see the best lineup for the week. Projections use this
-        league&apos;s scoring.
-      </p>
+      <NoteList
+        items={[
+          "Compare players for a lineup spot",
+          "See the best lineup for the week",
+          "Projections use this league's scoring",
+        ]}
+      />
 
       <form method="get" action={action} className="players-controls">
         <input type="hidden" name="tab" value="startsit" />
