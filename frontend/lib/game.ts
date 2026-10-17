@@ -64,6 +64,28 @@ export function gameLabel(
   return { state: "final", text: "Played", detail: score ? `Final, ${score}` : versus };
 }
 
+/**
+ * The status of a game on a game card, where both teams and the score are already shown: the state
+ * and at most one short line (the kickoff, the clock), never the opponent or the score again.
+ */
+export function gameCardLabel(
+  game: GameInfo | null | undefined,
+  kickoffShort: string | null = null,
+): GameLabel | null {
+  if (!game) return null;
+  if (game.state === "bye") return { state: "bye", text: "Bye week", detail: null };
+  if (game.state === "upcoming") {
+    return {
+      state: "upcoming",
+      text: "Upcoming",
+      detail: kickoffShort ?? formatGameDate(game.date),
+    };
+  }
+  if (game.state === "live")
+    return { state: "live", text: "Live", detail: game.period_text ?? null };
+  return { state: "final", text: "Final", detail: null };
+}
+
 /** 1 -> "1st", 2 -> "2nd", 3 -> "3rd", 11 -> "11th", 22 -> "22nd". */
 export function ordinal(n: number): string {
   const lastTwo = n % 100;

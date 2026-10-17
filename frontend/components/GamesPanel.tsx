@@ -104,7 +104,7 @@ export default function GamesPanel({
                         />
                       </span>
                       <span className="game-meta">
-                        <GameBadge game={card.game} />
+                        <GameBadge game={card.game} variant="card" />
                       </span>
                       {mine.length > 0 && (
                         <span className="game-mine">
