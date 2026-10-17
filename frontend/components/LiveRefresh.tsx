@@ -47,10 +47,18 @@ export default function LiveRefresh({
   return (
     <p className="live-refresh">
       <span className="live-dot" aria-hidden="true" />
-      {paused ? "Live updates paused." : `Live: updating every ${seconds} seconds.`}
-      {updated && !paused && <span className="muted"> Last update {updated}.</span>}{" "}
-      <button type="button" className="btn btn-quiet" onClick={() => setPaused((p) => !p)}>
-        {paused ? "Resume live updates" : "Pause live updates"}
+      <strong>{paused ? "Paused" : "Live"}</strong>
+      <span className="visually-hidden">
+        {paused ? " Live updates paused." : `: updating every ${seconds} seconds.`}
+      </span>
+      {updated && !paused && <span className="muted">Updated {updated}</span>}
+      <button
+        type="button"
+        className="btn btn-quiet"
+        aria-label={paused ? "Resume live updates" : "Pause live updates"}
+        onClick={() => setPaused((p) => !p)}
+      >
+        {paused ? "Resume" : "Pause"}
       </button>
     </p>
   );

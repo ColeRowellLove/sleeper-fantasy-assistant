@@ -52,6 +52,9 @@ export const TABS: readonly { key: TabKey; label: string }[] = SECTIONS.flatMap(
   (s): readonly { key: TabKey; label: string }[] => s.pages,
 );
 
+/** The pages that show live scores or game states; only they refresh while a game is on. */
+export const LIVE_TABS: readonly TabKey[] = ["rosters", "startsit", "lineups", "games", "teams"];
+
 /** The section a page belongs to. */
 export function sectionOf(tab: TabKey): Section {
   return SECTIONS.find((s) => s.pages.some((p) => p.key === tab)) ?? SECTIONS[0];
