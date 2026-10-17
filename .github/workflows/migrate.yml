@@ -6,7 +6,7 @@ name: Migrate database
 on:
   push:
     branches: [main]
-    paths: ["backend/migrations/**", "backend/src/sleeper_assistant/db.py"]
+    paths: ["backend/migrations/**", "backend/src/sleeper_assistant/db/**"]
   workflow_dispatch:
 
 permissions:
