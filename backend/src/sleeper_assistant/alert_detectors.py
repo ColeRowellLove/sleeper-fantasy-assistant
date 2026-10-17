@@ -6,5 +6,6 @@ The worker imports this one module; adding a detector means adding its module he
 from sleeper_assistant import (  # noqa: F401  (each import registers its detector)
     alert_bye,
     alert_injury,
+    alert_lineup,
     alert_waiver,
 )
