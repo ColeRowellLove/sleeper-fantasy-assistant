@@ -321,14 +321,34 @@ table.h2h {
 
   .h2h .slot-col,
   .h2h .slot-cell {
-    padding-left: 0.2rem;
-    padding-right: 0.2rem;
-    width: 3rem;
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+    width: 2.6rem;
   }
 
+  /* wide enough for "Proj 18.16" on its own line, so it never runs into the name or the slot */
   .h2h .pts-cell,
   .h2h .num-col {
-    width: 3rem;
+    width: 3.7rem;
+  }
+
+  .h2h .slot-cell {
+    font-size: 0.65rem;
+  }
+
+  /* air between a name and the points next to it */
+  .h2h .player-cell.cell-left {
+    padding-right: 0.5rem;
+  }
+
+  .h2h .player-cell.cell-right {
+    padding-left: 0.5rem;
+  }
+
+  .h2h .pts-cell .proj {
+    display: block;
+    font-size: 0.7rem;
+    white-space: nowrap;
   }
 
   .h2h .avatar {
@@ -348,7 +368,7 @@ table.h2h {
   }
 
   .cell-name {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
   .scoreboard {
