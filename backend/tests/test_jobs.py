@@ -239,8 +239,8 @@ def test_run_cycle_enqueues_and_drains(engine: Engine) -> None:
 
     # league, players, schedule, kickoffs, projections, trending, stats, history, ownership,
     # depth charts and the alert run
-    assert result.enqueued == 11
-    assert result.ran == 11
+    assert result.enqueued == 12
+    assert result.ran == 12
     assert sorted(ran) == ["L1", "players"]
     assert (
         run_cycle(

@@ -325,6 +325,22 @@ class JobRow(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class NewsItemRow(Base):
+    """A fantasy-relevant NFL headline from a public feed: title and link only, no article text."""
+
+    __tablename__ = "news_items"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # a hash of the link
+    source: Mapped[str] = mapped_column(String)
+    title: Mapped[str] = mapped_column(String)
+    link: Mapped[str] = mapped_column(String)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    teams: Mapped[list[str]] = mapped_column(JSON, default=list)  # team codes the headline names
+    player_ids: Mapped[list[str]] = mapped_column(JSON, default=list)  # Sleeper ids it names
+    topics: Mapped[list[str]] = mapped_column(JSON, default=list)  # injury, depth, trade, waivers
+
+
 class RawSnapshotRow(Base):
     """Raw source payloads kept for replay, backtests and schema-drift debugging."""
 

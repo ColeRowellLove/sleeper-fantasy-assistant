@@ -22,6 +22,7 @@ import GameLog from "./GameLog";
 import InjuryBadge from "./InjuryBadge";
 import PanelTabs from "./PanelTabs";
 import PlayerAvatar from "./PlayerAvatar";
+import NewsList from "./NewsList";
 import PlayerHistory from "./PlayerHistory";
 import PlayerSummary from "./PlayerSummary";
 import PositionChip from "./PositionChip";
@@ -225,6 +226,12 @@ export default function PlayerDialog({
       </section>
     </>
   );
+  const news = (
+    <section aria-labelledby="pd-news">
+      <h3 id="pd-news">News</h3>
+      <NewsList items={detail.news ?? []} myRosterId={null} label={`News about ${detail.name}`} />
+    </section>
+  );
   const history = (
     <>
       <PlayerHistory history={detail.history} />
@@ -365,6 +372,9 @@ export default function PlayerDialog({
             ...(detail.team &&
             ((detail.team_stats?.length ?? 0) > 0 || (detail.depth?.groups.length ?? 0) > 0)
               ? [{ key: "team", label: "Team", content: team }]
+              : []),
+            ...((detail.news?.length ?? 0) > 0
+              ? [{ key: "news", label: "News", content: news }]
               : []),
             ...(detail.past_seasons.length > 0 || (detail.history?.length ?? 0) > 0
               ? [{ key: "history", label: "History", content: history }]

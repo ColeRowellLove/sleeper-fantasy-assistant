@@ -36,6 +36,7 @@ from sleeper_assistant.espn import fetch_ownership
 from sleeper_assistant.ingest import MAX_WEEKS, sync_league, sync_players, sync_schedule
 from sleeper_assistant.kickoffs import sync_kickoffs
 from sleeper_assistant.live_window import live_window_open
+from sleeper_assistant.news_sync import sync_news
 from sleeper_assistant.player_data import (
     stored_weeks,
     sync_ownership,
@@ -78,6 +79,8 @@ OWNERSHIP_SYNC_INTERVAL = timedelta(hours=3)  # ESPN's percentages move slowly
 OWNERSHIP_FAILURE_COOLDOWN = timedelta(hours=3)
 DEPTH_SYNC_INTERVAL = timedelta(hours=3)  # depth charts change with injuries and news
 DEPTH_FAILURE_COOLDOWN = timedelta(hours=3)
+NEWS_SYNC_INTERVAL = timedelta(minutes=30)  # headlines are only worth having while fresh
+NEWS_FAILURE_COOLDOWN = timedelta(minutes=30)
 KICKOFF_SYNC_INTERVAL = timedelta(hours=24)  # kickoff times only move for flexed games
 KICKOFF_FAILURE_COOLDOWN = timedelta(hours=6)
 ALERTS_INTERVAL = timedelta(minutes=10)  # detectors run on whatever the syncs have stored
@@ -139,6 +142,10 @@ def default_handlers(
         with http_factory() as http:
             sync_depth_charts(session, http)
 
+    def _sync_news(session: Session, _payload: dict[str, Any]) -> None:
+        with http_factory() as http:
+            sync_news(session, http)
+
     def _sync_kickoffs(session: Session, payload: dict[str, Any]) -> None:
         season = str(payload.get("season") or client.get_state().season)
         with http_factory() as http:
@@ -152,6 +159,7 @@ def default_handlers(
         "sync_depth_charts": _sync_depth_charts,
         "sync_history": _sync_history,
         "sync_kickoffs": _sync_kickoffs,
+        "sync_news": _sync_news,
         "sync_projections": _sync_projections,
         "sync_stats": _sync_stats,
         "sync_trending": _sync_trending,
@@ -335,6 +343,11 @@ def enqueue_depth_sync_if_due(session: Session, now: datetime | None = None) -> 
     )
 
 
+def enqueue_news_sync_if_due(session: Session, now: datetime | None = None) -> bool:
+    """Pull the news feeds every half hour."""
+    return _enqueue_periodic(session, "sync_news", NEWS_SYNC_INTERVAL, NEWS_FAILURE_COOLDOWN, now)
+
+
 def enqueue_alerts_if_due(session: Session, now: datetime | None = None) -> bool:
     """Run the alert detectors for active leagues every few minutes, after their syncs."""
     return _enqueue_periodic(session, "run_alerts", ALERTS_INTERVAL, ALERTS_FAILURE_COOLDOWN, now)
@@ -376,6 +389,7 @@ def run_cycle(
             + int(enqueue_history_sync_if_due(session))
             + int(enqueue_ownership_sync_if_due(session))
             + int(enqueue_depth_sync_if_due(session))
+            + int(enqueue_news_sync_if_due(session))
             + int(enqueue_alerts_if_due(session))
         )
     ran = 0

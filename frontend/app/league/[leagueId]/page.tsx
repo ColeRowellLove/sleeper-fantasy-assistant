@@ -11,6 +11,7 @@ import TeamDepthChart from "../../../components/TeamDepthChart";
 import TeamDialog from "../../../components/TeamDialog";
 import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
+import NewsPanel from "../../../components/NewsPanel";
 import TransactionsPanel from "../../../components/TransactionsPanel";
 import TrendingPanel from "../../../components/TrendingPanel";
 import StandingsTable from "../../../components/StandingsTable";
@@ -35,6 +36,7 @@ import type {
   Lineups,
   PlayerDetail,
   PlayersData,
+  NewsData,
   TransactionsData,
   TeamDepth,
 } from "../../../lib/api";
@@ -128,6 +130,7 @@ export default async function LeaguePage({
     accuracy,
     leagueSettings,
     transactions,
+    news,
     players,
     playerDetail,
     depth,
@@ -159,6 +162,7 @@ export default async function LeaguePage({
     tab === "transactions"
       ? getJson<TransactionsData>(`/api/leagues/${leagueId}/transactions`)
       : Promise.resolve(null),
+    tab === "news" ? getJson<NewsData>(`/api/leagues/${leagueId}/news`) : Promise.resolve(null),
     tab === "players" || tab === "trending"
       ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
       : Promise.resolve(null),
@@ -360,6 +364,7 @@ export default async function LeaguePage({
             )}
           </>
         )}
+        {tab === "news" && news && <NewsPanel data={news} myRosterId={myRosterId} />}
         {tab === "transactions" && transactions && (
           <TransactionsPanel data={transactions} leagueId={leagueId} myRosterId={myRosterId} />
         )}
