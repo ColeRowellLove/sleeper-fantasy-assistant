@@ -154,16 +154,6 @@
   min-height: 1.6rem;
 }
 
-.slot {
-  color: var(--muted);
-  font-family: var(--font-display);
-  font-size: 0.8rem;
-  font-stretch: 118%;
-  font-weight: 700;
-  flex: 0 0 3.6rem; /* a fixed column, so the slot lines up on every row */
-  text-align: center;
-}
-
 @media (max-width: 40rem) {
   .player {
     gap: 0.65rem;
@@ -176,10 +166,6 @@
 
   /* narrower fixed columns on phones so the player's name keeps room */
   .player-proj {
-    flex-basis: 2.4rem;
-  }
-
-  .slot {
     flex-basis: 2.4rem;
   }
 
@@ -938,4 +924,89 @@
 /* the roster reads as a list: names and numbers stay close instead of spreading across the page */
 .rosters {
   max-width: 46rem;
+}
+
+/* compact roster rows: slot chip, face, name line, ESPN shares and the game on one line each */
+.player .slot-chip {
+  flex: none;
+}
+
+.player-posteam {
+  color: var(--muted);
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin: 0 0.4rem;
+}
+
+.player-own {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* team header: picture, name and standing line, with the week's projection at the right */
+.team-header {
+  align-items: center;
+  margin-bottom: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.team-header-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.team-header-name {
+  font-size: 1.1rem;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-header-line {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  gap: 0 0.6rem;
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+}
+
+.team-header-line li + li::before {
+  content: "•";
+  margin-right: 0.6rem;
+}
+
+.team-header-proj {
+  display: grid;
+  margin: 0;
+  text-align: right;
+}
+
+.team-header-proj strong {
+  font-size: 1.2rem;
+}
+
+.team-header-proj .muted {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 40rem) {
+  /* a face costs a third of a phone row; the slot chip, name and numbers matter more there */
+  .player > .avatar {
+    display: none;
+  }
+}
+
+.team-header-streak {
+  font-weight: 700;
 }

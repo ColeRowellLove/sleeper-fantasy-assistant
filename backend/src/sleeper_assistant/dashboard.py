@@ -13,6 +13,7 @@ from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
     NflGameRow,
+    PlayerOwnershipRow,
     PlayerRow,
     RosterRow,
     SleeperUserRow,
@@ -116,6 +117,8 @@ class RosterPlayer(BaseModel):
     matchup: MatchupRank | None = None  # the opponent's defense rank against his position
     stat_line: str | None = None  # how he did, once his game has started: "18 car, 92 yds, 1 TD"
     stat_line_projected: bool = False  # True when stat_line is what he is projected to do
+    owned_pct: float | None = None  # ESPN-wide share of leagues that roster him
+    started_pct: float | None = None  # ESPN-wide share of leagues that start him
 
 
 class RosterView(BaseModel):
@@ -388,6 +391,7 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
         )
         for r in sorted(rosters, key=lambda r: r.roster_id)
     ]
+    _add_ownership(session, views)
     return Dashboard(
         league_id=league.league_id,
         name=league.name,
@@ -396,6 +400,21 @@ def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
         standings=standings,
         rosters=views,
     )
+
+
+def _add_ownership(session: Session, views: list[RosterView]) -> None:
+    """Fill in ESPN's owned and started shares for every rostered player."""
+    ids = {p.player_id for v in views for p in v.players}
+    shares = {
+        row.player_id: row
+        for row in session.scalars(
+            select(PlayerOwnershipRow).where(PlayerOwnershipRow.player_id.in_(ids))
+        )
+    }
+    for view in views:
+        for p in view.players:
+            if row := shares.get(p.player_id):
+                p.owned_pct, p.started_pct = row.owned, row.started
 
 
 _WONT_PLAY = {"Out", "IR", "Sus", "PUP", "NA"}

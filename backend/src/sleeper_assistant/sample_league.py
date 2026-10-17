@@ -328,6 +328,7 @@ def seed(session: Session) -> None:
     _scores(session, players, rosters, rng)
     _projections(session, players, rng)
     _waiver_data(session, free_agents, now, rng)
+    _rostered_ownership(session, {p.player_id for r in rosters for p in r}, now, rng)
     _alerts(session, rosters, now)
     session.commit()
 
@@ -445,6 +446,21 @@ def _projections(session: Session, players: list[PlayerRow], rng: random.Random)
                     fetched_at=datetime.now(UTC),
                 )
             )
+
+
+def _rostered_ownership(
+    session: Session, rostered: set[str], now: datetime, rng: random.Random
+) -> None:
+    """ESPN shares for the players on a team, so the roster rows can show them."""
+    for pid in sorted(rostered):
+        session.add(
+            PlayerOwnershipRow(
+                player_id=pid,
+                owned=round(rng.uniform(55, 100), 1),
+                started=round(rng.uniform(25, 95), 1),
+                fetched_at=now,
+            )
+        )
 
 
 def _waiver_data(

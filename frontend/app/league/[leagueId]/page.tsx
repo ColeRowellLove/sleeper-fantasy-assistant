@@ -271,6 +271,7 @@ export default async function LeaguePage({
           key={`${myRosterId ?? "none"}-${linkedRosterId ?? "none"}`} // reset the selection when the team or the link changes
           initialRosterId={linkedRosterId}
           lineups={lineups}
+          standings={dashboard.standings}
           leagueId={leagueId}
           rosters={dashboard.rosters}
           myRosterId={myRosterId}
