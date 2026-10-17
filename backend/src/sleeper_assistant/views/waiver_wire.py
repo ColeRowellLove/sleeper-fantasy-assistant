@@ -82,7 +82,46 @@ def next_waiver_date(league: LeagueRow, now: datetime) -> date:
     return today + timedelta(days=(waiver_day(league) - sleeper_weekday) % 7 or 7)
 
 
-def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:  # noqa: PLR0912
+def _matchup_reason(pick: Pickup) -> Reason | None:
+    m = pick.matchup
+    if m is None or not m.teams:
+        return None
+    if m.side == "offense":  # a team defense: the opponent's offense, fewest points first
+        text = f"{m.opponent} offense scores the {ordinal(m.rank)}-fewest points of {m.teams}"
+    else:
+        text = f"{m.opponent} gives up the {ordinal(m.rank)}-most points to this position"
+    if m.rank <= m.teams * SOFT:
+        return Reason(stance="for", label="Soft matchup", detail=text)
+    if m.rank > m.teams * TOUGH:
+        return Reason(stance="against", label="Tough matchup", detail=text)
+    return None
+
+
+def _form_reason(pick: Pickup) -> Reason | None:
+    if pick.form is None:
+        return None
+    if pick.form - pick.projected >= FORM_GAP:
+        return Reason(
+            stance="for",
+            label="Hot lately",
+            detail=(
+                f"{pick.form:.1f} a game over the last three, "
+                f"above the {pick.projected:.1f} projection"
+            ),
+        )
+    if pick.projected - pick.form >= FORM_GAP:
+        return Reason(
+            stance="against",
+            label="Cold lately",
+            detail=(
+                f"{pick.form:.1f} a game over the last three, "
+                f"below the {pick.projected:.1f} projection"
+            ),
+        )
+    return None
+
+
+def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:
     """The reasons for and against adding this player, only those that apply."""
     out = [
         Reason(
@@ -105,39 +144,9 @@ def reasons_for(pick: Pickup, owned: float | None) -> list[Reason]:  # noqa: PLR
                 detail=f"{pick.out_starter} is out, so the role is open",
             )
         )
-    m = pick.matchup
-    if m is not None and m.teams:
-        if m.side == "offense":  # a team defense: the opponent's offense, fewest points first
-            text = f"{m.opponent} offense scores the {ordinal(m.rank)}-fewest points of {m.teams}"
-        else:
-            text = f"{m.opponent} gives up the {ordinal(m.rank)}-most points to this position"
-        if m.rank <= m.teams * SOFT:
-            out.append(Reason(stance="for", label="Soft matchup", detail=text))
-        elif m.rank > m.teams * TOUGH:
-            out.append(Reason(stance="against", label="Tough matchup", detail=text))
-    if pick.form is not None:
-        if pick.form - pick.projected >= FORM_GAP:
-            out.append(
-                Reason(
-                    stance="for",
-                    label="Hot lately",
-                    detail=(
-                        f"{pick.form:.1f} a game over the last three, "
-                        f"above the {pick.projected:.1f} projection"
-                    ),
-                )
-            )
-        elif pick.projected - pick.form >= FORM_GAP:
-            out.append(
-                Reason(
-                    stance="against",
-                    label="Cold lately",
-                    detail=(
-                        f"{pick.form:.1f} a game over the last three, "
-                        f"below the {pick.projected:.1f} projection"
-                    ),
-                )
-            )
+    for reason in (_matchup_reason(pick), _form_reason(pick)):
+        if reason is not None:
+            out.append(reason)
     if pick.status:
         out.append(Reason(stance="against", label="Injury", detail=f"listed {pick.status}"))
     if pick.projected < LOW_PROJECTION and (pick.player.position or "") not in ("K", "DEF"):

@@ -70,10 +70,9 @@ CYCLE_BUDGET = timedelta(minutes=10)
 HEARTBEAT_SECONDS = jobs.STALE_AFTER.total_seconds() / 4
 
 
-def default_handlers(
-    client: SleeperClient,
-    http_factory: Callable[[], httpx.Client] = lambda: httpx.Client(timeout=30.0),
-) -> dict[str, Handler]:
+def _sleeper_handlers(client: SleeperClient) -> dict[str, Handler]:
+    """Jobs that read from the Sleeper API."""
+
     def _sync_league(session: Session, payload: dict[str, Any]) -> None:
         sync_league(session, client, str(payload["league_id"]))
 
@@ -113,6 +112,22 @@ def default_handlers(
         for season in range(current - 1, current - 1 - HISTORY_SEASONS, -1):
             sync_season_history(session, client, str(season))
 
+    return {
+        "sync_history": _sync_history,
+        "sync_projections": _sync_projections,
+        "sync_stats": _sync_stats,
+        "sync_trending": _sync_trending,
+        "sync_league": _sync_league,
+        "sync_players": _sync_players,
+        "sync_schedule": _sync_schedule,
+    }
+
+
+def _web_handlers(
+    client: SleeperClient, http_factory: Callable[[], httpx.Client]
+) -> dict[str, Handler]:
+    """Jobs that read from other sites (ESPN, nflverse, news feeds, depth charts)."""
+
     def _sync_ownership(session: Session, payload: dict[str, Any]) -> None:
         season = str(payload.get("season") or client.get_state().season)
         with http_factory() as http:
@@ -131,22 +146,25 @@ def default_handlers(
         with http_factory() as http:
             sync_kickoffs(session, http, season)
 
+    return {
+        "sync_depth_charts": _sync_depth_charts,
+        "sync_kickoffs": _sync_kickoffs,
+        "sync_news": _sync_news,
+        "sync_ownership": _sync_ownership,
+    }
+
+
+def default_handlers(
+    client: SleeperClient,
+    http_factory: Callable[[], httpx.Client] = lambda: httpx.Client(timeout=30.0),
+) -> dict[str, Handler]:
     def _run_alerts(session: Session, _payload: dict[str, Any]) -> None:
         run_all_leagues(session, utcnow() - ACTIVE_WINDOW)
 
     return {
         "run_alerts": _run_alerts,
-        "sync_depth_charts": _sync_depth_charts,
-        "sync_history": _sync_history,
-        "sync_kickoffs": _sync_kickoffs,
-        "sync_news": _sync_news,
-        "sync_projections": _sync_projections,
-        "sync_stats": _sync_stats,
-        "sync_trending": _sync_trending,
-        "sync_league": _sync_league,
-        "sync_ownership": _sync_ownership,
-        "sync_players": _sync_players,
-        "sync_schedule": _sync_schedule,
+        **_sleeper_handlers(client),
+        **_web_handlers(client, http_factory),
     }
 
 
