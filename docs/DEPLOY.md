@@ -26,9 +26,10 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
 ## Notes
 
 - Vercel Hobby is for non-commercial personal use and allows 100 deployments a day. To stay under it,
-  `feature/`, `bugfix/`, `chore/`, `docs/`, `refactor/`, `test/` and `hotfix/` branches do not deploy
-  (CI still tests them), `web` skips a build when `frontend/` is unchanged and `api` when `backend/` is
-  unchanged. Only `develop` and `main` deploy. When the limit is hit, builds fail with "Deployment rate
+  only `main` deploys: no other branch (`develop`, feature, bot or release branches) does, CI still
+  tests them, and an `ignoreCommand` in both `vercel.json` files skips anything that is not `main` as
+  a catch-all. `web` also skips a build when `frontend/` is unchanged and `api` when `backend/` is
+  unchanged. Try a change on localhost (see "Testing develop" below), not on Vercel. When the limit is hit, builds fail with "Deployment rate
   limited" and resume about 24 hours later; production keeps serving the last good deployment.
 - Neon free compute suspends when idle; the first request after a pause is slower.
 - GitHub cron is best-effort (runs can be late; schedules pause after 60 days without commits).
@@ -56,23 +57,17 @@ GitHub Actions job. Never commit connection strings; they live in secrets and gi
 
 ## Testing develop before a release
 
-`develop` is built as a preview on Vercel, so changes can be tried end to end before they reach `main`.
+`develop` is not deployed. Run it on your machine, against its own SQLite database:
 
-| What | URL |
-|---|---|
-| Develop web preview | `https://web-git-develop-cole-b6ee.vercel.app` |
-| Develop API preview | `https://api-git-develop-cole-b6ee.vercel.app` (`/health/db` shows which database it uses) |
+```bash
+make setup     # once: install backend and frontend dependencies
+make dev       # migrates ./backend/dev.db, then runs the API (:8000) and the web app (:3000)
+```
 
-- **Web to API:** previews default `API_URL` to the develop API (see `frontend/lib/apiUrl.ts`). An
-  explicit `API_URL` set for the Preview environment in Vercel wins; production never uses the develop API.
-- **Separate database:** Neon has a non-expiring `develop` branch (a copy of production). The
-  `Migrate develop database` workflow keeps it at develop's schema (secret
-  `DATABASE_URL_UNPOOLED_DEVELOP`). To make the develop API use it, in the `api` Vercel project add
-  `DATABASE_URL` for the **Preview** environment, Git branch `develop`, with the pooled develop connection
-  string. Until that is set, previews use whatever `DATABASE_URL` applies to Preview, which may be production.
-- **Data:** connect a league on the develop web preview once to load it into the develop database.
-- Pull requests no longer get their own Vercel preview (see the deployment limit above); try a
-  change locally or merge it into `develop` and use the develop preview.
+Open http://localhost:3000 and connect your Sleeper username once to load a league (the first
+connect also loads Sleeper's player list). The worker is not needed for a first look; run
+`uv run python -m sleeper_assistant.worker --once` in `backend/` to fetch projections and rankings.
+To see how a page looks at phone and desktop width, run `npm run screenshots` in `frontend/`.
 
 ## LLM (optional)
 
