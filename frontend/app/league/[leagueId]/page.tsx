@@ -42,7 +42,7 @@ import type {
   TransactionsData,
   TeamDepth,
 } from "../../../lib/api";
-import { parseBox } from "../../../lib/boxScore";
+import { boxMineIds, parseBox } from "../../../lib/boxScore";
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
 import { LIVE_TABS, leaguePath, parseTab } from "../../../lib/league";
@@ -323,11 +323,7 @@ export default async function LeaguePage({
             data={boxScore}
             leagueId={leagueId}
             week={weekNumber}
-            mine={(games?.games ?? [])
-              .filter((g) => g.away === boxGame.away && g.home === boxGame.home)
-              .flatMap((g) => g.players)
-              .filter((p) => myRosterId !== null && p.owner_roster_id === myRosterId)
-              .map((p) => p.player_id)}
+            mine={boxMineIds(games?.games ?? [], boxGame, myRosterId)}
           />
         )}
         {tab === "games" && games && !boxGame && (

@@ -32,8 +32,8 @@ function Section({ table, team, mine }: { table: BoxTable; team: string; mine: S
           </tr>
         </thead>
         <tbody>
-          {table.rows.map((row) => (
-            <tr key={`${row.name}-${row.position ?? ""}`}>
+          {table.rows.map((row, i) => (
+            <tr key={`${i}-${row.name}`}>
               <th scope="row">
                 {row.player_id ? (
                   <PlayerLink playerId={row.player_id}>{row.name}</PlayerLink>
@@ -86,7 +86,7 @@ export default function BoxScorePanel({
       ← All games
     </Link>
   );
-  if (!data) {
+  if (!data || data.teams.length === 0) {
     return (
       <section aria-labelledby="box-heading" className="box">
         {back}
@@ -109,7 +109,7 @@ export default function BoxScorePanel({
       <NoteList
         items={[
           "Every player and stat category, from ESPN",
-          "Your players are marked and open their pop-up",
+          "Your players are marked; players matched by name open their pop-up",
         ]}
       />
       <PanelTabs

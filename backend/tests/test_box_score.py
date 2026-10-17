@@ -116,3 +116,64 @@ def test_fetching_reports_an_unreachable_or_unlisted_game(monkeypatch: pytest.Mo
     transport = httpx.MockTransport(down)
     with pytest.raises(BoxScoreError, match="could not be reached"):
         module.fetch_box_score("2026", 7, "KC", "WAS")
+
+
+def test_odd_shapes_in_espns_json_give_not_available_never_a_crash() -> None:
+    for bad in ({"boxscore": None}, {"boxscore": []}, {"boxscore": {"players": [None, 3]}}):
+        with pytest.raises(BoxScoreError):
+            parse_summary(bad, "KC", "WAS")
+    odd_header = {**FIXTURE, "header": {"competitions": [None]}}
+    assert parse_summary(odd_header, "KC", "WAS").final is False
+
+
+def test_a_failure_is_remembered_briefly_and_the_event_id_is_found_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[int] = []
+
+    def failing(season: str, week: int, home: str, away: str) -> BoxScore:
+        calls.append(week)
+        raise BoxScoreError("down")
+
+    module.reset_cache()
+    monkeypatch.setattr(module, "FETCHER", failing)
+    for now in (100.0, 103.0):
+        with pytest.raises(BoxScoreError):
+            module.box_score("2026", 7, "KC", "WAS", now=now)
+    assert calls == [7]  # the second viewer did not ask ESPN again
+    with pytest.raises(BoxScoreError):
+        module.box_score("2026", 7, "KC", "WAS", now=120.0)
+    assert calls == [7, 7]  # the failure expired
+    module.reset_cache()
+
+
+def test_the_scoreboard_is_asked_once_per_game(monkeypatch: pytest.MonkeyPatch) -> None:
+    board = {
+        "events": [
+            {
+                "id": "401",
+                "competitions": [
+                    {
+                        "competitors": [
+                            {"homeAway": "home", "team": {"abbreviation": "KC"}},
+                            {"homeAway": "away", "team": {"abbreviation": "WSH"}},
+                        ]
+                    }
+                ],
+            }
+        ]
+    }
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append("scoreboard" if "scoreboard" in str(request.url) else "summary")
+        return httpx.Response(200, json=board if seen[-1] == "scoreboard" else FIXTURE)
+
+    transport = httpx.MockTransport(handler)
+    real = httpx.Client
+    monkeypatch.setattr(module.httpx, "Client", lambda **kw: real(transport=transport, **kw))
+    module.reset_cache()
+    module.fetch_box_score("2026", 7, "KC", "WAS")
+    module.fetch_box_score("2026", 7, "KC", "WAS")
+    assert seen == ["scoreboard", "summary", "summary"]
+    module.reset_cache()
