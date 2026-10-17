@@ -26,6 +26,13 @@ const PAGES = [
     "settings",
     "alerts",
   ].map((tab) => ({ name: tab.split("&")[0], path: `/league/${LEAGUE}?tab=${tab}`, league: true })),
+  // a player's pop-up, and its game log on its own (the log sits far down the dialog)
+  {
+    name: "player",
+    path: `/league/${LEAGUE}?tab=players&player=s1`,
+    league: true,
+    element: { name: "player-gamelog", selector: "#pd-weeks" },
+  },
 ];
 const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844 },
@@ -141,6 +148,12 @@ try {
           fullPage: true,
           clip: { x: 0, y: 0, width: vp.width, height: Math.min(height, SHOT_HEIGHT) },
         });
+        if (p.element && (await page.locator(p.element.selector).count()) > 0) {
+          await page
+            .locator(p.element.selector)
+            .locator("xpath=..")
+            .screenshot({ path: `screenshots/${p.element.name}-${vp.name}-${theme}.png` });
+        }
         if (theme === "light") {
           for (const problem of await layoutProblems(page)) {
             found.set(`${p.name}@${vp.name}:${problem.kind}`, problem.text);

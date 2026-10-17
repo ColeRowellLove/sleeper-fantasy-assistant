@@ -36,6 +36,7 @@ from sleeper_assistant.db import (
 LEAGUE_ID = "100001"
 SEASON = "2026"
 CURRENT_WEEK = 7
+BYE_WEEK = 3  # one pair of teams is off this week, so a player's game log shows a bye
 TEAMS = ["SF", "LAR", "DAL", "SEA", "WAS", "ARI", "KC", "BUF"]
 SLOTS = ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "K", "DEF", "BN", "BN", "BN", "BN", "BN"]
 SCORING = {
@@ -276,11 +277,20 @@ def seed(session: Session) -> None:
     session.commit()
 
 
+def _round(week: int) -> list[tuple[str, str]]:
+    """Who plays whom in a week: the teams rotate each week, and week 3 leaves one pair on a bye."""
+    others = TEAMS[1:]
+    shift = week % len(others)
+    ring = [TEAMS[0], *others[shift:], *others[:shift]]
+    games = [(ring[i], ring[len(ring) - 1 - i]) for i in range(len(ring) // 2)]
+    return games[:3] if week == BYE_WEEK else games
+
+
 def _schedule(session: Session, now: datetime) -> None:
     # weeks 1-6 are over; week 7 has a finished, a live and an upcoming game; KC and BUF have a bye
     pairs = [("SF", "LAR"), ("DAL", "SEA"), ("WAS", "ARI"), ("KC", "BUF")]
     for week in range(1, CURRENT_WEEK + 3):
-        games = pairs if week != CURRENT_WEEK else pairs[:3]
+        games = pairs[:3] if week == CURRENT_WEEK else _round(week)
         for j, (home, away) in enumerate(games):
             # week 7 is this week, so a live or upcoming game is never months in the past
             day = now + timedelta(days=7 * (week - CURRENT_WEEK) + j % 3 - 1)
@@ -298,8 +308,8 @@ def _schedule(session: Session, now: datetime) -> None:
                     game_date=day.date().isoformat(),
                     status=status,
                     kickoff=day.replace(hour=17),
-                    home_score=24 if done else None,
-                    away_score=20 if done else None,
+                    home_score=17 + (week * 3 + j * 5) % 14 if done else None,
+                    away_score=14 + (week * 5 + j * 3) % 14 if done else None,
                     roof="outdoors",
                     surface="grass",
                     temp=64,

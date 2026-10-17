@@ -310,10 +310,10 @@ describe("PlayerDialog", () => {
       screen.getByText("Targets 10, Catches 6.6, Rec yds 106.8, Rec TD 0.8"),
     ).toBeInTheDocument();
     const weeks = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
-    expect(within(weeks).getByText("vs SEA")).toBeInTheDocument();
-    expect(within(weeks).getByText("at SF")).toBeInTheDocument();
+    expect(within(weeks).getByText("SEA")).toBeInTheDocument(); // at home: the code alone
+    expect(within(weeks).getByText("@SF")).toBeInTheDocument(); // away: "@" like Sleeper
     const past = screen.getByRole("table", { name: /under this league/i });
     expect(within(past).getByText("WR2")).toBeInTheDocument();
   });
@@ -321,48 +321,48 @@ describe("PlayerDialog", () => {
   it("lays the weeks out as a stat table with one column per stat", () => {
     renderDialog();
     const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
     const headers = within(table)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
     // a receiver: targets and catches first, then yards, touchdowns, then the rushing yards he earned
     expect(headers).toEqual([
-      "Week",
-      "Team",
-      "Opponent",
-      "Points",
+      "Wk",
+      "Opp",
+      "Pts",
+      "Rank",
       "Targets",
       "Catches",
       "Rec yds",
       "Rec TD",
       "Rush yds",
     ]);
-    const week1 = within(table).getByRole("row", { name: /^1 LAR vs SEA/ });
+    const week1 = within(table).getByRole("row", { name: /^1 SEA/ });
     expect(
       within(week1)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["LAR", "vs SEA", "24.5", "–", "7", "90", "–", "25"]);
-    const week2 = within(table).getByRole("row", { name: /^2 LAR at SF/ });
+    ).toEqual(["SEA", "24.5", "–", "–", "7", "90", "–", "25"]);
+    const week2 = within(table).getByRole("row", { name: /^2 @SF/ });
     expect(
       within(week2)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["LAR", "at SF", "6.0", "–", "3", "30", "–", "–"]);
+    ).toEqual(["@SF", "6.0", "–", "–", "3", "30", "–", "–"]);
   });
 
   it("adds a season totals row that matches the season points, and a projection row", () => {
     renderDialog();
     const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
     const totals = within(table).getByRole("row", { name: /Season total/ });
     expect(
       within(totals)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["146.6", "–", "10", "120", "–", "25"]);
+    ).toEqual(["146.6", "1", "–", "10", "120", "–", "25"]);
     const projected = within(table).getByRole("row", {
       name: /Projected, week 6/,
     });
@@ -370,7 +370,7 @@ describe("PlayerDialog", () => {
       within(projected)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["22.5", "10", "6.6", "106.8", "0.8", "–"]);
+    ).toEqual(["22.5", "–", "10", "6.6", "106.8", "0.8", "–"]);
   });
 
   it("compares each finished week's points with its projection", () => {
@@ -383,27 +383,28 @@ describe("PlayerDialog", () => {
     };
     render(<PlayerDialog detail={withProjections} closeHref="/league/1?tab=players" />);
     const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
     const headers = within(table)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headers.slice(0, 6)).toEqual(["Week", "Team", "Opponent", "Points", "Proj", "+/-"]);
-    const week1 = within(table).getByRole("row", { name: /^1 LAR vs SEA/ });
+    expect(headers.slice(0, 6)).toEqual(["Wk", "Opp", "Pts", "Rank", "Proj", "+/-"]);
+    const week1 = within(table).getByRole("row", { name: /^1 SEA/ });
     expect(
       within(week1)
         .getAllByRole("cell")
-        .slice(2, 5)
+        .slice(1, 5)
         .map((c) => c.textContent),
-    ).toEqual(["24.5", "14.0", "+10.5"]);
-    const week2 = within(table).getByRole("row", { name: /^2 LAR at SF/ });
+    ).toEqual(["24.5", "–", "14.0", "+10.5"]);
+    const week2 = within(table).getByRole("row", { name: /^2 @SF/ });
     expect(
       within(week2)
         .getAllByRole("cell")
-        .slice(2, 5)
+        .slice(1, 5)
         .map((c) => c.textContent),
     ).toEqual([
       "6.0",
+      "–",
       "9.5",
       "–", // not final yet
     ]);
@@ -412,15 +413,15 @@ describe("PlayerDialog", () => {
     expect(
       within(totals)
         .getAllByRole("cell")
-        .slice(0, 3)
+        .slice(0, 4)
         .map((c) => c.textContent),
-    ).toEqual(["146.6", "23.5", "–"]);
+    ).toEqual(["146.6", "1", "23.5", "–"]);
   });
 
   it("leaves the projection columns out when no week has a stored projection", () => {
     renderDialog();
     const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
+      name: /every week of the season/i,
     });
     const headers = within(table)
       .getAllByRole("columnheader")
@@ -492,17 +493,19 @@ describe("past seasons, game by game", () => {
     expect(links[0]).toHaveAttribute("href", expect.stringContaining("depth=LAR"));
   });
 
-  it("names the team for each week of this season too", async () => {
-    await open();
-    const table = screen.getByRole("table", {
-      name: /points and stats by week/i,
-    });
+  it("names the team for each week only when he played for more than one that season", () => {
+    const traded: PlayerDetail = {
+      ...detail,
+      weeks: [detail.weeks[0], { ...detail.weeks[1], team: "SEA" }],
+    };
+    render(<PlayerDialog detail={traded} closeHref="/league/1?tab=players" />);
+    const table = screen.getByRole("table", { name: /every week of the season/i });
     expect(
       within(table)
         .getAllByRole("columnheader")
         .map((h) => h.textContent)
         .slice(0, 3),
-    ).toEqual(["Week", "Team", "Opponent"]);
+    ).toEqual(["Wk", "Opp", "Team"]);
   });
 
   it("opens a season into a game-by-game table with the team and opponent for each game", async () => {

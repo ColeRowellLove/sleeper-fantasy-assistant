@@ -14,8 +14,8 @@ import {
   statTotals,
 } from "../lib/playerDetail";
 import { rosterPath } from "../lib/league";
-import { projectionDelta } from "../lib/lineups";
 import GameBadge from "./GameBadge";
+import GameLog from "./GameLog";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PositionChip from "./PositionChip";
@@ -176,15 +176,6 @@ export default function PlayerDialog({
     detail.position,
   );
   const totals = statTotals(weekStats);
-  // the projection columns only appear once at least one week has a stored projection
-  const showProjections = detail.weeks.some(
-    (w) => w.projected !== null && w.projected !== undefined,
-  );
-  const allProjected =
-    detail.weeks.length > 0 &&
-    detail.weeks.every((w) => w.projected !== null && w.projected !== undefined);
-  const projectedTotal = detail.weeks.reduce((sum, w) => sum + (w.projected ?? 0), 0);
-
   return (
     <dialog
       ref={ref}
@@ -332,120 +323,8 @@ export default function PlayerDialog({
         )}
 
         <section aria-labelledby="pd-weeks">
-          <h3 id="pd-weeks">Week by week</h3>
-          {detail.weeks.length === 0 ? (
-            <p className="note">No games played yet this season.</p>
-          ) : (
-            <div className="players-scroll">
-              <table className="players pd-table pd-stats-table">
-                <caption className="visually-hidden">
-                  Points and stats by week this season, with season totals
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Week</th>
-                    <th scope="col">Team</th>
-                    <th scope="col">Opponent</th>
-                    <th scope="col" className="num-col">
-                      Points
-                    </th>
-                    {showProjections && (
-                      <>
-                        <th scope="col" className="num-col">
-                          Proj
-                        </th>
-                        <th scope="col" className="num-col">
-                          +/-
-                        </th>
-                      </>
-                    )}
-                    {columns.map((c) => (
-                      <th key={c.key} scope="col" className="num-col">
-                        {c.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.weeks.map((w) => (
-                    <tr key={w.week}>
-                      <th scope="row">{w.week}</th>
-                      <td>{w.team ? <TeamLink team={w.team}>{w.team}</TeamLink> : "–"}</td>
-                      <td>
-                        {w.opponent ? `${w.home === false ? "at" : "vs"} ${w.opponent}` : "–"}
-                      </td>
-                      <td className="num num-col">{w.points.toFixed(1)}</td>
-                      {showProjections && (
-                        <>
-                          <td className="num num-col">
-                            {w.projected === null || w.projected === undefined
-                              ? "–"
-                              : w.projected.toFixed(1)}
-                          </td>
-                          <td className="num num-col">
-                            {projectionDelta(
-                              w.points,
-                              w.projected,
-                              w.final ? "played" : "current",
-                            ) ?? "–"}
-                          </td>
-                        </>
-                      )}
-                      {columns.map((c) => (
-                        <td key={c.key} className="num num-col">
-                          {formatStat(w.stats[c.key])}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <th scope="row" colSpan={3}>
-                      Season total
-                    </th>
-                    <td className="num num-col">{detail.season.points.toFixed(1)}</td>
-                    {showProjections && (
-                      <>
-                        <td className="num num-col">
-                          {allProjected ? projectedTotal.toFixed(1) : "–"}
-                        </td>
-                        <td className="num num-col">
-                          {allProjected && detail.weeks.every((w) => w.final)
-                            ? projectionDelta(detail.season.points, projectedTotal, "played")
-                            : "–"}
-                        </td>
-                      </>
-                    )}
-                    {columns.map((c) => (
-                      <td key={c.key} className="num num-col">
-                        {formatStat(totals[c.key])}
-                      </td>
-                    ))}
-                  </tr>
-                  {detail.projected && (
-                    <tr className="pd-projected-row">
-                      <th scope="row" colSpan={3}>
-                        Projected, week {detail.projected.week}
-                      </th>
-                      <td className="num num-col">{detail.projected.points.toFixed(1)}</td>
-                      {showProjections && (
-                        <>
-                          <td className="num num-col">–</td>
-                          <td className="num num-col">–</td>
-                        </>
-                      )}
-                      {columns.map((c) => (
-                        <td key={c.key} className="num num-col">
-                          {formatStat(detail.projected?.stats[c.key])}
-                        </td>
-                      ))}
-                    </tr>
-                  )}
-                </tfoot>
-              </table>
-            </div>
-          )}
+          <h3 id="pd-weeks">Game log</h3>
+          <GameLog detail={detail} columns={columns} totals={totals} />
         </section>
 
         {detail.past_seasons.length > 0 && (

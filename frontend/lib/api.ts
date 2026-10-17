@@ -97,6 +97,16 @@ export interface PlayerDetail {
     projected?: number | null;
     /** The game is over, so points can be compared with the projection. */
     final?: boolean;
+    /** His rank among players at his position that week (1 = best). */
+    rank?: number | null;
+  }[];
+  /** Every week of the season for his team: the opponent and how hard it is, or a bye. */
+  schedule?: {
+    week: number;
+    opponent?: string | null;
+    home?: boolean | null;
+    bye?: boolean;
+    matchup?: MatchupRank | null;
   }[];
   past_seasons: {
     season: string;
