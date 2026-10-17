@@ -40,7 +40,7 @@ describe("gameCardLabel", () => {
   });
 
   it("handles a bye and a missing game", () => {
-    expect(gameCardLabel({ state: "bye" })?.text).toBe("Bye week");
+    expect(gameCardLabel({ ...base, state: "bye" })?.text).toBe("Bye week");
     expect(gameCardLabel(null)).toBeNull();
   });
 });
