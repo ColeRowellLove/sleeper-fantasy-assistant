@@ -1,3 +1,5 @@
+import { boxPath, hasBoxScore } from "../lib/boxScore";
+import Link from "next/link";
 import type { Games, TeamRecord } from "../lib/api";
 import { recordText } from "../lib/depth";
 import { groupGames, orderGames, teamNickname, yourPlayersText } from "../lib/games";
@@ -102,7 +104,7 @@ export default function GamesPanel({
                         />
                       </span>
                       <span className="game-meta">
-                        <GameBadge game={card.game} />
+                        <GameBadge game={card.game} variant="card" />
                       </span>
                       {mine.length > 0 && (
                         <span className="game-mine">
@@ -116,6 +118,14 @@ export default function GamesPanel({
                     <p className="game-links">
                       Depth charts: <TeamLink team={card.away}>{card.away}</TeamLink>,{" "}
                       <TeamLink team={card.home}>{card.home}</TeamLink>
+                      {hasBoxScore(card.game.state) && (
+                        <>
+                          {" · "}
+                          <Link href={boxPath(leagueId, card.week, card.away, card.home)}>
+                            Full box score
+                          </Link>
+                        </>
+                      )}
                     </p>
                     {card.players.length === 0 ? (
                       <p className="note">

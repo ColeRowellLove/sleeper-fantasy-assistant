@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.crosswalk import build_crosswalk, link, resolve
 from sleeper_assistant.db import CrosswalkRow, PlayerRow
+from sleeper_assistant.sync.crosswalk import build_crosswalk, link, resolve
 
 
 def _player(

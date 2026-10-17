@@ -19,6 +19,7 @@ from sleeper_assistant.db import (
     AlertRow,
     LeagueRow,
     MatchupRow,
+    NewsItemRow,
     NflGameRow,
     PlayerOwnershipRow,
     PlayerProjectionRow,
@@ -216,6 +217,26 @@ def _transactions(session: Session, now: datetime) -> None:
         )
 
 
+def _news(session: Session, rosters: list[list[PlayerRow]], now: datetime) -> None:
+    """A few made-up headlines (no real source) naming sample players, for the News page."""
+    named = [p for roster in rosters[:3] for p in roster[:1]]
+    sources = ["Sample Wire", "Sample Sports"]
+    for i, player in enumerate(named):
+        session.add(
+            NewsItemRow(
+                id=f"sample-news-{i}",
+                source=sources[i % 2],
+                title=f"{player.full_name} listed as questionable ahead of Sunday",
+                link=f"https://example.com/sample-news/{i}",
+                published_at=now - timedelta(hours=2 + 5 * i),
+                fetched_at=now,
+                teams=[player.team] if player.team else [],
+                player_ids=[player.player_id],
+                topics=["injury"],
+            )
+        )
+
+
 def _depth_charts(session: Session, players: list[PlayerRow], now: datetime) -> None:
     """A simple depth chart per team: its QBs, RBs, WRs (split over three slots) and TEs."""
     for team in TEAMS:
@@ -330,6 +351,7 @@ def seed(session: Session) -> None:
     _waiver_data(session, free_agents, now, rng)
     _rostered_ownership(session, {p.player_id for r in rosters for p in r}, now, rng)
     _alerts(session, rosters, now)
+    _news(session, rosters, now)
     session.commit()
 
 

@@ -28,8 +28,8 @@ describe("splitName", () => {
 
 describe("teamColor", () => {
   it("gives the team's colour for any case, and nothing for a free agent or unknown code", () => {
-    expect(teamColor("WAS")).toBe("#773141");
-    expect(teamColor("was")).toBe("#773141");
+    expect(teamColor("WAS")).toBe("var(--team-was)");
+    expect(teamColor("was")).toBe("var(--team-was)");
     expect(teamColor("JAC")).toBe(teamColor("JAX"));
     expect(teamColor(null)).toBeNull();
     expect(teamColor("XXX")).toBeNull();

@@ -4,12 +4,12 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import jobs
-from sleeper_assistant.dashboard import current_week, games_for_week
+from sleeper_assistant.core.nfl.nfl_games import current_week, games_for_week
+from sleeper_assistant.core.sources.sleeper import BASE_URL, SleeperClient
 from sleeper_assistant.db import NflGameRow, utcnow
-from sleeper_assistant.ingest import sync_schedule
-from sleeper_assistant.sleeper import BASE_URL, SleeperClient
-from sleeper_assistant.worker import enqueue_schedule_sync_if_due
+from sleeper_assistant.sync import jobs
+from sleeper_assistant.sync.ingest import sync_schedule
+from sleeper_assistant.sync.job_schedule import enqueue_schedule_sync_if_due
 
 
 def _game(gid: str, week: int, home: str, away: str, status: str) -> NflGameRow:

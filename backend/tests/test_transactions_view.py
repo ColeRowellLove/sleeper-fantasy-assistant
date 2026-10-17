@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow, SleeperUserRow, TransactionRow
-from sleeper_assistant.transactions_view import build_transactions
+from sleeper_assistant.views.transactions import build_transactions
 
 
 def _tx(  # noqa: PLR0913, PLR0917

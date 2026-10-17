@@ -11,17 +11,21 @@ import TeamDepthChart from "../../../components/TeamDepthChart";
 import TeamDialog from "../../../components/TeamDialog";
 import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
+import NewsPanel from "../../../components/NewsPanel";
 import TransactionsPanel from "../../../components/TransactionsPanel";
 import TrendingPanel from "../../../components/TrendingPanel";
 import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
+import { FavouriteProvider } from "../../../components/FavouriteProvider";
 import LiveRefresh from "../../../components/LiveRefresh";
+import BoxScorePanel from "../../../components/BoxScorePanel";
 import GamesPanel from "../../../components/GamesPanel";
 import RankingsPanel from "../../../components/RankingsPanel";
 import AlertsPanel from "../../../components/AlertsPanel";
 import WaiverWirePanel from "../../../components/WaiverWirePanel";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
+  BoxScoreData,
   Dashboard,
   Games,
   LeagueSettings,
@@ -34,9 +38,11 @@ import type {
   Lineups,
   PlayerDetail,
   PlayersData,
+  NewsData,
   TransactionsData,
   TeamDepth,
 } from "../../../lib/api";
+import { boxMineIds, parseBox } from "../../../lib/boxScore";
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
 import { LIVE_TABS, leaguePath, parseTab } from "../../../lib/league";
@@ -82,6 +88,7 @@ export default async function LeaguePage({
     pick?: string | string[];
     sources?: string | string[];
     pos?: string;
+    box?: string;
   }>;
 }) {
   const { leagueId } = await params;
@@ -95,6 +102,7 @@ export default async function LeaguePage({
     pick,
     sources,
     pos,
+    box,
   } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
@@ -108,6 +116,9 @@ export default async function LeaguePage({
     Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18
       ? `?week=${weekNumber}`
       : "";
+
+  // a game's full box score opens in place of the list: ?tab=games&week=N&box=AWAY-HOME
+  const boxGame = tab === "games" && weekQuery ? parseBox(box) : null;
 
   // the rankings take a week and the chosen sources; only well-formed names go into the request
   const sourceList = parseSources(sources);
@@ -127,10 +138,12 @@ export default async function LeaguePage({
     accuracy,
     leagueSettings,
     transactions,
+    news,
     players,
     playerDetail,
     depth,
     depthDialog,
+    boxScore,
   ] = await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
     tab === "lineups"
@@ -158,6 +171,7 @@ export default async function LeaguePage({
     tab === "transactions"
       ? getJson<TransactionsData>(`/api/leagues/${leagueId}/transactions`)
       : Promise.resolve(null),
+    tab === "news" ? getJson<NewsData>(`/api/leagues/${leagueId}/news`) : Promise.resolve(null),
     tab === "players" || tab === "trending"
       ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
       : Promise.resolve(null),
@@ -172,6 +186,12 @@ export default async function LeaguePage({
     isTeamCode(depthParam)
       ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${depthParam}`).catch(() => null)
       : Promise.resolve(null),
+    // ESPN is unofficial: when it has nothing the page says so instead of failing
+    boxGame
+      ? getJson<BoxScoreData>(
+          `/api/leagues/${leagueId}/games/${weekNumber}/${boxGame.away}/${boxGame.home}/box`,
+        ).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   // closing the pop-up returns to this same page without ?player
@@ -179,6 +199,7 @@ export default async function LeaguePage({
   if (tabParam) closeParams.set("tab", tabParam);
   if (weekQuery) closeParams.set("week", String(weekNumber));
   if (tabParam === "teams" && isTeamCode(team)) closeParams.set("team", team);
+  if (boxGame) closeParams.set("box", `${boxGame.away}-${boxGame.home}`);
   const closeQuery = closeParams.toString();
   const closeHref = `${leaguePath(leagueId)}${closeQuery ? `?${closeQuery}` : ""}`;
 
@@ -266,116 +287,127 @@ export default async function LeaguePage({
 
   return (
     <main id="main" className="container">
-      <LeagueHeader data={dashboard} myRosterId={myRosterId} favourite={favourite} />
-      <LeagueTabs leagueId={leagueId} active={tab} unreadAlerts={newAlerts} />
-      <LiveRefresh active={liveNow && LIVE_TABS.includes(tab)} />
-      {tab === "standings" && (
-        <StandingsTable
-          leagueId={leagueId}
-          standings={withAccuracy(dashboard.standings, accuracy)}
-          playoffTeams={dashboard.rules.playoff_teams}
-          myRosterId={myRosterId}
-        />
-      )}
-      {tab === "rosters" && (
-        <RostersPanel
-          key={`${myRosterId ?? "none"}-${linkedRosterId ?? "none"}`} // reset the selection when the team or the link changes
-          initialRosterId={linkedRosterId}
-          lineups={lineups}
-          standings={dashboard.standings}
-          leagueId={leagueId}
-          rosters={dashboard.rosters}
-          myRosterId={myRosterId}
-        />
-      )}
-      {tab === "lineups" && lineups && (
-        <WeeklyLineups
-          data={lineups}
-          leagueId={leagueId}
-          myRosterId={myRosterId}
-          standings={dashboard.standings}
-        />
-      )}
-      {tab === "games" && games && (
-        <GamesPanel
-          data={games}
-          leagueId={leagueId}
-          myRosterId={myRosterId}
-          favourite={favourite}
-        />
-      )}
-      {tab === "rankings" && rankings && (
-        <RankingsPanel
-          data={rankings}
-          leagueId={leagueId}
-          myRosterId={myRosterId}
-          initialPosition={parseRankPosition(pos)}
-        />
-      )}
-      {tab === "startsit" && startSit && (
-        <StartSitTool
-          leagueId={leagueId}
-          rosters={dashboard.rosters}
-          rosterId={startSit.rosterId}
-          picks={startSit.picks}
-          week={weekQuery ? weekNumber : null}
-          best={startSit.best}
-          comparison={startSit.comparison}
-        />
-      )}
-      {tab === "alerts" && (
-        <AlertsPanel
-          key={alertsOff.join(",")} // new saved choices from the server start the panel afresh
-          data={shownAlerts ?? { league_id: leagueId, roster_id: alertsTeam ?? 0, alerts: [] }}
-          rosters={dashboard.rosters}
-          leagueId={leagueId}
-          myRosterId={myRosterId}
-          seen={alertsSeen}
-          off={alertsOff}
-        />
-      )}
-      {tab === "waiver" && (
-        <WaiverWirePanel
-          key={wireTeam ?? "none"} // a different team starts at the top adds again
-          data={wire}
-          rosters={dashboard.rosters}
-          leagueId={leagueId}
-          rosterId={wireTeam}
-          myRosterId={myRosterId}
-        />
-      )}
-      {tab === "players" && players && (
-        <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />
-      )}
-      {tab === "trending" && players && <TrendingPanel data={players} />}
-      {tab === "teams" && (
-        <>
-          <TeamPicker leagueId={leagueId} selected={teamCode} />
-          {depth ? (
-            <TeamDepthChart data={depth} myRosterId={myRosterId} />
-          ) : (
-            <p className="note">Pick a team to see its depth chart.</p>
-          )}
-        </>
-      )}
-      {tab === "transactions" && transactions && (
-        <TransactionsPanel data={transactions} leagueId={leagueId} myRosterId={myRosterId} />
-      )}
-      {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
-      {depthDialog && (
-        <TeamDialog
-          key={depthDialog.team}
-          data={depthDialog}
-          closeHref={closeHref}
-          myRosterId={myRosterId}
-        />
-      )}
-      {!depthDialog && playerDetail && (
-        <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />
-      )}
-      <p className="back">
-        <Link href="/">Connect another league</Link>
-      </p>
+      <FavouriteProvider favourite={favourite}>
+        <LeagueHeader data={dashboard} myRosterId={myRosterId} favourite={favourite} />
+        <LeagueTabs leagueId={leagueId} active={tab} unreadAlerts={newAlerts} />
+        <LiveRefresh active={liveNow && LIVE_TABS.includes(tab)} />
+        {tab === "standings" && (
+          <StandingsTable
+            leagueId={leagueId}
+            standings={withAccuracy(dashboard.standings, accuracy)}
+            playoffTeams={dashboard.rules.playoff_teams}
+            myRosterId={myRosterId}
+          />
+        )}
+        {tab === "rosters" && (
+          <RostersPanel
+            key={`${myRosterId ?? "none"}-${linkedRosterId ?? "none"}`} // reset the selection when the team or the link changes
+            initialRosterId={linkedRosterId}
+            lineups={lineups}
+            standings={dashboard.standings}
+            leagueId={leagueId}
+            rosters={dashboard.rosters}
+            myRosterId={myRosterId}
+          />
+        )}
+        {tab === "lineups" && lineups && (
+          <WeeklyLineups
+            data={lineups}
+            leagueId={leagueId}
+            myRosterId={myRosterId}
+            standings={dashboard.standings}
+          />
+        )}
+        {tab === "games" && boxGame && (
+          <BoxScorePanel
+            data={boxScore}
+            leagueId={leagueId}
+            week={weekNumber}
+            mine={boxMineIds(games?.games ?? [], boxGame, myRosterId)}
+          />
+        )}
+        {tab === "games" && games && !boxGame && (
+          <GamesPanel
+            data={games}
+            leagueId={leagueId}
+            myRosterId={myRosterId}
+            favourite={favourite}
+          />
+        )}
+        {tab === "rankings" && rankings && (
+          <RankingsPanel
+            data={rankings}
+            leagueId={leagueId}
+            myRosterId={myRosterId}
+            initialPosition={parseRankPosition(pos)}
+          />
+        )}
+        {tab === "startsit" && startSit && (
+          <StartSitTool
+            leagueId={leagueId}
+            rosters={dashboard.rosters}
+            rosterId={startSit.rosterId}
+            picks={startSit.picks}
+            week={weekQuery ? weekNumber : null}
+            best={startSit.best}
+            comparison={startSit.comparison}
+          />
+        )}
+        {tab === "alerts" && (
+          <AlertsPanel
+            key={alertsOff.join(",")} // new saved choices from the server start the panel afresh
+            data={shownAlerts ?? { league_id: leagueId, roster_id: alertsTeam ?? 0, alerts: [] }}
+            rosters={dashboard.rosters}
+            leagueId={leagueId}
+            myRosterId={myRosterId}
+            seen={alertsSeen}
+            off={alertsOff}
+          />
+        )}
+        {tab === "waiver" && (
+          <WaiverWirePanel
+            key={wireTeam ?? "none"} // a different team starts at the top adds again
+            data={wire}
+            rosters={dashboard.rosters}
+            leagueId={leagueId}
+            rosterId={wireTeam}
+            myRosterId={myRosterId}
+          />
+        )}
+        {tab === "players" && players && (
+          <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />
+        )}
+        {tab === "trending" && players && <TrendingPanel data={players} />}
+        {tab === "teams" && (
+          <>
+            <TeamPicker leagueId={leagueId} selected={teamCode} />
+            {depth ? (
+              <TeamDepthChart data={depth} myRosterId={myRosterId} />
+            ) : (
+              <p className="note">Pick a team to see its depth chart.</p>
+            )}
+          </>
+        )}
+        {tab === "news" && news && <NewsPanel data={news} myRosterId={myRosterId} />}
+        {tab === "transactions" && transactions && (
+          <TransactionsPanel data={transactions} leagueId={leagueId} myRosterId={myRosterId} />
+        )}
+        {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
+        {depthDialog && (
+          <TeamDialog
+            key={depthDialog.team}
+            data={depthDialog}
+            closeHref={closeHref}
+            myRosterId={myRosterId}
+          />
+        )}
+        {!depthDialog && playerDetail && (
+          <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />
+        )}
+        <p className="back">
+          <Link href="/">Connect another league</Link>
+        </p>
+      </FavouriteProvider>
     </main>
   );
 }

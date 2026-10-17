@@ -2,9 +2,9 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.sources.sleeper import SleeperTransaction
 from sleeper_assistant.db import LeagueRow, RosterRow, SleeperUserRow, TransactionRow
-from sleeper_assistant.player_history import build_history, transaction_date
-from sleeper_assistant.sleeper import SleeperTransaction
+from sleeper_assistant.views.player_history import build_history, transaction_date
 
 
 def _ms(year: int, month: int, day: int) -> int:

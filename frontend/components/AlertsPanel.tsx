@@ -1,5 +1,6 @@
 "use client";
 
+import AutoSubmitForm from "./AutoSubmitForm";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -66,7 +67,7 @@ function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
             ))}
           </ol>
           {targets.length > SHOWN_TARGETS && (
-            <details className="alert-more">
+            <details className="fold">
               <summary>Show {targets.length - SHOWN_TARGETS} more</summary>
               <ol className="alert-targets" start={SHOWN_TARGETS + 1}>
                 {targets.slice(SHOWN_TARGETS).map((t) => (
@@ -176,17 +177,15 @@ export default function AlertsPanel({
         <p className="muted">Your choices are kept in this browser.</p>
       </details>
 
-      <form method="get" action={leaguePath(leagueId)} className="inline-form">
+      <AutoSubmitForm
+        action={leaguePath(leagueId)}
+        className="inline-form"
+        submitLabel="Show alerts"
+      >
         <input type="hidden" name="tab" value="alerts" />
         <label>
           Team{" "}
-          <select
-            name="roster"
-            defaultValue={String(data.roster_id)}
-            onChange={(event) =>
-              router.push(leaguePath(leagueId, `?tab=alerts&roster=${event.target.value}`))
-            }
-          >
+          <select name="roster" defaultValue={String(data.roster_id)}>
             {rosters.map((r) => (
               <option key={r.roster_id} value={r.roster_id}>
                 {r.team}
@@ -195,12 +194,7 @@ export default function AlertsPanel({
             ))}
           </select>
         </label>
-        <noscript>
-          <button type="submit" className="btn">
-            Show alerts
-          </button>
-        </noscript>
-      </form>
+      </AutoSubmitForm>
 
       {mine && unread.length > 0 && (
         <p className="alerts-unread">

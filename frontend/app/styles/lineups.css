@@ -72,7 +72,7 @@
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 0.6rem 0.9rem;
+  padding: var(--disclosure-pad);
   text-transform: uppercase;
 }
 
@@ -785,8 +785,8 @@ table.h2h {
   cursor: pointer;
   display: grid;
   gap: 0.5rem 0.9rem;
-  grid-template-columns: minmax(0, 1fr) auto;
-  padding: 0.6rem 0.8rem;
+  grid-template-columns: minmax(0, 1fr) 7.5rem; /* the same width on every card, so the dividers line up */
+  padding: var(--disclosure-pad);
 }
 
 .game-team {
@@ -830,11 +830,9 @@ table.h2h {
   border-left: 1px solid var(--line);
   display: grid;
   gap: 0.3rem;
-  justify-items: end;
-  max-width: 9rem;
+  justify-items: start;
   min-height: 100%;
   padding-left: 0.8rem;
-  text-align: right;
 }
 
 .game-card > summary > .game-mine {
@@ -984,4 +982,61 @@ table.h2h {
   left: 0;
   position: sticky;
   z-index: 1;
+}
+
+/* box score rows: a short name with its mark, then plain numbers; totals bold under each table */
+.gp-name {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.4rem;
+  white-space: nowrap;
+}
+
+.game-players tfoot th,
+.game-players tfoot td {
+  border-top: 2px solid var(--line);
+  font-weight: 700;
+}
+
+/* Full box score of one game */
+.back-link {
+  display: inline-block;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.box-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.box-section {
+  margin-top: 1rem;
+}
+
+.box-section h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.35rem;
+}
+
+.box-table th[scope="row"] {
+  white-space: nowrap;
+}
+
+.box-totals th,
+.box-totals td {
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+}
+
+table.players.box-table {
+  min-width: 0; /* a few narrow columns: fit the phone instead of the players table's 36rem */
+}
+
+.box-table th,
+.box-table td {
+  padding: 0.4rem 0.5rem;
 }

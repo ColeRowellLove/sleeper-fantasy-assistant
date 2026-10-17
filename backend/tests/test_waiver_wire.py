@@ -4,8 +4,10 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.alert_waiver import Pickup, detect_waiver_targets
-from sleeper_assistant.alerts import run_alerts
+from sleeper_assistant.alerts.engine import run_alerts
+from sleeper_assistant.alerts.waiver import detect_waiver_targets
+from sleeper_assistant.core.league.waiver_board import Pickup
+from sleeper_assistant.core.models.matchup import MatchupRank
 from sleeper_assistant.db import (
     AlertRow,
     PlayerOwnershipRow,
@@ -14,8 +16,7 @@ from sleeper_assistant.db import (
     PlayerWeekStatsRow,
     utcnow,
 )
-from sleeper_assistant.matchup_rank import MatchupRank
-from sleeper_assistant.waiver_wire import build_waiver_wire, next_waiver_date, reasons_for
+from sleeper_assistant.views.waiver_wire import build_waiver_wire, next_waiver_date, reasons_for
 from test_alert_waiver import MONDAY_EVENING, _league, _setup
 
 SUNDAY = datetime(2026, 10, 18, 16, 0, tzinfo=UTC)

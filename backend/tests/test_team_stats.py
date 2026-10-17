@@ -2,8 +2,13 @@
 
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.nfl.team_stats import (
+    STATS,
+    all_team_stats,
+    build_team_stats,
+    stats_for_position,
+)
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow, utcnow
-from sleeper_assistant.team_stats import STATS, all_team_stats, build_team_stats, stats_for_position
 
 
 def _game(gid: str, week: int, home: str, away: str, status: str = "complete") -> NflGameRow:

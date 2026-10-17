@@ -112,6 +112,8 @@ export interface PlayerDetail {
     bye?: boolean;
     matchup?: MatchupRank | null;
   }[];
+  /** Recent headlines that name him. */
+  news?: NewsItem[];
   /** His adds and drops in this league, newest first. */
   history?: {
     kind: "added" | "dropped";
@@ -234,7 +236,7 @@ export interface StandingsRow {
 }
 
 /** Who has the ball and where, for a game in progress (ESPN's live scoreboard). */
-export interface GameSituation {
+interface GameSituation {
   /** The team code with the ball. */
   possession?: string | null;
   /** "1st & 10" */
@@ -401,7 +403,7 @@ export interface Dashboard {
 }
 
 /** Sit vs start accuracy for one team, from the totals Sleeper reports on its roster. */
-export interface TeamAccuracy {
+interface TeamAccuracy {
   roster_id: number;
   team: string;
   /** Sleeper's season points for the team. */
@@ -538,6 +540,30 @@ export interface GameCard {
   players: GamePlayer[];
 }
 
+export interface BoxRow {
+  name: string;
+  position?: string | null;
+  /** The Sleeper player, when the name and team match exactly one. */
+  player_id?: string | null;
+  stats: string[];
+}
+
+export interface BoxTable {
+  key: string;
+  title: string;
+  columns: string[];
+  rows: BoxRow[];
+  totals?: string[] | null;
+}
+
+export interface BoxScoreData {
+  home: string;
+  away: string;
+  final: boolean;
+  /** Away first, then home. */
+  teams: { team: string; tables: BoxTable[] }[];
+}
+
 export interface Games {
   league_id: string;
   week: number | null;
@@ -559,7 +585,7 @@ export interface AlertItem {
 }
 
 /** One reason for or against adding a player; "info" is a plain fact. */
-export interface WireReason {
+interface WireReason {
   stance: "for" | "against" | "info";
   label: string;
   detail: string;
@@ -626,6 +652,24 @@ export interface TransactionItem {
   week: number;
   created_at?: string | null;
   moves: TeamMove[];
+}
+
+export interface NewsItem {
+  id: string;
+  source: string;
+  title: string;
+  link: string;
+  published_at?: string | null;
+  players: { player_id: string; name: string; position?: string | null; team?: string | null }[];
+  teams: string[];
+  topics: string[];
+  roster_ids: number[];
+}
+
+export interface NewsData {
+  league_id?: string | null;
+  items: NewsItem[];
+  sources: string[];
 }
 
 export interface TransactionsData {

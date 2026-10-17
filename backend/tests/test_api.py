@@ -6,7 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 
-from sleeper_assistant.api import app, get_engine_factory
+from sleeper_assistant.api import app
+from sleeper_assistant.api.deps import get_engine_factory
 
 
 def _override_engine(factory: Callable[[], Engine]) -> None:

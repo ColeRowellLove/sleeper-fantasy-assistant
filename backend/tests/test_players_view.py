@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.sources.sleeper import BASE_URL, SleeperClient
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -18,9 +19,8 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.player_data import stored_weeks, sync_trending, sync_week_stats
-from sleeper_assistant.players_view import build_players
-from sleeper_assistant.sleeper import BASE_URL, SleeperClient
+from sleeper_assistant.sync.player_data import stored_weeks, sync_trending, sync_week_stats
+from sleeper_assistant.views.players import build_players
 
 SCORING = {"rec": 1.0, "rec_yd": 0.1, "rec_td": 6.0, "pass_yd": 0.04, "pass_td": 4.0}
 

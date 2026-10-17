@@ -6,6 +6,8 @@ import type { GameInfo, MatchupRank } from "../lib/api";
 import {
   conditionsLabel,
   formatKickoff,
+  formatKickoffShort,
+  gameCardLabel,
   gameLabel,
   matchupText,
   playerUnitLabel,
@@ -20,6 +22,7 @@ export default function GameBadge({
   matchup,
   position,
   conditions,
+  variant = "full",
 }: {
   game?: GameInfo | null;
   /** The opponent's defense rank against the player's position, shown as "(3rd)". */
@@ -27,15 +30,17 @@ export default function GameBadge({
   position?: string | null;
   /** Show the roof and weather ("compact"), or also the surface and betting line ("full"). */
   conditions?: "compact" | "full";
+  /** "card" is the status on a game card, which already shows both teams and the score. */
+  variant?: "full" | "card";
 }) {
   // The kickoff is shown in the viewer's time zone, which only the browser knows. The server
   // render (and the first client render) shows the date, then the time appears.
   const kickoff = useSyncExternalStore(
     noSubscription,
-    () => formatKickoff(game?.kickoff),
+    () => (variant === "card" ? formatKickoffShort(game?.kickoff) : formatKickoff(game?.kickoff)),
     () => null,
   );
-  const label = gameLabel(game, kickoff);
+  const label = variant === "card" ? gameCardLabel(game, kickoff) : gameLabel(game, kickoff);
   if (!label) return null;
   const setting = conditions ? conditionsLabel(game, conditions === "compact") : null;
   const situation = situationLabel(game);

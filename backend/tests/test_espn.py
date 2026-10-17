@@ -7,8 +7,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import LeagueRow, PlayerOwnershipRow, PlayerRow, RosterRow
-from sleeper_assistant.espn import (
+from sleeper_assistant.core.sources.espn import (
     Ownership,
     SleeperPerson,
     fetch_ownership,
@@ -16,8 +15,9 @@ from sleeper_assistant.espn import (
     normalize_name,
     parse_ownership,
 )
-from sleeper_assistant.player_data import sync_ownership
-from sleeper_assistant.players_view import build_players
+from sleeper_assistant.db import LeagueRow, PlayerOwnershipRow, PlayerRow, RosterRow
+from sleeper_assistant.sync.player_data import sync_ownership
+from sleeper_assistant.views.players import build_players
 
 
 def _player(  # noqa: PLR0913, PLR0917
