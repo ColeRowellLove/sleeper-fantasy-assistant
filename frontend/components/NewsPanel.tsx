@@ -1,5 +1,11 @@
+"use client";
+
+import { useState } from "react";
+
 import type { NewsData } from "../lib/api";
-import { sourceNote } from "../lib/news";
+import { NEWS_FILTERS, emptyNewsNote, filterNews, sourceNote, type NewsFilter } from "../lib/news";
+import FilterChips from "./FilterChips";
+import { useFavourite } from "./FavouriteProvider";
 import NewsList from "./NewsList";
 import NoteList from "./NoteList";
 
@@ -11,6 +17,9 @@ export default function NewsPanel({
   data: NewsData;
   myRosterId: number | null;
 }) {
+  const favourite = useFavourite();
+  const [filter, setFilter] = useState<NewsFilter>("all");
+  const items = filterNews(data.items, filter, myRosterId, favourite);
   return (
     <section aria-labelledby="news-heading" className="news">
       <h2 id="news-heading">News</h2>
@@ -21,10 +30,20 @@ export default function NewsPanel({
           "Your players and favourite team come first",
         ]}
       />
-      {data.items.length === 0 ? (
-        <p className="note">No headlines have been collected yet.</p>
+      <FilterChips
+        label="Show news about"
+        options={NEWS_FILTERS}
+        value={filter}
+        onChange={setFilter}
+      />
+      {items.length === 0 ? (
+        <p className="note" role="status">
+          {data.items.length === 0
+            ? "No headlines have been collected yet."
+            : emptyNewsNote(filter, myRosterId, favourite)}
+        </p>
       ) : (
-        <NewsList items={data.items} myRosterId={myRosterId} label="Latest headlines" />
+        <NewsList items={items} myRosterId={myRosterId} label="Latest headlines" />
       )}
     </section>
   );
