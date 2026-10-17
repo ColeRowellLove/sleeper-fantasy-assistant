@@ -155,7 +155,12 @@ def test_vegas_ranks_by_the_points_the_line_implies_for_the_team(session: Sessio
     by_id = {p.player_id: p for p in result.players}
     assert by_id["a"].implied_points == 28.0 and by_id["b1"].implied_points == 22.0
     assert by_id["a"].signal_ranks == {"vegas": 1}  # the home team's players share the top rank
-    assert by_id["c"].rank == 1 and by_id["b1"].rank == 4  # BBB's back is after AAA's three
+    # the three AAA backs tie on the signal, so projected points break the tie: ranks 1, 2, 3
+    assert sorted(by_id[pid].rank for pid in ("a", "b", "c")) == [1, 2, 3]
+    assert by_id["a"].projected is not None and by_id["c"].projected is not None
+    first = min(("a", "b", "c"), key=lambda pid: by_id[pid].rank)
+    assert by_id[first].projected == max(by_id[pid].projected or 0.0 for pid in ("a", "b", "c"))
+    assert by_id["b1"].rank == 4  # BBB's back is after AAA's three
     assert "Vegas has AAA scoring 28.0" in by_id["a"].why
 
 
