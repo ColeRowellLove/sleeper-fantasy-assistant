@@ -24,7 +24,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import re
 import threading
 from collections.abc import Callable, Mapping
@@ -34,6 +33,8 @@ from typing import Protocol
 
 import httpx
 from pydantic import BaseModel
+
+from sleeper_assistant.settings import load_settings
 
 log = logging.getLogger(__name__)
 
@@ -104,17 +105,15 @@ class OpenAICompatibleClient:
 
 def client_from_env(env: Mapping[str, str] | None = None) -> LlmClient | None:
     """The configured client, or None when no provider is set (or it is incomplete)."""
-    values = os.environ if env is None else env
-    provider = (values.get("LLM_PROVIDER") or "none").strip().lower()
-    model = values.get("LLM_MODEL", "").strip()
+    settings = load_settings(env)
+    provider, model = settings.llm_provider, settings.llm_model
     if provider == "anthropic":
-        key = values.get("LLM_API_KEY") or values.get("ANTHROPIC_API_KEY", "")
+        key = settings.llm_api_key or settings.anthropic_api_key
         if key and model:
             return AnthropicClient(api_key=key, model=model)
     elif provider == "openai_compatible":
-        base = values.get("LLM_BASE_URL", "").strip()
-        if base and model:
-            return OpenAICompatibleClient(base, model, values.get("LLM_API_KEY", ""))
+        if settings.llm_base_url and model:
+            return OpenAICompatibleClient(settings.llm_base_url, model, settings.llm_api_key)
     elif provider != "none":
         log.warning("unknown LLM_PROVIDER %r; the LLM is off", provider)
     return None
@@ -186,8 +185,8 @@ class Budget:
     """
 
     def __init__(self, cap: int | None = None) -> None:
-        env_cap = os.environ.get("LLM_MAX_CALLS_PER_RUN", "")
-        self.cap = cap if cap is not None else int(env_cap) if env_cap.isdigit() else DEFAULT_CAP
+        env_cap = load_settings().llm_max_calls
+        self.cap = cap if cap is not None else env_cap if env_cap is not None else DEFAULT_CAP
         self.used = 0
         self.failures = 0
         self.answers: dict[str, BaseModel] = {}

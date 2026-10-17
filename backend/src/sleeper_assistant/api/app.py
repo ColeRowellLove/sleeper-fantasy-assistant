@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Annotated
@@ -30,6 +29,7 @@ from sleeper_assistant.db import (
     as_utc,
     utcnow,
 )
+from sleeper_assistant.settings import load_settings
 from sleeper_assistant.sync.ingest import finish_connect, sync_league
 from sleeper_assistant.views.dashboard import Dashboard, build_dashboard
 
@@ -84,7 +84,7 @@ def health_db(
 
     The engine is built inside the try block so a bad DATABASE_URL is reported, not a bare 500.
     """
-    raw = os.environ.get("DATABASE_URL", "")
+    raw = load_settings().database_url_raw
     result: dict[str, str | bool] = {
         "database_url_configured": bool(raw),
         # only what precedes "://" (e.g. "postgresql"); never the credentials or host

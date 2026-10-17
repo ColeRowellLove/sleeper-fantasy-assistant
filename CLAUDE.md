@@ -64,7 +64,8 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
   - `sync/` getting data in and keeping it fresh: league, player, stats, depth chart, news and kickoff syncs,
     the crosswalk, and the job queue (`jobs`, `job_schedule`).
   - `api/` the app, shared dependencies (`deps`) and the routes; routes stay thin and call a view or core function.
-  - top level: `db` (tables), `constants.py` (values two modules need), `worker` (runs queued jobs), `boot` and
+  - top level: `db` (tables), `settings.py` (every environment variable, read nowhere else; add a new one to
+    `ENV_VARS` and the README table), `constants.py` (values two modules need), `worker` (runs queued jobs), `boot` and
     `sample_league` (made-up data for previews).
   - **Where a new file goes:** a new data source in `core/sources/` (see the `add-source-parser` skill) and the code
     that stores it in `sync/`; a calculation two features need in `core/` (a generic helper in `utils/`); a page's

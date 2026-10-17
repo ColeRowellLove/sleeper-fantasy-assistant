@@ -13,7 +13,6 @@ accident.
 from __future__ import annotations
 
 import logging
-import os
 import sys
 
 import httpx
@@ -30,6 +29,7 @@ from sleeper_assistant.db import (
     make_engine,
     make_session_factory,
 )
+from sleeper_assistant.settings import load_settings
 from sleeper_assistant.sync.ingest import finish_connect, sync_league
 from sleeper_assistant.worker import default_handlers, run_one_shot
 
@@ -86,9 +86,9 @@ def boot(
 
 def main() -> None:  # pragma: no cover - process entry point
     logging.basicConfig(level=logging.INFO)
-    username = os.environ.get("SLEEPER_USERNAME") or None
-    league_id = os.environ.get("SLEEPER_LEAGUE_ID") or None
-    if not database_url().startswith("sqlite") and os.environ.get("BOOT_ALLOW_SHARED_DB") != "1":
+    settings = load_settings()
+    username, league_id = settings.sleeper_username, settings.sleeper_league_id
+    if not database_url().startswith("sqlite") and not settings.boot_allow_shared_db:
         raise SystemExit("boot only writes to SQLite (set BOOT_ALLOW_SHARED_DB=1 to override)")
     factory = make_session_factory(make_engine())
     sleeper = SleeperClient()

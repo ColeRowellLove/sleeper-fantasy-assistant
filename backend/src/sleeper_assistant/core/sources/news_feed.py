@@ -8,7 +8,6 @@ the NFL headline feeds of ESPN and CBS Sports.
 
 from __future__ import annotations
 
-import os
 import re
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
@@ -16,6 +15,8 @@ from typing import NamedTuple
 from xml.etree import ElementTree
 
 import httpx
+
+from sleeper_assistant.settings import load_settings
 
 DEFAULT_FEEDS: tuple[tuple[str, str], ...] = (
     ("ESPN", "https://www.espn.com/espn/rss/nfl/news"),
@@ -40,7 +41,7 @@ class NewsEntry(NamedTuple):
 
 def configured_feeds() -> list[tuple[str, str]]:
     """The feeds to read: ``NEWS_FEEDS`` (``name|url,name|url``) or the defaults."""
-    raw = os.environ.get("NEWS_FEEDS", "").strip()
+    raw = load_settings().news_feeds
     if not raw:
         return list(DEFAULT_FEEDS)
     feeds: list[tuple[str, str]] = []
