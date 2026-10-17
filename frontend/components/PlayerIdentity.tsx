@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { InjuryInfo } from "../lib/api";
+import FavouriteMark from "./FavouriteProvider";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
@@ -53,6 +54,7 @@ export default function PlayerIdentity({
             </span>
           )}
           <InjuryBadge injury={injury} />
+          <FavouriteMark team={team} />
           {meta}
         </span>
         {children}

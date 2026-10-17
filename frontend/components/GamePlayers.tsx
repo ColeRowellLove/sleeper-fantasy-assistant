@@ -6,6 +6,7 @@ import { teamInitials } from "../lib/lineups";
 import type { GameCard, GamePlayer } from "../lib/api";
 import { GROUPS, playersFor, totalCells, type StatGroup } from "../lib/gameStats";
 import PanelTabs from "./PanelTabs";
+import FavouriteMark, { useFavourite } from "./FavouriteProvider";
 import InjuryBadge from "./InjuryBadge";
 import PlayerLink from "./PlayerLink";
 import StatTable from "./StatTable";
@@ -80,6 +81,7 @@ function GroupTable({
                     <span className="visually-hidden">{p.name}</span>
                   </PlayerLink>
                   <InjuryBadge injury={p.injury} />
+                  <FavouriteMark team={p.team} />
                   <OwnerTag player={p} mine={mine} />
                 </span>
               </th>
@@ -125,6 +127,7 @@ export default function GamePlayers({
   card: GameCard;
   myRosterId: number | null;
 }) {
+  const favourite = useFavourite();
   // one team at a time, like theScore's box score: far less scrolling than both teams stacked
   const tabs = [card.away, card.home].map((team) => ({
     key: team,
@@ -152,7 +155,7 @@ export default function GamePlayers({
   }));
   return (
     <div className="game-teams-detail">
-      <PanelTabs label="Team" tabs={tabs} />
+      <PanelTabs label="Team" tabs={tabs} initial={favourite ?? undefined} />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import TransactionsPanel from "../../../components/TransactionsPanel";
 import TrendingPanel from "../../../components/TrendingPanel";
 import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
+import { FavouriteProvider } from "../../../components/FavouriteProvider";
 import LiveRefresh from "../../../components/LiveRefresh";
 import GamesPanel from "../../../components/GamesPanel";
 import RankingsPanel from "../../../components/RankingsPanel";
@@ -266,116 +267,118 @@ export default async function LeaguePage({
 
   return (
     <main id="main" className="container">
-      <LeagueHeader data={dashboard} myRosterId={myRosterId} favourite={favourite} />
-      <LeagueTabs leagueId={leagueId} active={tab} unreadAlerts={newAlerts} />
-      <LiveRefresh active={liveNow && LIVE_TABS.includes(tab)} />
-      {tab === "standings" && (
-        <StandingsTable
-          leagueId={leagueId}
-          standings={withAccuracy(dashboard.standings, accuracy)}
-          playoffTeams={dashboard.rules.playoff_teams}
-          myRosterId={myRosterId}
-        />
-      )}
-      {tab === "rosters" && (
-        <RostersPanel
-          key={`${myRosterId ?? "none"}-${linkedRosterId ?? "none"}`} // reset the selection when the team or the link changes
-          initialRosterId={linkedRosterId}
-          lineups={lineups}
-          standings={dashboard.standings}
-          leagueId={leagueId}
-          rosters={dashboard.rosters}
-          myRosterId={myRosterId}
-        />
-      )}
-      {tab === "lineups" && lineups && (
-        <WeeklyLineups
-          data={lineups}
-          leagueId={leagueId}
-          myRosterId={myRosterId}
-          standings={dashboard.standings}
-        />
-      )}
-      {tab === "games" && games && (
-        <GamesPanel
-          data={games}
-          leagueId={leagueId}
-          myRosterId={myRosterId}
-          favourite={favourite}
-        />
-      )}
-      {tab === "rankings" && rankings && (
-        <RankingsPanel
-          data={rankings}
-          leagueId={leagueId}
-          myRosterId={myRosterId}
-          initialPosition={parseRankPosition(pos)}
-        />
-      )}
-      {tab === "startsit" && startSit && (
-        <StartSitTool
-          leagueId={leagueId}
-          rosters={dashboard.rosters}
-          rosterId={startSit.rosterId}
-          picks={startSit.picks}
-          week={weekQuery ? weekNumber : null}
-          best={startSit.best}
-          comparison={startSit.comparison}
-        />
-      )}
-      {tab === "alerts" && (
-        <AlertsPanel
-          key={alertsOff.join(",")} // new saved choices from the server start the panel afresh
-          data={shownAlerts ?? { league_id: leagueId, roster_id: alertsTeam ?? 0, alerts: [] }}
-          rosters={dashboard.rosters}
-          leagueId={leagueId}
-          myRosterId={myRosterId}
-          seen={alertsSeen}
-          off={alertsOff}
-        />
-      )}
-      {tab === "waiver" && (
-        <WaiverWirePanel
-          key={wireTeam ?? "none"} // a different team starts at the top adds again
-          data={wire}
-          rosters={dashboard.rosters}
-          leagueId={leagueId}
-          rosterId={wireTeam}
-          myRosterId={myRosterId}
-        />
-      )}
-      {tab === "players" && players && (
-        <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />
-      )}
-      {tab === "trending" && players && <TrendingPanel data={players} />}
-      {tab === "teams" && (
-        <>
-          <TeamPicker leagueId={leagueId} selected={teamCode} />
-          {depth ? (
-            <TeamDepthChart data={depth} myRosterId={myRosterId} />
-          ) : (
-            <p className="note">Pick a team to see its depth chart.</p>
-          )}
-        </>
-      )}
-      {tab === "transactions" && transactions && (
-        <TransactionsPanel data={transactions} leagueId={leagueId} myRosterId={myRosterId} />
-      )}
-      {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
-      {depthDialog && (
-        <TeamDialog
-          key={depthDialog.team}
-          data={depthDialog}
-          closeHref={closeHref}
-          myRosterId={myRosterId}
-        />
-      )}
-      {!depthDialog && playerDetail && (
-        <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />
-      )}
-      <p className="back">
-        <Link href="/">Connect another league</Link>
-      </p>
+      <FavouriteProvider favourite={favourite}>
+        <LeagueHeader data={dashboard} myRosterId={myRosterId} favourite={favourite} />
+        <LeagueTabs leagueId={leagueId} active={tab} unreadAlerts={newAlerts} />
+        <LiveRefresh active={liveNow && LIVE_TABS.includes(tab)} />
+        {tab === "standings" && (
+          <StandingsTable
+            leagueId={leagueId}
+            standings={withAccuracy(dashboard.standings, accuracy)}
+            playoffTeams={dashboard.rules.playoff_teams}
+            myRosterId={myRosterId}
+          />
+        )}
+        {tab === "rosters" && (
+          <RostersPanel
+            key={`${myRosterId ?? "none"}-${linkedRosterId ?? "none"}`} // reset the selection when the team or the link changes
+            initialRosterId={linkedRosterId}
+            lineups={lineups}
+            standings={dashboard.standings}
+            leagueId={leagueId}
+            rosters={dashboard.rosters}
+            myRosterId={myRosterId}
+          />
+        )}
+        {tab === "lineups" && lineups && (
+          <WeeklyLineups
+            data={lineups}
+            leagueId={leagueId}
+            myRosterId={myRosterId}
+            standings={dashboard.standings}
+          />
+        )}
+        {tab === "games" && games && (
+          <GamesPanel
+            data={games}
+            leagueId={leagueId}
+            myRosterId={myRosterId}
+            favourite={favourite}
+          />
+        )}
+        {tab === "rankings" && rankings && (
+          <RankingsPanel
+            data={rankings}
+            leagueId={leagueId}
+            myRosterId={myRosterId}
+            initialPosition={parseRankPosition(pos)}
+          />
+        )}
+        {tab === "startsit" && startSit && (
+          <StartSitTool
+            leagueId={leagueId}
+            rosters={dashboard.rosters}
+            rosterId={startSit.rosterId}
+            picks={startSit.picks}
+            week={weekQuery ? weekNumber : null}
+            best={startSit.best}
+            comparison={startSit.comparison}
+          />
+        )}
+        {tab === "alerts" && (
+          <AlertsPanel
+            key={alertsOff.join(",")} // new saved choices from the server start the panel afresh
+            data={shownAlerts ?? { league_id: leagueId, roster_id: alertsTeam ?? 0, alerts: [] }}
+            rosters={dashboard.rosters}
+            leagueId={leagueId}
+            myRosterId={myRosterId}
+            seen={alertsSeen}
+            off={alertsOff}
+          />
+        )}
+        {tab === "waiver" && (
+          <WaiverWirePanel
+            key={wireTeam ?? "none"} // a different team starts at the top adds again
+            data={wire}
+            rosters={dashboard.rosters}
+            leagueId={leagueId}
+            rosterId={wireTeam}
+            myRosterId={myRosterId}
+          />
+        )}
+        {tab === "players" && players && (
+          <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />
+        )}
+        {tab === "trending" && players && <TrendingPanel data={players} />}
+        {tab === "teams" && (
+          <>
+            <TeamPicker leagueId={leagueId} selected={teamCode} />
+            {depth ? (
+              <TeamDepthChart data={depth} myRosterId={myRosterId} />
+            ) : (
+              <p className="note">Pick a team to see its depth chart.</p>
+            )}
+          </>
+        )}
+        {tab === "transactions" && transactions && (
+          <TransactionsPanel data={transactions} leagueId={leagueId} myRosterId={myRosterId} />
+        )}
+        {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
+        {depthDialog && (
+          <TeamDialog
+            key={depthDialog.team}
+            data={depthDialog}
+            closeHref={closeHref}
+            myRosterId={myRosterId}
+          />
+        )}
+        {!depthDialog && playerDetail && (
+          <PlayerDialog key={playerDetail.player_id} detail={playerDetail} closeHref={closeHref} />
+        )}
+        <p className="back">
+          <Link href="/">Connect another league</Link>
+        </p>
+      </FavouriteProvider>
     </main>
   );
 }
