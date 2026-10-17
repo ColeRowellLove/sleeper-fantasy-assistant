@@ -8,9 +8,6 @@ highlights their players, so every player names the roster that owns them.
 
 from __future__ import annotations
 
-import math
-from collections.abc import Mapping
-
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -31,6 +28,7 @@ from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.stat_lines import stat_line
 from sleeper_assistant.team_depth import TeamRecord, team_record
 from sleeper_assistant.team_names import team_names
+from sleeper_assistant.utils.parse import finite_numbers
 
 # the stat lines the page lays out, by Sleeper's own names; anything else is left out
 STAT_KEYS = (
@@ -41,23 +39,6 @@ STAT_KEYS = (
 # before kickoff, the best-projected players of each position are shown for each team besides the
 # ones on a fantasy roster (a few per position, so a kicker and a defense are never crowded out)
 PROJECTED_PER_POSITION = {"QB": 1, "RB": 2, "WR": 3, "TE": 1, "K": 1, "DEF": 1}
-
-
-def _number(value: object) -> float | None:
-    """A finite float for a number (or numeric text like "0"), else None; never raises."""
-    if isinstance(value, bool) or not isinstance(value, int | float | str):
-        return None
-    try:
-        number = float(value)
-    except (ValueError, OverflowError):
-        return None
-    return number if math.isfinite(number) else None
-
-
-def _numbers(stats: Mapping[str, object]) -> dict[str, float]:
-    """The finite numbers of a stored stat line; a null or non-numeric value is dropped."""
-    cleaned = ((k, _number(v)) for k, v in stats.items())
-    return {k: n for k, n in cleaned if n is not None}
 
 
 class GamePlayer(BaseModel):
@@ -115,7 +96,7 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
 
     # stored lines come from Sleeper's JSON: keep only the finite numbers (a null is not fatal)
     cleaned = {
-        row.player_id: _numbers(row.stats)
+        row.player_id: finite_numbers(row.stats)
         for row in session.scalars(
             select(PlayerWeekStatsRow).where(
                 PlayerWeekStatsRow.season == season, PlayerWeekStatsRow.week == chosen
@@ -137,7 +118,7 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
     wanted = {p.player_id for p in candidates if p.team in upcoming}
     projections = (
         {
-            row.player_id: _numbers(row.stats)
+            row.player_id: finite_numbers(row.stats)
             for row in session.scalars(
                 select(PlayerProjectionRow).where(
                     PlayerProjectionRow.season == season,

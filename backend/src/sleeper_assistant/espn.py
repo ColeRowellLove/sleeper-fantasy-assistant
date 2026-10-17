@@ -19,6 +19,8 @@ from typing import Any, NamedTuple
 
 import httpx
 
+from sleeper_assistant.utils.parse import rounded_percent
+
 ESPN_URL = (
     "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}"
     "/segments/0/leaguedefaults/3?view=kona_player_info"
@@ -55,12 +57,6 @@ class Ownership(NamedTuple):
     started: float | None
 
 
-def _percent(value: Any) -> float | None:
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        return None
-    return round(float(value), 2)
-
-
 def parse_ownership(payload: Any) -> list[Ownership]:
     """The players in an ESPN response that have a usable id, name and ownership block."""
     players = payload.get("players") if isinstance(payload, dict) else None
@@ -86,8 +82,8 @@ def parse_ownership(payload: Any) -> list[Ownership]:
                 name=str(player["fullName"]),
                 team=team,
                 position=position,
-                owned=_percent(ownership.get("percentOwned")),
-                started=_percent(ownership.get("percentStarted")),
+                owned=rounded_percent(ownership.get("percentOwned")),
+                started=rounded_percent(ownership.get("percentStarted")),
             )
         )
     return out

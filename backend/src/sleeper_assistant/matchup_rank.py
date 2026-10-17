@@ -23,6 +23,7 @@ from sleeper_assistant.constants import GAME_COMPLETE, PLAYER_POSITIONS
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
 from sleeper_assistant.projections import score_stats
 from sleeper_assistant.stats_version import season_stats_version
+from sleeper_assistant.utils.cache import VersionedCache
 
 DEFENSE = "DEF"
 
@@ -49,7 +50,7 @@ class MatchupRank(DefenseRank):
 DefenseTable = dict[tuple[str, str], DefenseRank]
 
 
-_CACHE: dict[tuple[str, str], tuple[tuple[int, int], DefenseTable]] = {}
+_CACHE: VersionedCache[tuple[str, str], DefenseTable] = VersionedCache()
 
 
 def reset_cache() -> None:
@@ -66,12 +67,7 @@ def build_defense_table(
     """
     version = season_stats_version(session, season)
     key = (season, repr(sorted(scoring.items())))
-    cached = _CACHE.get(key)
-    if cached is not None and cached[0] == version:
-        return cached[1]
-    table = _build_defense_table(session, season, scoring)
-    _CACHE[key] = (version, table)
-    return table
+    return _CACHE.get(key, version, lambda: _build_defense_table(session, season, scoring))
 
 
 def _build_defense_table(

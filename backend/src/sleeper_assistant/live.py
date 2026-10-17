@@ -20,7 +20,8 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel
 
-from sleeper_assistant.constants import ESPN_SCOREBOARD_URL, ESPN_TEAM_CODES
+from sleeper_assistant.constants import ESPN_SCOREBOARD_URL
+from sleeper_assistant.utils.parse import clean_text, espn_team_code, int_or_none
 
 log = logging.getLogger(__name__)
 
@@ -59,23 +60,6 @@ class LiveGame(BaseModel):
     situation: Situation | None = None  # only while the game is live and ESPN reports it
 
 
-def _code(value: Any) -> str | None:
-    if not isinstance(value, str) or not value:
-        return None
-    return ESPN_TEAM_CODES.get(value, value)
-
-
-def _score(value: Any) -> int | None:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _text(value: Any) -> str | None:
-    return value.strip() if isinstance(value, str) and value.strip() else None
-
-
 def _between_plays(detail: Any) -> bool:
     """Halftime and the end of a quarter: ESPN may leave the last possession in place."""
     return isinstance(detail, str) and any(word in detail.lower() for word in ("half", "end"))
@@ -95,18 +79,20 @@ def parse_situation(competition: dict[str, Any], sides: dict[str, Any]) -> Situa
     by_id: dict[str, str] = {}  # ESPN team id -> team code
     for side in sides.values():
         team = side.get("team") if isinstance(side, dict) else None
-        code = _code(team.get("abbreviation")) if isinstance(team, dict) else None
+        code = espn_team_code(team.get("abbreviation")) if isinstance(team, dict) else None
         if code and isinstance(team, dict) and team.get("id") is not None:
             by_id[str(team["id"])] = code
     codes = set(by_id.values())
-    ball_on = _text(block.get("possessionText"))
+    ball_on = clean_text(block.get("possessionText"))
     possession = by_id.get(str(block.get("possession")))
     if ball_on:
         side, _, rest = ball_on.partition(" ")
-        ball_code = _code(side)
+        ball_code = espn_team_code(side)
         if ball_code in codes:  # "WSH 35" is written with the codes the rest of the app uses
             ball_on = f"{ball_code} {rest}".strip()
-    down = _text(block.get("shortDownDistanceText")) or _text(block.get("downDistanceText"))
+    down = clean_text(block.get("shortDownDistanceText")) or clean_text(
+        block.get("downDistanceText")
+    )
     red_zone = block.get("isRedZone") is True
     if possession is None and down is None and ball_on is None and not red_zone:
         if (
@@ -133,8 +119,8 @@ def parse_scoreboard(payload: Any) -> list[LiveGame]:
             state = _STATES.get(status["type"]["state"])
             sides = {c["homeAway"]: c for c in competition["competitors"]}
             home, away = (
-                _code(sides["home"]["team"]["abbreviation"]),
-                _code(sides["away"]["team"]["abbreviation"]),
+                espn_team_code(sides["home"]["team"]["abbreviation"]),
+                espn_team_code(sides["away"]["team"]["abbreviation"]),
             )
         except (KeyError, IndexError, TypeError):
             continue
@@ -152,8 +138,8 @@ def parse_scoreboard(payload: Any) -> list[LiveGame]:
                 period=period if isinstance(period, int) and period > 0 else None,
                 clock=clock if isinstance(clock, str) and state == "live" else None,
                 detail=detail if isinstance(detail, str) else None,
-                home_score=_score(sides["home"].get("score")),
-                away_score=_score(sides["away"].get("score")),
+                home_score=int_or_none(sides["home"].get("score")),
+                away_score=int_or_none(sides["away"].get("score")),
                 situation=parse_situation(competition, sides)
                 if state == "live" and not _between_plays(detail)
                 else None,
