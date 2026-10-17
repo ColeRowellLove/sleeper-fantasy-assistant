@@ -94,7 +94,7 @@ export default function TrendingPanel({ data }: { data: PlayersData }) {
           ))}
         </ol>
       )}
-      <details className="trend-about">
+      <details className="fold">
         <summary>About these numbers</summary>
         <NoteList
           items={[

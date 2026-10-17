@@ -273,7 +273,7 @@ describe("PlayerDialog", () => {
     openTab("Team");
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
     expect(within(dialog).getByRole("heading", { name: "LAR team rank" })).toBeInTheDocument();
-    const chip = within(dialog).getByText("Targets per game").closest("li");
+    const chip = within(dialog).getByText("Targets").closest("li");
     expect(chip).toHaveTextContent("3rd");
     expect(chip).toHaveTextContent("34.2");
   });

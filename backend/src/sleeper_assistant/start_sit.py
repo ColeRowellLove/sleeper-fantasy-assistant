@@ -14,7 +14,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import GameInfo, InjuryInfo, _injury, games_for_week, starter_slots
+from sleeper_assistant.dashboard import (
+    GameInfo,
+    InjuryInfo,
+    games_for_week,
+    injury_info,
+    starter_slots,
+)
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow
 from sleeper_assistant.lineup_slots import assign_lineup
 from sleeper_assistant.matchup_rank import (
@@ -23,7 +29,7 @@ from sleeper_assistant.matchup_rank import (
     build_defense_table,
     matchup_rank,
 )
-from sleeper_assistant.players_view import _name
+from sleeper_assistant.players_view import player_name
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.rankings import RankedPlayer, Rankings, build_rankings
 
@@ -121,10 +127,10 @@ def _candidate(
         # the rankings left him out (a zero projection, or no source ranks him) but a projection
         # exists: use it instead of calling him unprojected
         game = extra.games.get(player.team or "")
-        injury = _injury({pid: player}, pid)
+        injury = injury_info({pid: player}, pid)
         status = injury.status if injury else None
         return Candidate(
-            player_id=pid, name=_name(player), position=player.position, team=player.team,
+            player_id=pid, name=player_name(player), position=player.position, team=player.team,
             injury=injury, game=game,
             matchup=matchup_rank(
                 extra.defense, player.position or "", game.opponent if game else None
@@ -146,7 +152,7 @@ def _candidate(
         )  # fmt: skip
     return Candidate(
         player_id=pid,
-        name=_name(player) if player else pid,
+        name=player_name(player) if player else pid,
         position=player.position if player else None,
         team=player.team if player else None,
         out="no projection this week",

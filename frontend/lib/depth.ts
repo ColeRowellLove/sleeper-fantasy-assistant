@@ -79,6 +79,35 @@ export interface DepthSections {
   more: { key: string; title: string; slots: DepthSlot[] }[];
 }
 
+export type DepthUnit = "offense" | "defense" | "special";
+
+export const DEPTH_UNITS: readonly { value: DepthUnit; label: string }[] = [
+  { value: "offense", label: "Offense" },
+  { value: "defense", label: "Defense" },
+  { value: "special", label: "Special teams" },
+];
+
+export interface UnitView {
+  /** The title of the main card ("Fantasy positions", "Defense", "Special teams"). */
+  mainTitle: string;
+  main: DepthSlot[];
+  more: DepthSections["more"];
+}
+
+/** One unit's lineup: the offense keeps its fantasy positions up front and the line folded away. */
+export function unitView(groups: DepthGroup[], unit: DepthUnit): UnitView {
+  const own = groups.filter((g) => g.group === unit);
+  if (unit === "offense") {
+    const { skill, more } = groupSlots(own);
+    return { mainTitle: "Fantasy positions", main: skill, more };
+  }
+  return {
+    mainTitle: unit === "defense" ? "Defense" : "Special teams",
+    main: own.flatMap((g) => g.slots),
+    more: [],
+  };
+}
+
 export function groupSlots(groups: DepthGroup[]): DepthSections {
   const skill: DepthSlot[] = [];
   const more: DepthSections["more"] = [];

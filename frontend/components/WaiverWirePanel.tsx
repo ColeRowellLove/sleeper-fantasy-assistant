@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { Dashboard, WaiverWireData, WireEntry } from "../lib/api";
@@ -81,23 +82,29 @@ export default function WaiverWirePanel({
   rosterId: number | null;
   myRosterId: number | null;
 }) {
+  const router = useRouter();
   const [view, setView] = useState<WireView>("top");
   const entries = data ? entriesFor(data, view) : [];
   return (
     <section aria-labelledby="wire-heading">
       <h2 id="wire-heading">Waiver wire</h2>
       {data ? (
-        <NoteList
-          items={[
-            <>
-              Best adds for the {data.waiver_day} ({waiverDateLabel(data.waiver_date)}) waivers
-              {data.week !== null && `, scored for week ${data.week}`}
-            </>,
-            "Only players available in this league, scored with its rules",
-            "Compared with the selected team's lineup",
-            "The list starts over each waiver cycle",
-          ]}
-        />
+        <>
+          <p className="note rank-line">
+            Best adds for the {data.waiver_day} ({waiverDateLabel(data.waiver_date)}) waivers
+            {data.week !== null && `, scored for week ${data.week}`}
+          </p>
+          <details className="fold">
+            <summary>About the waiver wire</summary>
+            <NoteList
+              items={[
+                "Only players available in this league, scored with its rules",
+                "Compared with the selected team's lineup",
+                "The list starts over each waiver cycle",
+              ]}
+            />
+          </details>
+        </>
       ) : (
         <p className="note">The waiver wire could not be loaded. Try again in a moment.</p>
       )}
@@ -106,7 +113,13 @@ export default function WaiverWirePanel({
         <input type="hidden" name="tab" value="waiver" />
         <label>
           Team{" "}
-          <select name="roster" defaultValue={rosterId === null ? "" : String(rosterId)}>
+          <select
+            name="roster"
+            defaultValue={rosterId === null ? "" : String(rosterId)}
+            onChange={(event) =>
+              router.push(leaguePath(leagueId, `?tab=waiver&roster=${event.target.value}`))
+            }
+          >
             {rosters.map((r) => (
               <option key={r.roster_id} value={r.roster_id}>
                 {r.team}
@@ -115,9 +128,11 @@ export default function WaiverWirePanel({
             ))}
           </select>
         </label>
-        <button type="submit" className="btn">
-          Show waiver wire
-        </button>
+        <noscript>
+          <button type="submit" className="btn">
+            Show waiver wire
+          </button>
+        </noscript>
       </form>
 
       {data && data.entries.length > 0 && (

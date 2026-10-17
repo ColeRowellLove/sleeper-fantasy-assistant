@@ -1,9 +1,10 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import GamesPanel from "../components/GamesPanel";
 import type { GameCard, GameInfo, GamePlayer, Games } from "../lib/api";
 import { cardScores } from "../lib/game";
+import { groupGames, teamNickname } from "../lib/games";
 import { parseTab } from "../lib/league";
 import { orderGames, yourPlayersText } from "../lib/games";
 import { expectNoA11yViolations } from "./a11y";
@@ -123,11 +124,19 @@ describe("game ordering", () => {
   });
 });
 
+const openTeam = (team: string) => fireEvent.click(screen.getByRole("tab", { name: team }));
+
 describe("GamesPanel", () => {
+  it("groups the games by day under a heading, your games first", () => {
+    render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings[0]).toBe("Your games");
+  });
+
   it("lists every game with the state, line and conditions in words", () => {
     render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
-    expect(screen.getByText("Played")).toBeInTheDocument();
-    expect(screen.getByText("Final, KC 27 - DEN 20")).toBeInTheDocument();
+    expect(screen.getAllByText("Played").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Final, KC 27 - DEN 20").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/53°F, wind 3 mph · SF -3.5, O\/U 44.5/).length).toBeGreaterThan(0);
   });
 
@@ -139,11 +148,12 @@ describe("GamesPanel", () => {
       "You 1 of your player",
     ]);
     const first = document.querySelector("details summary .game-teams");
-    expect(first).toHaveTextContent("DEN20–27KC"); // away score, dash, home score // the game with two of your players leads
+    expect(first).toHaveTextContent(/Broncos.*20.*Chiefs.*27/); // away over home, with scores
   });
 
   it("lays out every stat like a box score, with your players highlighted and named", () => {
     render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
+    openTeam("KC");
     const table = screen.getByRole("table", { name: /KC rushing and receiving/ });
     const headers = within(table)
       .getAllByRole("columnheader")
@@ -178,14 +188,21 @@ describe("GamesPanel", () => {
     expect(within(other).getByText("Dad Bods")).toBeInTheDocument();
   });
 
-  it("shows each team in turn with its logo and faces, and free agents as available", () => {
+  it("shows one team at a time behind a tab each, with its logo and faces, free agents as available", () => {
     const { container } = render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
-    const blocks = screen.getAllByRole("region", { name: /KC players|DEN players/ });
-    expect(blocks.map((b) => b.getAttribute("aria-label"))).toEqual(["DEN players", "KC players"]);
+    const tabs = screen.getAllByRole("tab", { name: /KC|DEN|SF|SEA/ }).map((t) => t.textContent);
+    expect(tabs).toEqual(expect.arrayContaining(["DEN", "KC"]));
+    // away team first and open; the home team's tables are not rendered until its tab is opened
+    expect(screen.getByRole("region", { name: "DEN players" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "KC players" })).not.toBeInTheDocument();
+    openTeam("KC");
+    expect(screen.getByRole("region", { name: "KC players" })).toBeInTheDocument();
     expect(container.querySelectorAll(".game-team-title .team-logo").length).toBeGreaterThan(0);
     expect(container.querySelectorAll(".game-players .avatar").length).toBeGreaterThan(0);
+    openTeam("SF");
     const free = screen.getByRole("table", { name: /SF rushing and receiving/ });
     expect(within(free).getByText("Available")).toBeInTheDocument();
+    openTeam("SEA");
     const mine = screen.getByRole("table", { name: /SEA rushing and receiving/ });
     expect(within(mine).getByRole("row", { name: /My Only/ })).toHaveTextContent("–");
   });
@@ -200,6 +217,7 @@ describe("GamesPanel", () => {
       }),
     ]);
     render(<GamesPanel data={{ ...data, games: [upcoming] }} leagueId="1" myRosterId={1} />);
+    openTeam("KC");
     const table = screen.getByRole("table", { name: /KC rushing and receiving \(projected\)/ });
     expect(within(table).getByRole("columnheader", { name: "Proj pts" })).toBeInTheDocument();
     const row = within(table).getByRole("row", { name: /Projected Back/ });
@@ -242,5 +260,43 @@ describe("cardScores", () => {
     });
     expect(cardScores(card({ state: "upcoming", team_score: 0, opponent_score: 0 }))).toBeNull();
     expect(cardScores(card({ team_score: null, opponent_score: null }))).toBeNull();
+  });
+});
+
+describe("groupGames", () => {
+  const card = (id: string, date: string | null): GameCard =>
+    ({
+      game_id: id,
+      week: 1,
+      home: "KC",
+      away: "DEN",
+      game: { state: "upcoming", date, opponent: null, home: null } as GameInfo,
+      players: [],
+    }) as GameCard;
+  const og = (id: string, date: string | null, mine = 0) => ({
+    card: card(id, date),
+    mine: Array.from({ length: mine }, () => ({}) as GamePlayer),
+  });
+
+  it("puts your games first, then one section per day in date order, undated last", () => {
+    const sections = groupGames([
+      og("a", "2026-10-19"),
+      og("b", "2026-10-18"),
+      og("c", null),
+      og("d", "2026-10-18", 1),
+      og("e", "2026-10-18"),
+    ]);
+    expect(sections.map((s) => s.title)).toEqual([
+      "Your games",
+      "Sunday, Oct 18",
+      "Monday, Oct 19",
+      "Date to be set",
+    ]);
+    expect(sections[1].games.map((g) => g.card.game_id)).toEqual(["b", "e"]);
+  });
+
+  it("writes a team's nickname, or its code when unknown", () => {
+    expect(teamNickname("HOU")).toBe("Texans");
+    expect(teamNickname("XXX")).toBe("XXX");
   });
 });

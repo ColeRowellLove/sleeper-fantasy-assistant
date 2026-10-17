@@ -18,15 +18,21 @@ const PAGES = [
     "startsit",
     "lineups",
     "games",
+    "games&week=6",
     "players",
     "waiver",
     "trending",
     "rankings",
     "teams&team=SF",
     "standings",
+    "transactions",
     "settings",
     "alerts",
-  ].map((tab) => ({ name: tab.split("&")[0], path: `/league/${LEAGUE}?tab=${tab}`, league: true })),
+  ].map((tab) => ({
+    name: tab.includes("&week=") ? tab.replace("&week=", "-week") : tab.split("&")[0],
+    path: `/league/${LEAGUE}?tab=${tab}`,
+    league: true,
+  })),
   // a player's pop-up, one shot per tab
   ...[
     ["player", null],
@@ -146,6 +152,7 @@ try {
       });
       await context.addCookies([
         { name: `sa_team_${LEAGUE}`, value: "1", url: `http://localhost:${PORT}` },
+        { name: "sa_nfl_team", value: "WAS", url: `http://localhost:${PORT}` },
       ]);
       const page = await context.newPage();
       for (const p of PAGES) {
