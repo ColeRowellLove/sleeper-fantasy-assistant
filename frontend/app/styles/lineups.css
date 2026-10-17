@@ -985,3 +985,18 @@ table.h2h {
   position: sticky;
   z-index: 1;
 }
+
+/* box score rows: a short name with its mark, then plain numbers; totals bold under each table */
+.gp-name {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.4rem;
+  white-space: nowrap;
+}
+
+.game-players tfoot th,
+.game-players tfoot td {
+  border-top: 2px solid var(--line);
+  font-weight: 700;
+}
