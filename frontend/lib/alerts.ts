@@ -29,7 +29,7 @@ export function waiverTargets(alert: AlertItem): WaiverTarget[] {
   );
 }
 
-export interface AdvicePick {
+interface AdvicePick {
   player_id: string;
   name: string;
   position?: string | null;

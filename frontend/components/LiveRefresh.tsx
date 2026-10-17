@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 /** How often a page with a live game asks the server for fresh data. */
-export const REFRESH_SECONDS = 15;
+const REFRESH_SECONDS = 15;
 
 /**
  * Keeps a page current while a game is on: every few seconds it asks Next to re-render the page's
