@@ -31,20 +31,18 @@ export default function TrendingPanel({ data }: { data: PlayersData }) {
   const hasTrends = data.players.some((p) => p.adds || p.drops);
   return (
     <section aria-labelledby="trending-heading" className="trending">
-      <h2 id="trending-heading">Trending</h2>
-      <NoteList
-        items={[
-          "Sleeper's adds and drops across all leagues in the last 24 hours",
-          "Rostered is ESPN's share of leagues; points and projection use this league's scoring",
-        ]}
-      />
-      <FilterChips label="Trend" options={DIRECTIONS} value={direction} onChange={setDirection} />
-      <FilterChips
-        label="Position"
-        options={POSITION_OPTIONS}
-        value={position}
-        onChange={setPosition}
-      />
+      <div className="trend-head">
+        <h2 id="trending-heading">Trending</h2>
+        <FilterChips label="Trend" options={DIRECTIONS} value={direction} onChange={setDirection} />
+      </div>
+      <div className="trend-positions">
+        <FilterChips
+          label="Position"
+          options={POSITION_OPTIONS}
+          value={position}
+          onChange={setPosition}
+        />
+      </div>
       {!hasTrends ? (
         <p className="note">Sleeper&apos;s trending numbers have not loaded yet. Try again soon.</p>
       ) : rows.length === 0 ? (
@@ -97,6 +95,15 @@ export default function TrendingPanel({ data }: { data: PlayersData }) {
           ))}
         </ol>
       )}
+      <details className="trend-about">
+        <summary>About these numbers</summary>
+        <NoteList
+          items={[
+            "Sleeper's adds and drops across all leagues in the last 24 hours",
+            "Rostered is ESPN's share of leagues; points and projection use this league's scoring",
+          ]}
+        />
+      </details>
     </section>
   );
 }
