@@ -795,9 +795,24 @@ table.h2h {
   gap: 0.55rem;
 }
 
+.game-team {
+  min-width: 0;
+}
+
+.game-teams {
+  min-width: 0;
+}
+
 .game-team-name {
   font-size: 1.05rem;
   font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-team .game-score {
+  flex: none;
 }
 
 .game-team-record {
@@ -816,7 +831,7 @@ table.h2h {
   display: grid;
   gap: 0.3rem;
   justify-items: end;
-  max-width: 11rem;
+  max-width: 9rem;
   min-height: 100%;
   padding-left: 0.8rem;
   text-align: right;
@@ -884,4 +899,81 @@ table.h2h {
   .mh-id {
     gap: 0.4rem;
   }
+}
+
+/* Games: the week's top performers as sideways-scrolling cards */
+.top-performers {
+  margin-top: 1.5rem;
+}
+
+.tp-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+}
+
+.tp-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.tp-list {
+  display: flex;
+  gap: 0.6rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tp-card {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--team, var(--surface-2)) 30%, var(--surface)),
+    var(--surface) 75%
+  );
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  flex: none;
+  gap: 0.3rem;
+  min-width: 13.5rem;
+  padding: 0.6rem 0.8rem;
+}
+
+.tp-head {
+  align-items: baseline;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.tp-name {
+  font-weight: 700;
+}
+
+.tp-points {
+  font-size: 1.25rem;
+}
+
+.tp-sub {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.tp-stats {
+  display: flex;
+  gap: 1rem;
+  margin: 0.2rem 0 0;
+}
+
+.tp-stats dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tp-stats dd {
+  font-weight: 700;
+  margin: 0;
 }

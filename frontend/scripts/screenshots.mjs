@@ -18,6 +18,7 @@ const PAGES = [
     "startsit",
     "lineups",
     "games",
+    "games&week=6",
     "players",
     "waiver",
     "trending",
@@ -26,7 +27,11 @@ const PAGES = [
     "standings",
     "settings",
     "alerts",
-  ].map((tab) => ({ name: tab.split("&")[0], path: `/league/${LEAGUE}?tab=${tab}`, league: true })),
+  ].map((tab) => ({
+    name: tab.includes("&week=") ? tab.replace("&week=", "-week") : tab.split("&")[0],
+    path: `/league/${LEAGUE}?tab=${tab}`,
+    league: true,
+  })),
   // a player's pop-up, one shot per tab
   ...[
     ["player", null],
