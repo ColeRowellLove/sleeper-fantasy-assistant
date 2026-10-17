@@ -197,38 +197,44 @@ def suggested_switch(
     )
 
 
-def _advice(  # noqa: PLR0913, PLR0917
-    session: Session,
-    league: LeagueRow,
-    spot: Spot,
-    nu: NextUp | None,
-    projections: dict[str, float],
-    week: int,
-    slots: list[str],
-    byes: set[str],
-    taken: set[str],
+@dataclass
+class _Week:
+    """What every ruled-out alert of one league run shares."""
+
+    league: LeagueRow
+    week: int | None
+    slots: list[str]
+    projections: dict[str, float]
+    byes: set[str]
+    taken: set[str]  # every player any team of the league has
+
+
+def _advice(
+    session: Session, ctx: _Week, spot: Spot, nu: NextUp | None
 ) -> dict[str, object] | None:
     """The model's pick of a replacement among the legal options, or None (no model, no options,
     or an answer that failed its checks)."""
-    if alert_advice.client() is None:
+    if alert_advice.client() is None or not ctx.week:
         return None  # no model: skip building the facts
     options = [
-        alert_advice.option(p, "bench", projections.get(p.player_id))
+        alert_advice.option(p, "bench", ctx.projections.get(p.player_id))
         for p in _bench_options(session, spot)
     ]
     positions = eligible_positions(spot.slot, spot.out.position or "")
-    options += alert_advice.free_agents(session, league, week, taken, set(positions), byes)
+    options += alert_advice.free_agents(
+        session, ctx.league, ctx.week, ctx.taken, set(positions), ctx.byes
+    )
     for o in options:
         o["next_up"] = bool(nu and nu.player_id and o["player_id"] == nu.player_id)
     roster = spot.roster
     parked = {*roster.reserve, *roster.taxi, *roster.starters, spot.out.player_id}
     droppable = {pid for pid in roster.players if pid not in parked}
     facts: dict[str, object] = {
-        "week": week,
-        "player_out": alert_advice.option(spot.out, "out", projections.get(spot.out.player_id)),
+        "week": ctx.week,
+        "player_out": alert_advice.option(spot.out, "out", ctx.projections.get(spot.out.player_id)),
         "slot": spot.slot,
-        "league_slots": slots,
-        "roster": alert_advice.roster_facts(session, spot.roster, projections, slots),
+        "league_slots": ctx.slots,
+        "roster": alert_advice.roster_facts(session, spot.roster, ctx.projections, ctx.slots),
         "droppable": sorted(droppable),
         "next_up_on_depth_chart": nu.name if nu else None,
         "options": options,
@@ -241,21 +247,47 @@ def _all(roster: RosterRow) -> list[str]:
     return [*roster.players, *roster.reserve, *roster.taxi]
 
 
-@register(KIND)
-def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list[NewAlert]:
-    news = _ruled_out(session, now)
-    if not news:
-        return []
+def _what_it_means(
+    session: Session, ctx: _Week, roster: RosterRow, player: PlayerRow, nu: NextUp | None
+) -> tuple[list[str], str | None, bool]:
+    """The sentences telling one team what the injury means for it, the slot he starts in (if he
+    starts) and whether he starts."""
+    pid = player.player_id
+    starts = pid in roster.starters
+    index = roster.starters.index(pid) if starts else -1
+    slot = ctx.slots[index] if 0 <= index < len(ctx.slots) else None
+    part = f" with a {player.injury_body_part.lower()} injury" if player.injury_body_part else ""
+    sentences = [f"{player_name(player)} was ruled out{part}."]
+    said_next_up = False
+    if starts and slot:
+        mine = ctx.projections.get(pid)
+        where = f"He starts at {slot} for you" + (f" in week {ctx.week}" if ctx.week else "")
+        sentences.append(where + (f" (projected {mine:.1f})." if mine is not None else "."))
+        switch, said_next_up = suggested_switch(
+            session, Spot(roster, slot, player, frozenset(ctx.byes)), nu, ctx.projections
+        )
+        if switch:
+            sentences.append(switch)
+    elif starts:
+        sentences.append("He is in your starting lineup.")
+    elif pid in roster.reserve:
+        sentences.append("He is already on your injured reserve.")
+    elif pid in roster.taxi:
+        sentences.append("He is on your taxi squad.")
+    else:
+        sentences.append("He is on your bench.")
+    if nu and player.team and not said_next_up:
+        sentences.append(_where_is_next_up(nu, player.team, roster))
+    return sentences, slot, starts
+
+
+def _week_context(
+    session: Session,
+    league: LeagueRow,
+    rosters: list[RosterRow],
+    next_ups: dict[str, NextUp | None],
+) -> _Week:
     week = current_week(session, league.season)
-    slots = starter_slots(league.roster_positions)
-    rosters = league_rosters(session, league.league_id)
-    # only players some team in this league has matter: no depth chart work for the rest
-    rostered = [
-        (injury, player, [r for r in rosters if player.player_id in _all(r)])
-        for injury, player in news
-    ]
-    rostered = [item for item in rostered if item[2]]
-    next_ups = {player.player_id: _next_up(session, league, player) for _, player, _ in rostered}
     # one projection lookup for everyone who matters (the team's players and each next man up)
     wanted = {pid for r in rosters for pid in _all(r)}
     wanted |= {nu.player_id for nu in next_ups.values() if nu and nu.player_id}
@@ -269,52 +301,45 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
         if week
         else set()
     )
-    taken = {pid for r in rosters for pid in _all(r)}
+    return _Week(
+        league=league,
+        week=week,
+        slots=starter_slots(league.roster_positions),
+        projections=projections,
+        byes=byes,
+        taken={pid for r in rosters for pid in _all(r)},
+    )
+
+
+@register(KIND)
+def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list[NewAlert]:
+    news = _ruled_out(session, now)
+    if not news:
+        return []
+    rosters = league_rosters(session, league.league_id)
+    # only players some team in this league has matter: no depth chart work for the rest
+    rostered = [
+        (injury, player, [r for r in rosters if player.player_id in _all(r)])
+        for injury, player in news
+    ]
+    rostered = [item for item in rostered if item[2]]
+    next_ups = {player.player_id: _next_up(session, league, player) for _, player, _ in rostered}
+    ctx = _week_context(session, league, rosters, next_ups)
     raised: list[NewAlert] = []
     for injury, player, owners in rostered:
-        name = player_name(player)
-        part = (
-            f" with a {player.injury_body_part.lower()} injury" if player.injury_body_part else ""
-        )
         nu = next_ups[player.player_id]
         ruled_at = as_utc(injury.changed_at).isoformat() if injury.changed_at else ""
+        key = alert_key(KIND, player.player_id, ruled_at)
         for roster in owners:
-            starts = player.player_id in roster.starters
-            index = roster.starters.index(player.player_id) if starts else -1
-            slot = slots[index] if 0 <= index < len(slots) else None
-            sentences = [f"{name} was ruled out{part}."]
-            said_next_up = False
-            if starts and slot:
-                mine = projections.get(player.player_id)
-                where = f"He starts at {slot} for you" + (f" in week {week}" if week else "")
-                sentences.append(where + (f" (projected {mine:.1f})." if mine is not None else "."))
-                switch, said_next_up = suggested_switch(
-                    session, Spot(roster, slot, player, frozenset(byes)), nu, projections
-                )
-                if switch:
-                    sentences.append(switch)
-            elif starts:
-                sentences.append("He is in your starting lineup.")
-            elif player.player_id in roster.reserve:
-                sentences.append("He is already on your injured reserve.")
-            elif player.player_id in roster.taxi:
-                sentences.append("He is on your taxi squad.")
-            else:
-                sentences.append("He is on your bench.")
-            if nu and player.team and not said_next_up:
-                sentences.append(_where_is_next_up(nu, player.team, roster))
-            key = alert_key(KIND, player.player_id, ruled_at)
+            sentences, slot, starts = _what_it_means(session, ctx, roster, player, nu)
             advice = None
             if (
                 starts
                 and slot
-                and week
+                and ctx.week
                 and needs_advice(session, league.league_id, roster.roster_id, key, now)
             ):
-                advice = _advice(
-                    session, league, Spot(roster, slot, player, frozenset(byes)), nu, projections,
-                    week, slots, byes, taken,
-                )  # fmt: skip
+                advice = _advice(session, ctx, Spot(roster, slot, player, frozenset(ctx.byes)), nu)
             raised.append(
                 NewAlert(
                     roster_id=roster.roster_id,
@@ -324,7 +349,7 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
                     why=" ".join(sentences),
                     player_id=player.player_id,
                     data={
-                        "week": week,
+                        "week": ctx.week,
                         "slot": slot,
                         "starter": starts,
                         "previous": injury.previous,
