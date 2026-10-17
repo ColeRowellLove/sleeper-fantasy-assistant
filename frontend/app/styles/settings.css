@@ -1050,6 +1050,39 @@ td.season-log {
   font-size: 0.75rem;
 }
 
+.trend-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: space-between;
+}
+
+.trend-head h2 {
+  margin: 0;
+}
+
 .trending .players-filter {
-  margin: 0.6rem 0;
+  margin: 0;
+}
+
+/* the positions stay on one line and scroll sideways instead of wrapping into rows */
+.trend-positions {
+  margin: 0.6rem 0 0.25rem;
+  overflow-x: auto;
+}
+
+.trend-positions .players-filter {
+  flex-wrap: nowrap;
+  width: max-content;
+}
+
+.trend-about {
+  margin-top: 1rem;
+}
+
+.trend-about > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
 }
