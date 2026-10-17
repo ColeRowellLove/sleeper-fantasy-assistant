@@ -65,6 +65,17 @@
   overflow: hidden;
 }
 
+.matchup-lineups > summary {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.6rem 0.9rem;
+  text-transform: uppercase;
+}
+
 .matchup-card.mine {
   border-color: var(--focus);
   box-shadow: 0 0 0 1px var(--focus);
