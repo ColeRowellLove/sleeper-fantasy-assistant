@@ -977,3 +977,11 @@ table.h2h {
   font-weight: 700;
   margin: 0;
 }
+
+/* box score: the player's name stays in view while the stats scroll sideways */
+.game-players th.player-cell {
+  background: var(--surface);
+  left: 0;
+  position: sticky;
+  z-index: 1;
+}

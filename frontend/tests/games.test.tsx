@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import GamesPanel from "../components/GamesPanel";
@@ -124,6 +124,8 @@ describe("game ordering", () => {
   });
 });
 
+const openTeam = (team: string) => fireEvent.click(screen.getByRole("tab", { name: team }));
+
 describe("GamesPanel", () => {
   it("groups the games by day under a heading, your games first", () => {
     render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
@@ -151,6 +153,7 @@ describe("GamesPanel", () => {
 
   it("lays out every stat like a box score, with your players highlighted and named", () => {
     render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
+    openTeam("KC");
     const table = screen.getByRole("table", { name: /KC rushing and receiving/ });
     const headers = within(table)
       .getAllByRole("columnheader")
@@ -185,14 +188,21 @@ describe("GamesPanel", () => {
     expect(within(other).getByText("Dad Bods")).toBeInTheDocument();
   });
 
-  it("shows each team in turn with its logo and faces, and free agents as available", () => {
+  it("shows one team at a time behind a tab each, with its logo and faces, free agents as available", () => {
     const { container } = render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
-    const blocks = screen.getAllByRole("region", { name: /KC players|DEN players/ });
-    expect(blocks.map((b) => b.getAttribute("aria-label"))).toEqual(["DEN players", "KC players"]);
+    const tabs = screen.getAllByRole("tab", { name: /KC|DEN|SF|SEA/ }).map((t) => t.textContent);
+    expect(tabs).toEqual(expect.arrayContaining(["DEN", "KC"]));
+    // away team first and open; the home team's tables are not rendered until its tab is opened
+    expect(screen.getByRole("region", { name: "DEN players" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "KC players" })).not.toBeInTheDocument();
+    openTeam("KC");
+    expect(screen.getByRole("region", { name: "KC players" })).toBeInTheDocument();
     expect(container.querySelectorAll(".game-team-title .team-logo").length).toBeGreaterThan(0);
     expect(container.querySelectorAll(".game-players .avatar").length).toBeGreaterThan(0);
+    openTeam("SF");
     const free = screen.getByRole("table", { name: /SF rushing and receiving/ });
     expect(within(free).getByText("Available")).toBeInTheDocument();
+    openTeam("SEA");
     const mine = screen.getByRole("table", { name: /SEA rushing and receiving/ });
     expect(within(mine).getByRole("row", { name: /My Only/ })).toHaveTextContent("–");
   });
@@ -207,6 +217,7 @@ describe("GamesPanel", () => {
       }),
     ]);
     render(<GamesPanel data={{ ...data, games: [upcoming] }} leagueId="1" myRosterId={1} />);
+    openTeam("KC");
     const table = screen.getByRole("table", { name: /KC rushing and receiving \(projected\)/ });
     expect(within(table).getByRole("columnheader", { name: "Proj pts" })).toBeInTheDocument();
     const row = within(table).getByRole("row", { name: /Projected Back/ });
