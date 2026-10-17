@@ -174,11 +174,9 @@ describe("win chance in the matchup", () => {
     render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
-    const labels = document.querySelector(".win-bar-labels") as HTMLElement;
-    const [first, second] = [...labels.querySelectorAll(".win-side")];
-    expect(first.textContent).toBe("62%Cole"); // each number sits with its own team
-    expect(second.textContent).toBe("38%Dad");
-    expect(screen.getByText("Win chance")).toBeInTheDocument(); // the bar's caption
+    const [first, second] = [...document.querySelectorAll(".win-half")];
+    expect(first.querySelector(".win-label")?.textContent).toBe("62% WIN"); // on the first team's side
+    expect(second.querySelector(".win-label")?.textContent).toBe("38% WIN");
     expect(screen.getAllByText(/62/)).toHaveLength(2); // the bar end and the one spoken sentence
     expect(
       screen.getByText(
@@ -187,17 +185,16 @@ describe("win chance in the matchup", () => {
     ).toBeInTheDocument();
   });
 
-  it("draws a bar split in proportion to the chances, with each team's number at its end", () => {
+  it("draws one bar per team, each filled to its own chance, with its number above", () => {
     const { container } = render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="upcoming" week={7} myRosterId={1} />,
     );
     const a = container.querySelector(".win-bar-a") as HTMLElement;
     const b = container.querySelector(".win-bar-b") as HTMLElement;
-    expect(a.style.width).toBe("62%");
-    expect(b.style.width).toBe("38%"); // the two always fill the track
-    expect(container.querySelector(".win-bar-labels")?.textContent).toBe("62%ColeWin chance38%Dad");
+    expect(a.style.width).toBe("62%"); // of the first team's own half
+    expect(b.style.width).toBe("38%"); // of the second team's, filling from the right
     // the picture is decorative; the sentence carries it for screen readers
-    expect(container.querySelector(".win-bar-track")).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector(".win-halves")).toHaveAttribute("aria-hidden", "true");
     expect(
       screen.getByText(
         "Cole has a 62 percent chance to win and Dad has 38 percent, from projected points.",
@@ -231,6 +228,17 @@ describe("win chance in the matchup", () => {
     );
     expect((container.querySelector(".win-bar-a") as HTMLElement).style.width).toBe("99%");
     expect((container.querySelector(".win-bar-b") as HTMLElement).style.width).toBe("1%");
+  });
+
+  it("has no accessibility violations and names both teams in the spoken sentence", async () => {
+    const ui = (
+      <MatchupCard matchup={withChance(0.54, 0.46)} state="upcoming" week={7} myRosterId={1} />
+    );
+    render(ui);
+    expect(
+      screen.getByText(/Cole has a 54 percent chance to win and Dad has 46 percent/),
+    ).toBeInTheDocument();
+    await expectNoA11yViolations(ui);
   });
 
   it("has no bar for a decided matchup or one with no chance to show", () => {

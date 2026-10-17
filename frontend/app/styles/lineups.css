@@ -529,84 +529,73 @@ table.h2h {
   margin: 0 0 0.75rem;
 }
 
-/* Win chance bar: a bold number and team name on each side, a rounded track in two team colours
-   (--win-a blue, --win-b orange: not red and green, so it reads for colour-blind viewers) with a
-   marker at 50%. The team behind is the softer shade. */
+/* Win chance: one slim bar per team, each filled to its own win chance (the first team from the
+   left, the second from the right) under a bold "46% WIN", like Sleeper's header. Blue and orange
+   (--win-a, --win-b; not red and green, so it reads for colour-blind viewers); the team behind is
+   the softer shade. */
 .win-bar {
   margin-top: 1rem;
 }
 
-.win-bar-labels {
-  align-items: end;
+.win-halves {
   display: grid;
-  gap: 0.5rem;
-  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
 }
 
-.win-side {
-  display: flex;
-  flex-direction: column;
+.win-half {
   min-width: 0;
 }
 
-.win-side-b {
-  align-items: flex-end;
+.win-half-b {
   text-align: right;
 }
 
-.win-side strong {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  line-height: 1.1;
+.win-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
-.win-side-a strong {
+.win-label strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: 0;
+}
+
+.win-half-a .win-label strong {
   color: var(--win-a);
 }
 
-.win-side-b strong {
+.win-half-b .win-label strong {
   color: var(--win-b);
 }
 
-.win-team {
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.win-caption {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  padding-bottom: 0.15rem;
-  text-transform: uppercase;
-}
-
-.win-bar-track {
+.win-track {
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 999px;
   display: flex;
-  height: 0.9rem;
-  margin-top: 0.4rem;
+  height: 0.55rem;
+  margin-top: 0.35rem;
   overflow: hidden;
-  position: relative;
+}
+
+.win-half-b .win-track {
+  justify-content: flex-end;
 }
 
 .win-bar-a,
 .win-bar-b {
+  border-radius: 999px;
   display: block;
 }
 
 .win-bar-a {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--win-a) 60%, transparent),
+    color-mix(in srgb, var(--win-a) 55%, transparent),
     var(--win-a)
   );
 }
@@ -614,7 +603,7 @@ table.h2h {
 .win-bar-b {
   background: linear-gradient(
     270deg,
-    color-mix(in srgb, var(--win-b) 60%, transparent),
+    color-mix(in srgb, var(--win-b) 55%, transparent),
     var(--win-b)
   );
 }
@@ -622,17 +611,6 @@ table.h2h {
 .win-bar-a.win-trail,
 .win-bar-b.win-trail {
   opacity: 0.55;
-}
-
-/* the marker at 50% */
-.win-bar-mid {
-  background: var(--text);
-  bottom: 0;
-  left: 50%;
-  opacity: 0.55;
-  position: absolute;
-  top: 0;
-  width: 2px;
 }
 
 /* a rough estimate is hatched over the team colours, so it reads as less certain */
@@ -643,7 +621,7 @@ table.h2h {
       transparent 0 5px,
       color-mix(in srgb, var(--bg) 40%, transparent) 5px 8px
     ),
-    linear-gradient(90deg, color-mix(in srgb, var(--win-a) 60%, transparent), var(--win-a));
+    linear-gradient(90deg, color-mix(in srgb, var(--win-a) 55%, transparent), var(--win-a));
 }
 
 .win-rough .win-bar-b {
@@ -653,7 +631,7 @@ table.h2h {
       transparent 0 5px,
       color-mix(in srgb, var(--bg) 40%, transparent) 5px 8px
     ),
-    linear-gradient(270deg, color-mix(in srgb, var(--win-b) 60%, transparent), var(--win-b));
+    linear-gradient(270deg, color-mix(in srgb, var(--win-b) 55%, transparent), var(--win-b));
 }
 
 @media (prefers-reduced-motion: no-preference) {
