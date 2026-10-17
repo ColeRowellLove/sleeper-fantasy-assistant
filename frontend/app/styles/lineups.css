@@ -339,8 +339,11 @@ table.h2h {
     gap: 0.4rem;
   }
 
-  .h2h .game-detail,
-  .h2h .game-conditions {
+  /* a phone has room for the name, position and numbers only: the face, the game line and the
+     stat line are on the roster and game pages */
+  .h2h .avatar,
+  .h2h .cell-meta + .cell-meta,
+  .h2h .stat-line {
     display: none;
   }
 
