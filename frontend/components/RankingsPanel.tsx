@@ -103,7 +103,7 @@ export default function RankingsPanel({
               Update
             </button>
             {data.unavailable && Object.keys(data.unavailable).length > 0 && (
-              <details className="rank-missing">
+              <details className="fold">
                 <summary>Not included yet</summary>
                 <p className="note">{Object.values(data.unavailable).join(", ")}.</p>
               </details>
@@ -212,7 +212,7 @@ export default function RankingsPanel({
           })}
         </tbody>
       </StatTable>
-      <details className="rank-about">
+      <details className="fold">
         <summary>About these rankings</summary>
         <NoteList
           items={[
