@@ -7,7 +7,7 @@ Players tab uses, so every category counts (a receiver's rushing yards, a quarte
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from pydantic import BaseModel
@@ -239,6 +239,43 @@ def _expected_points(
     }
 
 
+def _season_stat_rows(session: Session, season: str) -> list[tuple[str, int, dict[str, float]]]:
+    return [
+        (pid, week, stats)
+        for pid, week, stats in session.execute(
+            select(
+                PlayerWeekStatsRow.player_id, PlayerWeekStatsRow.week, PlayerWeekStatsRow.stats
+            ).where(PlayerWeekStatsRow.season == season)
+        )
+    ]
+
+
+def position_ranks(
+    stat_rows: Iterable[tuple[str, int, Mapping[str, float]]],
+    position_of: Mapping[str, str | None],
+    player: PlayerRow,
+    scoring: Mapping[str, float],
+    weeks: list[WeekLine],
+) -> int | None:
+    """His season rank among his position (and each game's rank), scored with the same rules.
+
+    Fills ``rank`` on each week line and returns the season rank. Needs no database.
+    """
+    season_totals: dict[str, float] = defaultdict(float)
+    week_peers: dict[int, list[float]] = defaultdict(list)  # week -> points of his position
+    for pid, week, stats in stat_rows:
+        points = score_stats(stats, scoring)
+        season_totals[pid] += points
+        if player.position and position_of.get(pid) == player.position and stats.get("gp", 1) > 0:
+            week_peers[week].append(points)
+    for line in weeks:
+        line.rank = _rank(line.points, week_peers.get(line.week, [])) if week_peers else None
+    if not weeks or not player.position:
+        return None
+    peers = [t for pid, t in season_totals.items() if position_of.get(pid) == player.position]
+    return _rank(season_totals.get(player.player_id, 0.0), peers)
+
+
 def _rank_in_position(
     session: Session,
     season: str,
@@ -246,30 +283,10 @@ def _rank_in_position(
     scoring: Mapping[str, float],
     weeks: list[WeekLine],
 ) -> tuple[int | None, dict[str, str | None]]:
-    """His season rank among his position (and each game's rank), scored with the same rules.
-
-    Fills ``rank`` on each week line; returns the season rank and every player's position.
-    """
     position_of = {
         pid: pos for pid, pos in session.execute(select(PlayerRow.player_id, PlayerRow.position))
     }
-    season_totals: dict[str, float] = defaultdict(float)
-    week_peers: dict[int, list[float]] = defaultdict(list)  # week -> points of his position
-    for pid, week, stats in session.execute(
-        select(
-            PlayerWeekStatsRow.player_id, PlayerWeekStatsRow.week, PlayerWeekStatsRow.stats
-        ).where(PlayerWeekStatsRow.season == season)
-    ):
-        points = score_stats(stats, scoring)
-        season_totals[pid] += points
-        if player.position and position_of.get(pid) == player.position and stats.get("gp", 1) > 0:
-            week_peers[week].append(points)
-    for line in weeks:
-        line.rank = _rank(line.points, week_peers.get(line.week, [])) if week_peers else None
-    rank = None
-    if weeks and player.position:
-        peers = [t for pid, t in season_totals.items() if position_of.get(pid) == player.position]
-        rank = _rank(season_totals.get(player.player_id, 0.0), peers)
+    rank = position_ranks(_season_stat_rows(session, season), position_of, player, scoring, weeks)
     return rank, position_of
 
 
