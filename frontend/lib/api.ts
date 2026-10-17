@@ -532,6 +532,9 @@ export interface GameCard {
   away: string;
   /** From the home team's side: score, state, clock, line and conditions. */
   game: GameInfo;
+  /** Wins, losses and ties; absent unless every finished game has a score. */
+  home_record?: TeamRecord | null;
+  away_record?: TeamRecord | null;
   players: GamePlayer[];
 }
 

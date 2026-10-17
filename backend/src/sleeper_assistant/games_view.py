@@ -34,6 +34,7 @@ from sleeper_assistant.db import (
 from sleeper_assistant.players_view import _name
 from sleeper_assistant.projections import score_projection, score_stats
 from sleeper_assistant.stat_lines import stat_line
+from sleeper_assistant.team_depth import TeamRecord, team_record
 
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
 # the stat lines the page lays out, by Sleeper's own names; anything else is left out
@@ -84,6 +85,8 @@ class GameCard(BaseModel):
     home: str
     away: str
     game: GameInfo  # from the home team's side: score, state, clock, line and conditions
+    home_record: TeamRecord | None = None  # None unless every finished game has a score
+    away_record: TeamRecord | None = None
     players: list[GamePlayer]  # both teams; owned players first, then by points
 
 
@@ -207,7 +210,8 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
         players.sort(key=lambda p: (p.owner_roster_id is None, -(p.points or 0.0), p.name))
         cards.append(
             GameCard(game_id=g.game_id, week=g.week, home=g.home, away=g.away, game=game,
-                     players=players)
+                     home_record=team_record(session, season, g.home),
+                     away_record=team_record(session, season, g.away), players=players)
         )  # fmt: skip
     return Games(
         league_id=league.league_id, week=chosen, current_week=now, weeks=weeks, games=cards
