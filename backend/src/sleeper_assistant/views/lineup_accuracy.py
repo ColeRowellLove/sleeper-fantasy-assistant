@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_names import team_names
-from sleeper_assistant.db import LeagueRow
+from sleeper_assistant.db import LeagueRow, RosterRow
 
 
 class TeamAccuracy(BaseModel):
@@ -30,26 +30,25 @@ class LineupAccuracy(BaseModel):
     teams: list[TeamAccuracy]  # most accurate first; teams without a figure last
 
 
+def team_accuracy(roster: RosterRow, team: str) -> TeamAccuracy:
+    """How close a team's season points came to the best lineup it could have set each week."""
+    potential = roster.potential_points
+    usable = potential is not None and potential > 0
+    points = round(roster.points_for, 2)
+    return TeamAccuracy(
+        roster_id=roster.roster_id,
+        team=team,
+        points=points,
+        potential=round(potential, 2) if potential is not None else None,
+        # a lineup can never beat the best one, so a rounding gap never shows above 100%
+        accuracy=min(1.0, round(points / potential, 4)) if usable and potential else None,
+        left_on_bench=round(max(0.0, potential - points), 2) if usable and potential else None,
+    )
+
+
 def build_lineup_accuracy(session: Session, league: LeagueRow) -> LineupAccuracy:
     rosters = league_rosters(session, league.league_id)
     team, _ = team_names(session, rosters)
-    teams: list[TeamAccuracy] = []
-    for roster in rosters:
-        potential = roster.potential_points
-        usable = potential is not None and potential > 0
-        points = round(roster.points_for, 2)
-        teams.append(
-            TeamAccuracy(
-                roster_id=roster.roster_id,
-                team=team[roster.roster_id],
-                points=points,
-                potential=round(potential, 2) if potential is not None else None,
-                # a lineup can never beat the best one, so a rounding gap never shows above 100%
-                accuracy=min(1.0, round(points / potential, 4)) if usable and potential else None,
-                left_on_bench=round(max(0.0, potential - points), 2)
-                if usable and potential
-                else None,
-            )
-        )
+    teams = [team_accuracy(roster, team[roster.roster_id]) for roster in rosters]
     teams.sort(key=lambda t: (t.accuracy is None, -(t.accuracy or 0.0), t.team))
     return LineupAccuracy(league_id=league.league_id, teams=teams)
