@@ -785,7 +785,7 @@ table.h2h {
   cursor: pointer;
   display: grid;
   gap: 0.5rem 0.9rem;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 7.5rem; /* the same width on every card, so the dividers line up */
   padding: var(--disclosure-pad);
 }
 
@@ -830,11 +830,9 @@ table.h2h {
   border-left: 1px solid var(--line);
   display: grid;
   gap: 0.3rem;
-  justify-items: end;
-  max-width: 9rem;
+  justify-items: start;
   min-height: 100%;
   padding-left: 0.8rem;
-  text-align: right;
 }
 
 .game-card > summary > .game-mine {
