@@ -57,10 +57,21 @@ export interface GameSection {
  * Your games first (they are what the owner opens this page for), then one section per day in
  * kickoff order, like Sleeper's schedule. A game with no date goes last under its own heading.
  */
-export function groupGames(ordered: OrderedGame[]): GameSection[] {
-  const yours = ordered.filter((g) => g.mine.length > 0);
-  const rest = ordered.filter((g) => g.mine.length === 0);
+export function groupGames(ordered: OrderedGame[], favourite: string | null = null): GameSection[] {
   const sections: GameSection[] = [];
+  const isFavourite = (g: OrderedGame) =>
+    favourite !== null && (g.card.home === favourite || g.card.away === favourite);
+  const fav = ordered.filter(isFavourite);
+  if (fav.length > 0) {
+    sections.push({
+      key: "favourite",
+      title: `Your NFL team: ${teamNickname(favourite ?? "")}`,
+      games: fav,
+    });
+  }
+  const others = ordered.filter((g) => !isFavourite(g));
+  const yours = others.filter((g) => g.mine.length > 0);
+  const rest = others.filter((g) => g.mine.length === 0);
   if (yours.length > 0) sections.push({ key: "mine", title: "Your games", games: yours });
   const days = new Map<string, OrderedGame[]>();
   for (const game of rest) {

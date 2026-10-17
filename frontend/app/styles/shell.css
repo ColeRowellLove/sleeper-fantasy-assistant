@@ -154,3 +154,8 @@
   margin: 0.75rem 0 0;
   max-width: 44ch;
 }
+
+.head-pickers {
+  display: grid;
+  gap: 0.5rem 1rem;
+}
