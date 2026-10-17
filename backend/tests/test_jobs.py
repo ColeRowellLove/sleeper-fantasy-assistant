@@ -7,7 +7,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import jobs
 from sleeper_assistant.db import (
     Base,
     JobRow,
@@ -17,7 +16,8 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.job_schedule import enqueue_due_syncs, enqueue_player_sync_if_due
+from sleeper_assistant.sync import jobs
+from sleeper_assistant.sync.job_schedule import enqueue_due_syncs, enqueue_player_sync_if_due
 from sleeper_assistant.worker import run_cycle, run_once
 
 

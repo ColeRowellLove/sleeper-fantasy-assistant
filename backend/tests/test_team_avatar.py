@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.team_avatar import avatar_id, team_avatar_url, team_avatars
 from sleeper_assistant.db import LeagueRow, RosterRow, SleeperUserRow, UserLeagueRow
-from sleeper_assistant.team_avatar import avatar_id, team_avatar_url, team_avatars
 
 
 def test_the_teams_own_picture_must_be_a_sleeper_image() -> None:

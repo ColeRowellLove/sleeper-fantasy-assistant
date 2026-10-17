@@ -6,15 +6,17 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import api_deps, live_window, worker
+from sleeper_assistant import worker
+from sleeper_assistant.api import deps as api_deps
+from sleeper_assistant.core import live_window
+from sleeper_assistant.core.live_window import live_window_cached, live_window_open
 from sleeper_assistant.db import JobRow, NflGameRow, make_session_factory, utcnow
-from sleeper_assistant.job_schedule import (
+from sleeper_assistant.sync.job_schedule import (
     STATS_SYNC_INTERVAL,
     STATS_SYNC_INTERVAL_LIVE,
     enqueue_schedule_sync_if_due,
     enqueue_stats_sync_if_due,
 )
-from sleeper_assistant.live_window import live_window_cached, live_window_open
 from sleeper_assistant.worker import LIVE_CYCLE_SECONDS, run_batch
 
 NOW = datetime(2026, 10, 18, 18, 0, tzinfo=UTC)

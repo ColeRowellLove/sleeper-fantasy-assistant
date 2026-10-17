@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import build_dashboard
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -9,7 +8,8 @@ from sleeper_assistant.db import (
     RosterRow,
     SleeperUserRow,
 )
-from sleeper_assistant.lineups import build_lineups
+from sleeper_assistant.views.dashboard import build_dashboard
+from sleeper_assistant.views.lineups import build_lineups
 
 
 def _league(positions: list[str] | None = None) -> LeagueRow:

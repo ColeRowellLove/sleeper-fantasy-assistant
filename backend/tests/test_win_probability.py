@@ -7,6 +7,15 @@ import math
 import pytest
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.win_probability import (
+    BASE_SPREAD,
+    FLOOR,
+    StarterState,
+    expectation,
+    matchup_chances,
+    spread,
+    win_probability,
+)
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -16,16 +25,7 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.lineups import build_lineups
-from sleeper_assistant.win_probability import (
-    BASE_SPREAD,
-    FLOOR,
-    StarterState,
-    expectation,
-    matchup_chances,
-    spread,
-    win_probability,
-)
+from sleeper_assistant.views.lineups import build_lineups
 
 
 def _team(*projections: float, state: str = "upcoming") -> list[StarterState]:

@@ -16,21 +16,22 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session, sessionmaker
 
-from sleeper_assistant import (
-    alert_detectors,  # noqa: F401  (registers the alert detectors)
-    jobs,
-)
-from sleeper_assistant.alerts import run_all_leagues
-from sleeper_assistant.crosswalk import build_crosswalk
+from sleeper_assistant.alerts import detectors  # noqa: F401  registers the alert detectors
+from sleeper_assistant.alerts.engine import run_all_leagues
+from sleeper_assistant.core.live_window import live_window_open
+from sleeper_assistant.core.projections import sync_projections
 from sleeper_assistant.db import (
     make_engine,
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.depth_sync import sync_depth_charts
-from sleeper_assistant.espn import fetch_ownership
-from sleeper_assistant.ingest import MAX_WEEKS, sync_league, sync_players, sync_schedule
-from sleeper_assistant.job_schedule import (
+from sleeper_assistant.sources.espn import fetch_ownership
+from sleeper_assistant.sources.sleeper import SleeperClient
+from sleeper_assistant.sync import jobs
+from sleeper_assistant.sync.crosswalk import build_crosswalk
+from sleeper_assistant.sync.depth_sync import sync_depth_charts
+from sleeper_assistant.sync.ingest import MAX_WEEKS, sync_league, sync_players, sync_schedule
+from sleeper_assistant.sync.job_schedule import (
     ACTIVE_WINDOW,
     HISTORY_SEASONS,
     enqueue_alerts_if_due,
@@ -46,18 +47,15 @@ from sleeper_assistant.job_schedule import (
     enqueue_stats_sync_if_due,
     enqueue_trending_sync_if_due,
 )
-from sleeper_assistant.kickoffs import sync_kickoffs
-from sleeper_assistant.live_window import live_window_open
-from sleeper_assistant.news_sync import sync_news
-from sleeper_assistant.player_data import (
+from sleeper_assistant.sync.kickoffs import sync_kickoffs
+from sleeper_assistant.sync.news_sync import sync_news
+from sleeper_assistant.sync.player_data import (
     stored_weeks,
     sync_ownership,
     sync_season_history,
     sync_trending,
     sync_week_stats,
 )
-from sleeper_assistant.projections import sync_projections
-from sleeper_assistant.sleeper import SleeperClient
 
 log = logging.getLogger(__name__)
 

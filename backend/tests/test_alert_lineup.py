@@ -4,8 +4,8 @@ from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import alert_lineup
-from sleeper_assistant.alerts import run_all_leagues
+from sleeper_assistant.alerts import lineup as alert_lineup
+from sleeper_assistant.alerts.engine import run_all_leagues
 from sleeper_assistant.db import (
     AlertRow,
     LeagueRow,

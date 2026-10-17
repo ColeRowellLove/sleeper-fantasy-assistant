@@ -10,11 +10,11 @@ import httpx
 import pytest
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import live
 from sleeper_assistant.constants import ESPN_SCOREBOARD_URL
+from sleeper_assistant.core.nfl_games import games_for_week
 from sleeper_assistant.db import NflGameRow
-from sleeper_assistant.kickoffs import parse_scores, sync_kickoffs
-from sleeper_assistant.live import (
+from sleeper_assistant.sources import live
+from sleeper_assistant.sources.live import (
     LiveGame,
     Situation,
     current_games,
@@ -22,7 +22,7 @@ from sleeper_assistant.live import (
     parse_scoreboard,
     window_open,
 )
-from sleeper_assistant.nfl_games import games_for_week
+from sleeper_assistant.sync.kickoffs import parse_scores, sync_kickoffs
 
 
 def _event(  # noqa: PLR0913
@@ -343,11 +343,11 @@ def test_between_plays_no_situation_is_shown_even_if_espn_leaves_the_last_one(de
 def test_an_unreadable_situation_block_is_logged_not_silently_dropped(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    with caplog.at_level("WARNING", logger="sleeper_assistant.live"):
+    with caplog.at_level("WARNING", logger="sleeper_assistant.sources.live"):
         assert _situation({"somethingNew": {"yard": 5}}) is None
     assert "could not read the ESPN situation block" in caplog.text
     assert "somethingNew" in caplog.text
     caplog.clear()
-    with caplog.at_level("WARNING", logger="sleeper_assistant.live"):
+    with caplog.at_level("WARNING", logger="sleeper_assistant.sources.live"):
         assert _situation({}) is None  # an empty block is just "nothing to say"
     assert caplog.text == ""

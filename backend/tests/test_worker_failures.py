@@ -5,8 +5,9 @@ import logging
 import pytest
 from sqlalchemy import Engine
 
-from sleeper_assistant import jobs, worker
+from sleeper_assistant import worker
 from sleeper_assistant.db import JobRow, make_session_factory
+from sleeper_assistant.sync import jobs
 from sleeper_assistant.worker import exit_code, run_batch, run_once, run_one_shot
 
 
