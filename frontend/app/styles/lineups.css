@@ -1000,3 +1000,45 @@ table.h2h {
   border-top: 2px solid var(--line);
   font-weight: 700;
 }
+
+/* Full box score of one game */
+.back-link {
+  display: inline-block;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.box-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.box-section {
+  margin-top: 1rem;
+}
+
+.box-section h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.35rem;
+}
+
+.box-table th[scope="row"] {
+  white-space: nowrap;
+}
+
+.box-totals th,
+.box-totals td {
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+}
+
+table.players.box-table {
+  min-width: 0; /* a few narrow columns: fit the phone instead of the players table's 36rem */
+}
+
+.box-table th,
+.box-table td {
+  padding: 0.4rem 0.5rem;
+}

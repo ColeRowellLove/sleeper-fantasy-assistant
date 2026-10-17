@@ -1,3 +1,5 @@
+import { boxPath } from "../lib/boxScore";
+import Link from "next/link";
 import type { Games, TeamRecord } from "../lib/api";
 import { recordText } from "../lib/depth";
 import { groupGames, orderGames, teamNickname, yourPlayersText } from "../lib/games";
@@ -116,6 +118,10 @@ export default function GamesPanel({
                     <p className="game-links">
                       Depth charts: <TeamLink team={card.away}>{card.away}</TeamLink>,{" "}
                       <TeamLink team={card.home}>{card.home}</TeamLink>
+                      {" · "}
+                      <Link href={boxPath(leagueId, card.week, card.away, card.home)}>
+                        Full box score
+                      </Link>
                     </p>
                     {card.players.length === 0 ? (
                       <p className="note">

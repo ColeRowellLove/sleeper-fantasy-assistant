@@ -540,6 +540,30 @@ export interface GameCard {
   players: GamePlayer[];
 }
 
+export interface BoxRow {
+  name: string;
+  position?: string | null;
+  /** The Sleeper player, when the name and team match exactly one. */
+  player_id?: string | null;
+  stats: string[];
+}
+
+export interface BoxTable {
+  key: string;
+  title: string;
+  columns: string[];
+  rows: BoxRow[];
+  totals?: string[] | null;
+}
+
+export interface BoxScoreData {
+  home: string;
+  away: string;
+  final: boolean;
+  /** Away first, then home. */
+  teams: { team: string; tables: BoxTable[] }[];
+}
+
 export interface Games {
   league_id: string;
   week: number | null;
