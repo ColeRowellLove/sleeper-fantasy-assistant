@@ -48,11 +48,6 @@ class RosterPlayer(BaseModel):
     started_pct: float | None = None  # ESPN-wide share of leagues that start him
 
 
-def load_players(session: Session, player_ids: set[str]) -> dict[str, PlayerRow]:
-    rows = session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(player_ids)))
-    return {p.player_id: p for p in rows}
-
-
 def display(players: dict[str, PlayerRow], pid: str) -> tuple[str, str | None, str | None]:
     p = players.get(pid)
     if p is None:

@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import FANTASY_POSITIONS, FLEX_POSITIONS
+from sleeper_assistant.core.league.ownership import roster_owners
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_names import team_names
@@ -250,7 +251,7 @@ def _context(session: Session, league: LeagueRow, week: int) -> _Context:
     return _Context(
         games=games_for_week(session, league.season, week),
         defense=build_defense_table(session, league.season, league.scoring_settings),
-        owner={pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]},
+        owner=roster_owners(rosters),
         team_name=team_name,
     )
 

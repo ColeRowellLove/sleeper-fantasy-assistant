@@ -25,11 +25,12 @@ from sleeper_assistant.alerts import advice as alert_advice
 from sleeper_assistant.alerts.engine import NewAlert, needs_advice, register, register_pre_run
 from sleeper_assistant.alerts.helpers import alert_key, player_tag
 from sleeper_assistant.core.league.lineup_slots import eligible_positions, starter_slots
+from sleeper_assistant.core.league.ownership import all_players, roster_owners
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_names import team_names
 from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY
-from sleeper_assistant.core.nfl.nfl_games import current_week, games_for_week
+from sleeper_assistant.core.nfl.nfl_games import bye_teams, current_week, games_for_week
 from sleeper_assistant.core.nfl.team_depth import depth_groups
 from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import LeagueRow, PlayerInjuryRow, PlayerRow, RosterRow, as_utc
@@ -246,11 +247,6 @@ def _advice(
     return alert_advice.advise("ruled_out.v1", facts, options, droppable)
 
 
-def _all(roster: RosterRow) -> list[str]:
-    """Every player a team has, in any spot."""
-    return [*roster.players, *roster.reserve, *roster.taxi]
-
-
 def _what_it_means(
     session: Session, ctx: _Week, roster: RosterRow, player: PlayerRow, nu: NextUp | None
 ) -> tuple[list[str], str | None, bool]:
@@ -293,25 +289,21 @@ def _week_context(
 ) -> _Week:
     week = current_week(session, league.season)
     # one projection lookup for everyone who matters (the team's players and each next man up)
-    wanted = {pid for r in rosters for pid in _all(r)}
+    wanted = {pid for r in rosters for pid in all_players(r)}
     wanted |= {nu.player_id for nu in next_ups.values() if nu and nu.player_id}
     projections = (
         projected_points(session, league.season, week, league.scoring_settings, wanted)
         if week
         else {}
     )
-    byes = (
-        {t for t, g in games_for_week(session, league.season, week).items() if g.state == "bye"}
-        if week
-        else set()
-    )
+    byes = bye_teams(games_for_week(session, league.season, week)) if week else set()
     return _Week(
         league=league,
         week=week,
         slots=starter_slots(league.roster_positions),
         projections=projections,
         byes=byes,
-        taken={pid for r in rosters for pid in _all(r)},
+        taken={pid for r in rosters for pid in all_players(r)},
     )
 
 
@@ -323,12 +315,12 @@ def detect_ruled_out(session: Session, league: LeagueRow, now: datetime) -> list
     rosters = league_rosters(session, league.league_id)
     # only players some team in this league has matter: no depth chart work for the rest
     rostered = [
-        (injury, player, [r for r in rosters if player.player_id in _all(r)])
+        (injury, player, [r for r in rosters if player.player_id in all_players(r)])
         for injury, player in news
     ]
     rostered = [item for item in rostered if item[2]]
     team_name, _ = team_names(session, rosters)
-    owner = {pid: r.roster_id for r in rosters for pid in _all(r)}
+    owner = roster_owners(rosters)
     next_ups = {
         player.player_id: _next_up(session, owner, team_name, player) for _, player, _ in rostered
     }

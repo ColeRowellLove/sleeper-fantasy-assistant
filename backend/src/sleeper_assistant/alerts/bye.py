@@ -19,7 +19,7 @@ from sleeper_assistant.alerts.injury import Spot, suggested_switch
 from sleeper_assistant.core.league.lineup_slots import starter_slots
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
-from sleeper_assistant.core.nfl.nfl_games import games_for_week
+from sleeper_assistant.core.nfl.nfl_games import bye_teams, games_for_week
 from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import LeagueRow, PlayerRow
 
@@ -32,10 +32,7 @@ def detect_bye_week(session: Session, league: LeagueRow, now: datetime) -> list[
     week = lineup_week(session, league, now, TELL_BEFORE)
     if not week:
         return []  # no current week, or too early: the lineup is not being set yet
-    byes = frozenset(
-        team for team, game in games_for_week(session, league.season, week).items()
-        if game.state == "bye"
-    )  # fmt: skip
+    byes = frozenset(bye_teams(games_for_week(session, league.season, week)))
     if not byes:
         return []
     slots = starter_slots(league.roster_positions)

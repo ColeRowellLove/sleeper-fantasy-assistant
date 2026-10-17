@@ -16,13 +16,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import FANTASY_POSITIONS
+from sleeper_assistant.core.league.ownership import roster_owners
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.core.league.team_names import team_names
 from sleeper_assistant.core.models.games import GameInfo
 from sleeper_assistant.core.models.injury import InjuryInfo
 from sleeper_assistant.core.nfl.injury_status import injury_info
-from sleeper_assistant.core.nfl.nfl_games import current_week, games_for_week
+from sleeper_assistant.core.nfl.nfl_games import current_week_games
 from sleeper_assistant.core.scoring.projections import projected_points, score_stats
 from sleeper_assistant.db import (
     LeagueRow,
@@ -113,10 +114,9 @@ def _add_position_ranks(listings: list[PlayerListing], totals: Mapping[str, floa
 def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     rosters = league_rosters(session, league.league_id)
     team_name, _ = team_names(session, rosters)
-    owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    owner = roster_owners(rosters)
 
-    week = current_week(session, league.season)
-    games = games_for_week(session, league.season, week) if week else {}
+    week, games = current_week_games(session, league.season)
     totals = _season_totals(session, league.season, league.scoring_settings)
     last = _last_week_points(session, league.season, week, league.scoring_settings)
     trends = {row.player_id: row for row in session.scalars(select(PlayerTrendRow))}
