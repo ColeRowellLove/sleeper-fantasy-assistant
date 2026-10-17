@@ -304,6 +304,17 @@ table.standings {
     padding: 0.2rem 0.6rem;
   }
 
+  /* the select says what it is; the label stays for screen readers */
+  .my-team-label {
+    border: 0;
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
   .league-head .my-team {
     flex-wrap: nowrap;
     gap: 0.5rem;
@@ -318,5 +329,23 @@ table.standings {
 
   .tabs {
     margin-top: 0.75rem;
+  }
+}
+
+/* the page chips under the section nav: breathing room above and below, one scrolling row on a phone */
+.tabs + .players-filter {
+  margin: 0.75rem 0 1rem;
+}
+
+@media (max-width: 40rem) {
+  nav.players-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    position: relative; /* clips the screen-reader text inside */
+  }
+
+  nav.players-filter .filter-chip {
+    flex: none;
   }
 }
