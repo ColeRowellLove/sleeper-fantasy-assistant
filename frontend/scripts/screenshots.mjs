@@ -20,6 +20,7 @@ const PAGES = [
     "games",
     "players",
     "waiver",
+    "trending",
     "rankings",
     "teams&team=SF",
     "standings",

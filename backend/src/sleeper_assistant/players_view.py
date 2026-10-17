@@ -50,6 +50,7 @@ class PlayerListing(BaseModel):
     total_points: float = 0.0  # this season, under this league's scoring
     rank: int | None = None  # within position by total points; None when no points yet
     projected: float | None = None  # this week; None = no projection
+    last_points: float | None = None  # last week's points; None = he did not play
     owned_pct: float | None = None  # ESPN-wide share of leagues that roster the player
     started_pct: float | None = None  # ESPN-wide share of leagues that start the player
 
@@ -79,6 +80,24 @@ def _season_totals(session: Session, season: str, scoring: dict[str, float]) -> 
     return {pid: round(total, 2) for pid, total in totals.items()}
 
 
+def _last_week_points(
+    session: Session, season: str, week: int | None, scoring: dict[str, float]
+) -> dict[str, float]:
+    """Points each player scored the week before ``week`` (only those who played)."""
+    if not week or week < 2:  # noqa: PLR2004 - there is no week before the first
+        return {}
+    rows = session.scalars(
+        select(PlayerWeekStatsRow).where(
+            PlayerWeekStatsRow.season == season, PlayerWeekStatsRow.week == week - 1
+        )
+    )
+    return {
+        row.player_id: round(score_stats(row.stats, scoring), 2)
+        for row in rows
+        if row.stats.get("gp", 1.0) > 0
+    }
+
+
 def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
@@ -92,6 +111,7 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     week = current_week(session, league.season)
     games = games_for_week(session, league.season, week) if week else {}
     totals = _season_totals(session, league.season, league.scoring_settings)
+    last = _last_week_points(session, league.season, week, league.scoring_settings)
     trends = {row.player_id: row for row in session.scalars(select(PlayerTrendRow))}
     ownership = {row.player_id: row for row in session.scalars(select(PlayerOwnershipRow))}
     projected: dict[str, float] = {}
@@ -131,6 +151,7 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
                 drops=trend.drops if trend else None,
                 total_points=totals.get(p.player_id, 0.0),
                 projected=projected.get(p.player_id),
+                last_points=last.get(p.player_id),
                 owned_pct=ownership[p.player_id].owned if p.player_id in ownership else None,
                 started_pct=ownership[p.player_id].started if p.player_id in ownership else None,
             )

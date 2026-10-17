@@ -959,3 +959,97 @@ td.season-log {
 .pd-hero-meta {
   grid-row: 3;
 }
+
+/* Trending page */
+.trend-list {
+  display: grid;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.trend-row {
+  align-items: start;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
+  padding: 0.6rem 0;
+}
+
+.trend-rank {
+  color: var(--muted);
+  font-weight: 700;
+  padding-top: 0.35rem;
+  text-align: right;
+}
+
+.trend-stats {
+  color: var(--muted);
+  display: flex;
+  font-size: 0.8rem;
+  gap: 1rem;
+  margin: 0.3rem 0 0;
+}
+
+.trend-stats dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.trend-stats dd {
+  color: var(--text);
+  font-weight: 700;
+  margin: 0;
+}
+
+.trend-count {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: end;
+  min-width: 5.5rem;
+}
+
+.trend-count strong {
+  font-size: 1.05rem;
+}
+
+.trend-adds strong {
+  color: var(--game-live);
+}
+
+.trend-drops strong {
+  color: var(--injury-out);
+}
+
+.trend-bar {
+  background: var(--surface-2);
+  border-radius: 999px;
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  width: 5.5rem;
+}
+
+.trend-bar > span {
+  background: currentColor;
+  display: block;
+  height: 100%;
+}
+
+.trend-adds .trend-bar {
+  color: var(--game-live);
+}
+
+.trend-drops .trend-bar {
+  color: var(--injury-out);
+}
+
+.trend-owner {
+  font-size: 0.75rem;
+}
+
+.trending .players-filter {
+  margin: 0.6rem 0;
+}

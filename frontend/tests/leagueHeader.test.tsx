@@ -92,7 +92,7 @@ describe("LeagueTabs", () => {
       within(pages)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["Browse", "Waiver wire", "Rankings", "NFL teams"]);
+    ).toEqual(["Browse", "Trending", "Waiver wire", "Rankings", "NFL teams"]);
     expect(within(pages).getByRole("link", { name: "Waiver wire" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -129,7 +129,7 @@ describe("LeagueTabs", () => {
   it("every page belongs to exactly one section and old links still resolve", () => {
     const keys = TABS.map((t) => t.key);
     expect(new Set(keys).size).toBe(keys.length);
-    expect(keys).toHaveLength(11);
+    expect(keys).toHaveLength(12);
     expect(sectionOf("startsit").label).toBe("My team");
     expect(sectionOf("teams").label).toBe("Players");
   });

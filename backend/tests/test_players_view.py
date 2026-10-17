@@ -224,3 +224,12 @@ def test_listing_for_an_empty_database_is_empty(session: Session) -> None:
     session.commit()
     data = build_players(session, empty)
     assert data.players == [] and data.week is None and data.trends_updated_at is None
+
+
+def test_listing_carries_last_weeks_points_for_those_who_played(
+    session: Session, league: LeagueRow
+) -> None:
+    by_name = {p.name: p for p in build_players(session, league).players}
+    assert by_name["Nacua"].last_points == 19.0  # week 1 of the current week 2: 5 + 8 + 6
+    assert by_name["Free Agent WR"].last_points == 12.0
+    assert by_name["Old Kicker"].last_points is None  # no game, so nothing is claimed
