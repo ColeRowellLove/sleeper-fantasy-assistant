@@ -278,6 +278,17 @@ describe("PlayerDialog", () => {
     expect(chip).toHaveTextContent("34.2");
   });
 
+  it("heads the pop-up with the name split into a small and a large part, and the bio strip", () => {
+    renderDialog();
+    const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
+    const heading = within(dialog).getByRole("heading", { level: 2 });
+    expect(heading).toHaveTextContent("Puka Nacua");
+    expect(heading.querySelector(".pd-first")).toHaveTextContent("Puka");
+    expect(heading.querySelector(".pd-last")).toHaveTextContent("Nacua");
+    const strip = within(dialog).getByLabelText("Age, height, weight and experience");
+    expect(within(strip).getByText("Height").nextSibling).toHaveTextContent("6'2\"");
+  });
+
   it("shows ESPN's ownership and start percentages, labelled as ESPN's", () => {
     renderDialog();
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });

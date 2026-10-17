@@ -882,3 +882,80 @@ td.season-log {
 .history td.num-col {
   white-space: nowrap;
 }
+
+/* Player pop-up header: the team's colour behind a large face, small first name over a big last name */
+.pd-hero {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--team, var(--surface-2)) 30%, var(--surface)),
+    var(--surface) 80%
+  );
+  border-radius: var(--radius);
+  display: grid;
+  gap: 0.5rem 0.9rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 0.9rem;
+}
+
+.pd-hero .avatar {
+  --size: 4.5rem;
+}
+
+.pd-hero .avatar-initials {
+  font-size: 1.3rem;
+}
+
+.pd-hero .avatar-team {
+  height: 1.6rem;
+  width: 1.6rem;
+}
+
+.pd-hero .player-dialog-owner {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.player-dialog-title .pd-name {
+  display: grid;
+  line-height: 1.05;
+  margin: 0.1rem 0 0.4rem;
+}
+
+.pd-first {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pd-last {
+  font-size: 1.9rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.pd-hero-meta {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.pd-hero .pd-strip {
+  grid-column: 1 / -1;
+  text-align: left;
+}
+
+.pd-hero .status-owned {
+  display: block;
+  white-space: normal;
+}
+
+.pd-hero .player-dialog-close {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.pd-hero .pd-strip {
+  grid-row: 2;
+}
+
+.pd-hero-meta {
+  grid-row: 3;
+}

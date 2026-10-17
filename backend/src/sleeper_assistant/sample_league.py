@@ -169,7 +169,12 @@ def _players(rng: random.Random) -> list[PlayerRow]:
                         team=team,
                         status="Active",
                         external_ids={},
-                        bio={},
+                        bio={
+                            "age": 22 + n % 12,
+                            "height": 70 + n % 8,
+                            "weight": 190 + n % 40,
+                            "years_exp": n % 9,
+                        },
                     )
                 )
         n += 1
