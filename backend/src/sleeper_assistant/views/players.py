@@ -8,6 +8,7 @@ projection. The list is sent whole and filtered and sorted in the browser, so ev
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import datetime
 
 from pydantic import BaseModel
@@ -86,13 +87,33 @@ def _last_week_points(
     }
 
 
+def _projections_for(session: Session, league: LeagueRow, week: int | None) -> dict[str, float]:
+    if not week:
+        return {}
+    projectable = session.scalars(
+        select(PlayerProjectionRow.player_id).where(
+            PlayerProjectionRow.season == league.season, PlayerProjectionRow.week == week
+        )
+    )
+    return projected_points(session, league.season, week, league.scoring_settings, set(projectable))
+
+
+def _add_position_ranks(listings: list[PlayerListing], totals: Mapping[str, float]) -> None:
+    """Rank each player who has scored among his position by season points."""
+    by_position: dict[str, list[PlayerListing]] = defaultdict(list)
+    for listing in listings:
+        if listing.player_id in totals:
+            by_position[listing.position].append(listing)
+    for group in by_position.values():
+        group.sort(key=lambda x: (-x.total_points, x.name))
+        for rank, listing in enumerate(group, start=1):
+            listing.rank = rank
+
+
 def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     rosters = league_rosters(session, league.league_id)
     team_name, _ = team_names(session, rosters)
-    owner: dict[str, int] = {}
-    for roster in rosters:
-        for pid in [*roster.players, *roster.reserve, *roster.taxi]:
-            owner[pid] = roster.roster_id
+    owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
 
     week = current_week(session, league.season)
     games = games_for_week(session, league.season, week) if week else {}
@@ -100,16 +121,7 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     last = _last_week_points(session, league.season, week, league.scoring_settings)
     trends = {row.player_id: row for row in session.scalars(select(PlayerTrendRow))}
     ownership = {row.player_id: row for row in session.scalars(select(PlayerOwnershipRow))}
-    projected: dict[str, float] = {}
-    if week:
-        projectable = session.scalars(
-            select(PlayerProjectionRow.player_id).where(
-                PlayerProjectionRow.season == league.season, PlayerProjectionRow.week == week
-            )
-        )
-        projected = projected_points(
-            session, league.season, week, league.scoring_settings, set(projectable)
-        )
+    projected = _projections_for(session, league, week)
 
     # a player is listed when this league or Sleeper gives a reason to look at them
     relevant = set(owner) | set(totals) | set(trends) | set(projected) | set(ownership)
@@ -122,6 +134,7 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
     listings: list[PlayerListing] = []
     for p in candidates:
         trend = trends.get(p.player_id)
+        espn = ownership.get(p.player_id)
         roster_id = owner.get(p.player_id)
         listings.append(
             PlayerListing(
@@ -138,20 +151,12 @@ def build_players(session: Session, league: LeagueRow) -> PlayersResponse:
                 total_points=totals.get(p.player_id, 0.0),
                 projected=projected.get(p.player_id),
                 last_points=last.get(p.player_id),
-                owned_pct=ownership[p.player_id].owned if p.player_id in ownership else None,
-                started_pct=ownership[p.player_id].started if p.player_id in ownership else None,
+                owned_pct=espn.owned if espn else None,
+                started_pct=espn.started if espn else None,
             )
         )
 
-    by_position: dict[str, list[PlayerListing]] = defaultdict(list)
-    for listing in listings:
-        if listing.player_id in totals:
-            by_position[listing.position].append(listing)
-    for group in by_position.values():
-        group.sort(key=lambda x: (-x.total_points, x.name))
-        for rank, listing in enumerate(group, start=1):
-            listing.rank = rank
-
+    _add_position_ranks(listings, totals)
     listings.sort(key=lambda x: (-x.total_points, x.name))
     updated = max((t.fetched_at for t in trends.values()), default=None)
     return PlayersResponse(

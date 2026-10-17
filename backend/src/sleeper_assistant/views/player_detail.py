@@ -119,7 +119,7 @@ class PlayerDetail(BaseModel):
     past_seasons: list[SeasonLine]
 
 
-def _game_log(  # noqa: PLR0913
+def _game_log(  # noqa: PLR0913 - the season, the player and how to score him are all needed
     session: Session,
     season: str,
     player_id: str,
@@ -222,21 +222,11 @@ def _schedule(
     return out
 
 
-def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> PlayerDetail | None:
-    """The pop-up for one player in this league, or None when Sleeper has no such player."""
-    player = session.get(PlayerRow, player_id)
-    if player is None:
-        return None
-    scoring = league.scoring_settings
-    season = league.season
-
-    rosters = league_rosters(session, league.league_id)
-    team_name, manager_name = team_names(session, rosters)
-    owner = next(
-        (r.roster_id for r in rosters if player_id in [*r.players, *r.reserve, *r.taxi]), None
-    )
-
-    expected = {
+def _expected_points(
+    session: Session, season: str, player_id: str, scoring: Mapping[str, float]
+) -> dict[int, float]:
+    """His stored projection for each week, scored with the league's rules."""
+    return {
         row.week: score_projection(row.stats, scoring)
         for row in session.scalars(
             select(PlayerProjectionRow).where(
@@ -244,11 +234,19 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
             )
         )
     }
-    weeks, games = _game_log(session, season, player_id, scoring, expected)
-    total = round(sum(w.points for w in weeks), 2)
-    weekly = bool(weeks)
 
-    # rank among everyone at this position this season, scored with the same rules
+
+def _rank_in_position(
+    session: Session,
+    season: str,
+    player: PlayerRow,
+    scoring: Mapping[str, float],
+    weeks: list[WeekLine],
+) -> tuple[int | None, dict[str, str | None]]:
+    """His season rank among his position (and each game's rank), scored with the same rules.
+
+    Fills ``rank`` on each week line; returns the season rank and every player's position.
+    """
     position_of = {
         pid: pos for pid, pos in session.execute(select(PlayerRow.player_id, PlayerRow.position))
     }
@@ -266,21 +264,46 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
     for line in weeks:
         line.rank = _rank(line.points, week_peers.get(line.week, [])) if week_peers else None
     rank = None
-    if weekly and player.position:
+    if weeks and player.position:
         peers = [t for pid, t in season_totals.items() if position_of.get(pid) == player.position]
-        rank = _rank(season_totals.get(player_id, 0.0), peers)
+        rank = _rank(season_totals.get(player.player_id, 0.0), peers)
+    return rank, position_of
+
+
+def _this_weeks_projection(
+    session: Session, season: str, week: int | None, player_id: str, scoring: Mapping[str, float]
+) -> ProjectedLine | None:
+    if not week:
+        return None
+    row = session.get(PlayerProjectionRow, (season, week, player_id))
+    if row is None:
+        return None
+    return ProjectedLine(
+        week=week,
+        points=score_projection(row.stats, scoring),
+        stats=display_stats(row.stats, scoring),
+    )
+
+
+def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> PlayerDetail | None:
+    """The pop-up for one player in this league, or None when Sleeper has no such player."""
+    player = session.get(PlayerRow, player_id)
+    if player is None:
+        return None
+    scoring = league.scoring_settings
+    season = league.season
+
+    rosters = league_rosters(session, league.league_id)
+    team_name, manager_name = team_names(session, rosters)
+    owner = next(
+        (r.roster_id for r in rosters if player_id in [*r.players, *r.reserve, *r.taxi]), None
+    )
+    expected = _expected_points(session, season, player_id, scoring)
+    weeks, games = _game_log(session, season, player_id, scoring, expected)
+    total = round(sum(w.points for w in weeks), 2)
+    rank, position_of = _rank_in_position(session, season, player, scoring, weeks)
 
     week_now = current_week(session, season)
-    projected = None
-    if week_now:
-        row = session.get(PlayerProjectionRow, (season, week_now, player_id))
-        if row is not None:
-            projected = ProjectedLine(
-                week=week_now,
-                points=score_projection(row.stats, scoring),
-                stats=display_stats(row.stats, scoring),
-            )
-
     trend = session.get(PlayerTrendRow, player_id)
     espn = session.get(PlayerOwnershipRow, player_id)
     game = games_for_week(session, season, week_now).get(player.team or "") if week_now else None
@@ -312,7 +335,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
             average=round(total / games, 2) if games else None,
             rank=rank,
         ),
-        projected=projected,
+        projected=_this_weeks_projection(session, season, week_now, player_id, scoring),
         schedule=_schedule(session, season, player, defense),
         news=player_news(session, player_id),
         history=build_history(session, league, player_id),

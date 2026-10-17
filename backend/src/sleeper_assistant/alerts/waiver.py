@@ -19,6 +19,7 @@ are skipped, and the first run before 9 am Eastern waits so the overnight syncs 
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -35,7 +36,6 @@ from sleeper_assistant.core.nfl.waiver_calendar import (
 )
 from sleeper_assistant.db import (
     LeagueRow,
-    PlayerRow,
     RosterRow,
 )
 
@@ -44,23 +44,25 @@ TARGETS = 5  # how many pickups an alert lists
 ALERT_CAPS = {"QB": 2, "TE": 2, "K": 1, "DEF": 1}  # one slot each: do not list four defenses
 
 
-def _advice(  # noqa: PLR0913, PLR0917
-    session: Session,
-    league: LeagueRow,
-    roster: RosterRow,
-    top: list[Pickup],
-    projections: dict[str, float],
-    slots: list[str],
-    week: int,
-    key: str,
-    now: datetime,
-    lineup: list[tuple[str, str]],
-    players: dict[str, PlayerRow],
+@dataclass
+class _Run:
+    """What one team's waiver alert needs besides its picks."""
+
+    session: Session
+    league: LeagueRow
+    board: WaiverBoard
+    week: int
+    key: str
+    now: datetime
+
+
+def _advice(
+    run: _Run, roster: RosterRow, top: list[Pickup], lineup: list[tuple[str, str]]
 ) -> dict[str, object] | None:
     """The model's ranking of the computed pickups for this roster, or None (also None when this
     team's alert already has advice, so the model is asked once per event)."""
     if alert_advice.client() is None or not needs_advice(
-        session, league.league_id, roster.roster_id, key, now
+        run.session, run.league.league_id, roster.roster_id, run.key, run.now
     ):
         return None
     options = [
@@ -71,16 +73,41 @@ def _advice(  # noqa: PLR0913, PLR0917
     droppable = {
         pid
         for pid in roster.players
-        if pid in players and pid not in starters and pid not in roster.reserve
+        if pid in run.board.players and pid not in starters and pid not in roster.reserve
     }
     facts: dict[str, object] = {
-        "week": week,
-        "league_slots": slots,
-        "roster": alert_advice.roster_facts(session, roster, projections, slots),
+        "week": run.week,
+        "league_slots": run.board.slots,
+        "roster": alert_advice.roster_facts(
+            run.session, roster, run.board.projections, run.board.slots
+        ),
         "droppable": sorted(droppable),
         "options": options,
     }
     return alert_advice.advise("waiver.v1", facts, options, droppable)
+
+
+def _target(pick: Pickup) -> tuple[str, dict[str, object]]:
+    """One pickup as the line shown in the alert and the facts stored with it."""
+    p = pick.player
+    name = player_name(p)
+    detail = (
+        f"({p.position}, {p.team}): projected {pick.projected:.1f}, +{pick.gain:.1f} {pick.over}."
+    )
+    if pick.adds:
+        detail += f" Added in {pick.adds:,} leagues in the last day."
+    if pick.out_starter:
+        detail += f" {pick.out_starter} is out ahead of him."
+    return f"{name} {detail}", {
+        "player_id": p.player_id,
+        "name": name,
+        "position": p.position,
+        "team": p.team,
+        "projected": round(pick.projected, 1),
+        "gain": round(pick.gain, 1),
+        "detail": detail,
+        "line": f"{name} {detail}",
+    }
 
 
 @register(KIND)
@@ -93,6 +120,9 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
     if not board.has_projections:
         return []  # nothing is projected yet: say nothing now, the next run tries again
     when = f"{day_name(waiver)}, {waiver.strftime('%b')} {waiver.day}"
+    run = _Run(
+        session, league, board, week, alert_key(KIND, league.league_id, waiver.isoformat()), now
+    )
 
     raised: list[NewAlert] = []
     for roster in board.rosters:
@@ -100,57 +130,19 @@ def detect_waiver_targets(session: Session, league: LeagueRow, now: datetime) ->
         top = board.pickups(roster, lineup, TARGETS, ALERT_CAPS)
         if not top:
             continue  # nothing useful for this team: no alert, nothing padded
-        lines: list[str] = []
-        targets: list[dict[str, object]] = []
-        for pick in top:
-            p, pid = pick.player, pick.player.player_id
-            name = player_name(p)
-            detail = (
-                f"({p.position}, {p.team}): projected {pick.projected:.1f}, "
-                f"+{pick.gain:.1f} {pick.over}."
-            )
-            if pick.adds:
-                detail += f" Added in {pick.adds:,} leagues in the last day."
-            if pick.out_starter:
-                detail += f" {pick.out_starter} is out ahead of him."
-            lines.append(f"{name} {detail}")
-            targets.append(
-                {
-                    "player_id": pid,
-                    "name": name,
-                    "position": p.position,
-                    "team": p.team,
-                    "projected": round(pick.projected, 1),
-                    "gain": round(pick.gain, 1),
-                    "detail": detail,
-                    "line": f"{name} {detail}",
-                }
-            )
-        key = alert_key(KIND, league.league_id, waiver.isoformat())
-        advice = _advice(
-            session,
-            league,
-            roster,
-            top,
-            board.projections,
-            board.slots,
-            week,
-            key,
-            now,
-            lineup,
-            board.players,
-        )
+        built = [_target(pick) for pick in top]
+        advice = _advice(run, roster, top, lineup)
         raised.append(
             NewAlert(
                 roster_id=roster.roster_id,
                 kind=KIND,
-                dedupe_key=key,
+                dedupe_key=run.key,
                 title=f"Top waiver targets for {when}",
-                why=" ".join(f"{i}. {line}" for i, line in enumerate(lines, start=1)),
+                why=" ".join(f"{i}. {line}" for i, (line, _) in enumerate(built, start=1)),
                 data={
                     "week": week,
                     "waiver_date": waiver.isoformat(),
-                    "targets": targets,
+                    "targets": [target for _, target in built],
                     **({"advice": advice} if advice else {}),
                 },
             )

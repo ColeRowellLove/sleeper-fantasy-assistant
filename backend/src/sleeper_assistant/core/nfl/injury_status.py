@@ -6,6 +6,8 @@ about the same player.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from sleeper_assistant.core.models.injury import InjuryInfo
 from sleeper_assistant.db import PlayerRow
 
@@ -21,7 +23,7 @@ UNLIKELY_TO_PLAY = WILL_NOT_PLAY | {"Doubtful"}
 _HIDDEN_INJURY_STATUSES = {"", "NA"}
 
 
-def injury_info(players: dict[str, PlayerRow], pid: str) -> InjuryInfo | None:
+def injury_info(players: Mapping[str, PlayerRow], pid: str) -> InjuryInfo | None:
     p = players.get(pid)
     if p is None or not p.injury_status or p.injury_status in _HIDDEN_INJURY_STATUSES:
         return None

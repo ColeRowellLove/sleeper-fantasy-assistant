@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -51,23 +52,36 @@ def build_defense_table(
     return _CACHE.get(key, version, lambda: _build_defense_table(session, season, scoring))
 
 
-def _build_defense_table(
-    session: Session, season: str, scoring: Mapping[str, float]
-) -> DefenseTable:
+def _opponents(session: Session, season: str) -> dict[tuple[str, int], str]:
+    """(team, week) -> the team it played, for finished games."""
     opponent_of: dict[tuple[str, int], str] = {}
     for g in session.scalars(
         select(NflGameRow).where(NflGameRow.season == season, NflGameRow.status == GAME_COMPLETE)
     ):
         opponent_of[(g.home, g.week)] = g.away
         opponent_of[(g.away, g.week)] = g.home
+    return opponent_of
 
+
+@dataclass
+class _Tally:
+    """Fantasy points scored and allowed, and how many games each side has stats for."""
+
+    allowed: dict[tuple[str, str], float]  # (defense, position) -> points allowed
+    scored: dict[str, float]  # an offense's own fantasy points
+    defense_games: dict[str, int]
+    offense_games: dict[str, int]
+
+
+def _tally(session: Session, season: str, scoring: Mapping[str, float]) -> _Tally:
+    opponent_of = _opponents(session, season)
     position_of = {
         pid: pos
         for pid, pos in session.execute(select(PlayerRow.player_id, PlayerRow.position))
         if pos in PLAYER_POSITIONS
     }
     allowed: dict[tuple[str, str], float] = defaultdict(float)
-    scored: dict[str, float] = defaultdict(float)  # an offense's own fantasy points
+    scored: dict[str, float] = defaultdict(float)
     faced: set[tuple[str, int]] = set()  # (defense, week) with stats loaded: games that count
     attacked: set[tuple[str, int]] = set()  # (offense, week) with stats loaded
     for pid, team, week, stats in session.execute(
@@ -90,34 +104,40 @@ def _build_defense_table(
         points = score_stats(stats, scoring)
         allowed[(opponent, position)] += points
         scored[team] += points
-
     defense_games: dict[str, int] = defaultdict(int)
     for team, _ in faced:
         defense_games[team] += 1
     offense_games: dict[str, int] = defaultdict(int)
     for team, _ in attacked:
         offense_games[team] += 1
+    return _Tally(allowed, scored, defense_games, offense_games)
 
+
+def _build_defense_table(
+    session: Session, season: str, scoring: Mapping[str, float]
+) -> DefenseTable:
+    tally = _tally(session, season, scoring)
     table: DefenseTable = {}
     for position in PLAYER_POSITIONS:
         per_game = {
-            team: allowed.get((team, position), 0.0) / n for team, n in defense_games.items()
+            team: tally.allowed.get((team, position), 0.0) / n
+            for team, n in tally.defense_games.items()
         }
         for team, value in per_game.items():
             table[(team, position)] = DefenseRank(
                 rank=1 + sum(1 for other in per_game.values() if other > value),
                 teams=len(per_game),
                 points=round(value, 1),
-                games=defense_games[team],
+                games=tally.defense_games[team],
             )
     # a team defense is up against the opposing offense: fewest points scored is the best matchup
-    offense = {team: scored.get(team, 0.0) / n for team, n in offense_games.items()}
+    offense = {team: tally.scored.get(team, 0.0) / n for team, n in tally.offense_games.items()}
     for team, value in offense.items():
         table[(team, DEFENSE)] = DefenseRank(
             rank=1 + sum(1 for other in offense.values() if other < value),
             teams=len(offense),
             points=round(value, 1),
-            games=offense_games[team],
+            games=tally.offense_games[team],
             side="offense",
         )
     return table

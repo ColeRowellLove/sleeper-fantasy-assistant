@@ -8,6 +8,7 @@ when a starter is out, who is next in line.
 from __future__ import annotations
 
 import functools
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -125,6 +126,57 @@ def _note(players: list[DepthPlayer]) -> str | None:
     return None
 
 
+def _depth_player(
+    entry: dict[str, Any],
+    depth: int,
+    sleeper: Mapping[str, PlayerRow],
+    owner: Mapping[str, int],
+    team_name: Mapping[int, str],
+) -> DepthPlayer:
+    pid = entry.get("sleeper_id")
+    injury = injury_info(sleeper, pid) if pid else None
+    if injury is None and entry.get("injury"):
+        injury = InjuryInfo(status=entry["injury"], body_part=None)
+    owner_id = owner.get(pid) if pid else None
+    return DepthPlayer(
+        name=entry["name"],
+        player_id=pid,
+        depth=depth,
+        label=_ORDINAL.get(depth, f"{depth}th string"),
+        injury=injury,
+        owner_roster_id=owner_id,
+        owner_team=team_name.get(owner_id) if owner_id is not None else None,
+    )
+
+
+def _depth_groups(
+    chart: dict[str, Any],
+    sleeper: Mapping[str, PlayerRow],
+    owner: Mapping[str, int],
+    team_name: Mapping[int, str],
+) -> list[DepthGroup]:
+    groups: list[DepthGroup] = []
+    for group in GROUPS:
+        slots: list[DepthSlot] = []
+        for slot in sorted(chart.get(group, {}), key=functools.partial(slot_order, group)):
+            players = [
+                _depth_player(entry, depth, sleeper, owner, team_name)
+                for depth, entry in enumerate(chart[group][slot], start=1)
+            ]
+            slots.append(
+                DepthSlot(
+                    slot=slot,
+                    label=slot_label(group, slot),
+                    skill=slot in SKILL_SLOTS,
+                    note=_note(players),
+                    players=players,
+                )
+            )
+        if slots:
+            groups.append(DepthGroup(group=group, title=_TITLES[group], slots=slots))
+    return groups
+
+
 def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDepth:
     """The stored depth chart for one NFL team, with this league's ownership and injuries."""
     row = session.get(TeamDepthChartRow, team)
@@ -144,42 +196,6 @@ def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDept
         p.player_id: p
         for p in session.scalars(select(PlayerRow).where(PlayerRow.player_id.in_(ids)))
     }
-
-    groups: list[DepthGroup] = []
-    for group in GROUPS:
-        slots: list[DepthSlot] = []
-        in_order = sorted(chart.get(group, {}), key=functools.partial(slot_order, group))
-        for slot in in_order:
-            players: list[DepthPlayer] = []
-            for depth, entry in enumerate(chart[group][slot], start=1):
-                pid = entry.get("sleeper_id")
-                injury = injury_info(sleeper, pid) if pid else None
-                if injury is None and entry.get("injury"):
-                    injury = InjuryInfo(status=entry["injury"], body_part=None)
-                owner_id = owner.get(pid) if pid else None
-                players.append(
-                    DepthPlayer(
-                        name=entry["name"],
-                        player_id=pid,
-                        depth=depth,
-                        label=_ORDINAL.get(depth, f"{depth}th string"),
-                        injury=injury,
-                        owner_roster_id=owner_id,
-                        owner_team=team_name.get(owner_id) if owner_id is not None else None,
-                    )
-                )
-            slots.append(
-                DepthSlot(
-                    slot=slot,
-                    label=slot_label(group, slot),
-                    skill=slot in SKILL_SLOTS,
-                    note=_note(players),
-                    players=players,
-                )
-            )
-        if slots:
-            groups.append(DepthGroup(group=group, title=_TITLES[group], slots=slots))
-
     week = current_week(session, league.season)
     game = games_for_week(session, league.season, week).get(team) if week else None
     return TeamDepth(
@@ -189,5 +205,5 @@ def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDept
         game=game,
         record=team_record(session, league.season, team),
         stats=all_team_stats(build_team_stats(session, league.season), team),
-        groups=groups,
+        groups=_depth_groups(chart, sleeper, owner, team_name),
     )

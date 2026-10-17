@@ -8,6 +8,7 @@ figures behind it, and says when it is a close call instead of pretending to be 
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
@@ -218,6 +219,66 @@ def compare_players(
     )  # fmt: skip
 
 
+def _fill_spots(
+    slots: list[str], usable: list[tuple[str, str, float]], cands: Mapping[str, Candidate]
+) -> list[LineupSpot]:
+    """The best lineup as one spot per league slot (a slot nobody fits stays empty)."""
+    remaining = list(assign_lineup(slots, usable))
+    spots: list[LineupSpot] = []
+    for slot in slots:
+        match = next(((s, p) for s, p in remaining if s == slot), None)
+        if match is not None:
+            remaining.remove(match)
+            spots.append(LineupSpot(slot=slot, player=cands[match[1]]))
+        else:
+            spots.append(LineupSpot(slot=slot, player=None))
+    return spots
+
+
+def _changes(
+    cands: Mapping[str, Candidate], best_ids: set[str], current: list[str]
+) -> list[LineupChange]:
+    """Who to start and who to sit to reach the best lineup, like for like first."""
+    to_start = sorted(
+        (cands[pid] for pid in best_ids if pid not in current), key=lambda c: -(c.projected or 0.0)
+    )
+    to_sit = sorted(
+        (cands[pid] for pid in current if pid not in best_ids), key=lambda c: c.projected or 0.0
+    )
+    changes: list[LineupChange] = []
+    for a in to_start:  # swap like for like first (a back for a back), then whoever is left
+        if not to_sit:
+            break
+        b = next((s for s in to_sit if s.position == a.position), to_sit[0])
+        to_sit.remove(b)
+        changes.append(
+            LineupChange(start=a, sit=b, gain=round((a.projected or 0.0) - (b.projected or 0.0), 2))
+        )
+    return changes
+
+
+def _changes_why(changes: list[LineupChange]) -> str:
+    if not changes:
+        return "Your current lineup is already the projected best."
+    return "; ".join(
+        f"start {c.start.name} ({candidate_line(c.start)}) "
+        f"for {c.sit.name} ({candidate_line(c.sit)}): {c.gain:+.1f}"
+        for c in changes
+    )
+
+
+def _roster_order(cands: Mapping[str, Candidate]) -> list[Candidate]:
+    return sorted(
+        cands.values(),
+        key=lambda c: (
+            _POSITION_ORDER.get(c.position or "", len(_POSITION_ORDER)),
+            c.projected is None,  # without a projection (or out) after those who have one
+            -(c.projected or 0.0),
+            c.name,
+        ),
+    )
+
+
 def best_lineup(
     session: Session, league: LeagueRow, roster_id: int, week: int | None = None
 ) -> BestLineup | None:
@@ -240,61 +301,18 @@ def best_lineup(
         for pid, c in cands.items()
         if c.out is None and c.projected is not None
     ]
-    slots = starter_slots(league.roster_positions)
-    lineup = assign_lineup(slots, usable)
-    spots: list[LineupSpot] = []
-    remaining = list(lineup)
-    for slot in slots:
-        match = next(((s, p) for s, p in remaining if s == slot), None)
-        if match is not None:
-            remaining.remove(match)
-            spots.append(LineupSpot(slot=slot, player=cands[match[1]]))
-        else:
-            spots.append(LineupSpot(slot=slot, player=None))
+    spots = _fill_spots(starter_slots(league.roster_positions), usable, cands)
     best_ids = {s.player.player_id for s in spots if s.player}
     current = [pid for pid in roster.starters if pid in cands]
-    current_projected = round(sum(cands[pid].projected or 0.0 for pid in current), 2)
-    projected = round(sum((s.player.projected or 0.0) for s in spots if s.player), 2)
-
-    to_start = sorted(
-        (cands[pid] for pid in best_ids if pid not in current), key=lambda c: -(c.projected or 0.0)
-    )
-    to_sit = sorted(
-        (cands[pid] for pid in current if pid not in best_ids), key=lambda c: c.projected or 0.0
-    )
-    changes: list[LineupChange] = []
-    for a in to_start:  # swap like for like first (a back for a back), then whoever is left
-        if not to_sit:
-            break
-        b = next((s for s in to_sit if s.position == a.position), to_sit[0])
-        to_sit.remove(b)
-        changes.append(
-            LineupChange(start=a, sit=b, gain=round((a.projected or 0.0) - (b.projected or 0.0), 2))
-        )
-    if changes:
-        why = "; ".join(
-            f"start {c.start.name} ({candidate_line(c.start)}) "
-            f"for {c.sit.name} ({candidate_line(c.sit)}): {c.gain:+.1f}"
-            for c in changes
-        )
-    else:
-        why = "Your current lineup is already the projected best."
+    changes = _changes(cands, best_ids, current)
     return BestLineup(
         league_id=league.league_id,
         roster_id=roster_id,
         week=rankings.week,
         lineup=spots,
-        projected=projected,
-        current_projected=current_projected,
+        projected=round(sum((s.player.projected or 0.0) for s in spots if s.player), 2),
+        current_projected=round(sum(cands[pid].projected or 0.0 for pid in current), 2),
         changes=changes,
-        why=why,
-        roster=sorted(
-            cands.values(),
-            key=lambda c: (
-                _POSITION_ORDER.get(c.position or "", len(_POSITION_ORDER)),
-                c.projected is None,  # without a projection (or out) after those who have one
-                -(c.projected or 0.0),
-                c.name,
-            ),
-        ),
+        why=_changes_why(changes),
+        roster=_roster_order(cands),
     )

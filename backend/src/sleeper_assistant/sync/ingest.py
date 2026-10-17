@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.core.league.team_avatar import avatar_id, team_avatar_url
-from sleeper_assistant.core.sources.sleeper import SleeperClient, SleeperPlayer
+from sleeper_assistant.core.sources.sleeper import SleeperClient, SleeperLeague, SleeperPlayer
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -70,6 +70,102 @@ def _streak(metadata: dict[str, Any] | None) -> str | None:
     return None
 
 
+def _upsert_league(session: Session, league: SleeperLeague) -> LeagueRow:
+    existing = session.get(LeagueRow, league.league_id)
+    return session.merge(
+        LeagueRow(
+            league_id=league.league_id,
+            name=league.name,
+            season=league.season,
+            total_rosters=league.total_rosters,
+            scoring_settings=league.scoring_settings,
+            roster_positions=league.roster_positions,
+            settings=league.settings,
+            previous_league_id=league.previous_league_id,
+            last_synced_at=utcnow(),
+            last_viewed_at=existing.last_viewed_at if existing else None,
+        )
+    )
+
+
+def _upsert_users(session: Session, client: SleeperClient, league_id: str) -> None:
+    for user in client.get_league_users(league_id):
+        session.merge(
+            SleeperUserRow(
+                user_id=user.user_id,
+                username=user.username,
+                display_name=user.display_name,
+                avatar=avatar_id(user.avatar),
+            )
+        )
+        team_name = str((user.metadata or {}).get("team_name") or "").strip() or None
+        session.merge(
+            UserLeagueRow(
+                user_id=user.user_id,
+                league_id=league_id,
+                team_name=team_name,
+                team_avatar=team_avatar_url(user.metadata),
+            )
+        )
+    session.flush()
+
+
+def _upsert_rosters(session: Session, client: SleeperClient, league_id: str) -> None:
+    for roster in client.get_rosters(league_id):
+        rs = roster.settings
+        session.merge(
+            RosterRow(
+                league_id=league_id,
+                roster_id=roster.roster_id,
+                owner_id=roster.owner_id,
+                players=roster.players or [],
+                starters=roster.starters or [],
+                reserve=roster.reserve or [],
+                taxi=roster.taxi or [],
+                wins=int(rs.get("wins", 0)),
+                losses=int(rs.get("losses", 0)),
+                ties=int(rs.get("ties", 0)),
+                points_for=float(rs.get("fpts", 0)) + float(rs.get("fpts_decimal", 0)) / 100,
+                points_against=float(rs.get("fpts_against", 0))
+                + float(rs.get("fpts_against_decimal", 0)) / 100,
+                streak=_streak(roster.metadata),
+                potential_points=_potential(rs),
+            )
+        )
+
+
+def _upsert_week(
+    session: Session, client: SleeperClient, league_id: str, week: int, *, played: bool
+) -> None:
+    """One week's matchups (every week, for the upcoming pairings) and, once played, its moves."""
+    for m in client.get_matchups(league_id, week):
+        session.merge(
+            MatchupRow(
+                league_id=league_id,
+                week=week,
+                roster_id=m.roster_id,
+                matchup_id=m.matchup_id,
+                points=m.points,
+                starters=m.starters or [],
+                starters_points=m.starters_points or [],
+                players=m.players or [],
+                players_points=m.players_points or {},
+            )
+        )
+    for t in client.get_transactions(league_id, week) if played else []:
+        session.merge(
+            TransactionRow(
+                league_id=league_id,
+                transaction_id=t.transaction_id,
+                type=t.type,
+                status=t.status,
+                week=t.leg,
+                created_ms=t.created,
+                payload=t.model_dump(),
+            )
+        )
+
+
 def sync_league(session: Session, client: SleeperClient, league_id: str) -> LeagueRow:
     """Fetch and upsert league settings, users, rosters, matchups and transactions."""
     client = client.with_recorder(
@@ -77,94 +173,14 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
     )  # per-sync; never mutate the shared client
     try:
         league = client.get_league(league_id)
-        existing = session.get(LeagueRow, league_id)
-        row = session.merge(
-            LeagueRow(
-                league_id=league.league_id,
-                name=league.name,
-                season=league.season,
-                total_rosters=league.total_rosters,
-                scoring_settings=league.scoring_settings,
-                roster_positions=league.roster_positions,
-                settings=league.settings,
-                previous_league_id=league.previous_league_id,
-                last_synced_at=utcnow(),
-                last_viewed_at=existing.last_viewed_at if existing else None,
-            )
-        )
-
-        for user in client.get_league_users(league_id):
-            session.merge(
-                SleeperUserRow(
-                    user_id=user.user_id,
-                    username=user.username,
-                    display_name=user.display_name,
-                    avatar=avatar_id(user.avatar),
-                )
-            )
-            team_name = str((user.metadata or {}).get("team_name") or "").strip() or None
-            session.merge(
-                UserLeagueRow(
-                    user_id=user.user_id,
-                    league_id=league_id,
-                    team_name=team_name,
-                    team_avatar=team_avatar_url(user.metadata),
-                )
-            )
-        session.flush()
-
-        for roster in client.get_rosters(league_id):
-            rs = roster.settings
-            session.merge(
-                RosterRow(
-                    league_id=league_id,
-                    roster_id=roster.roster_id,
-                    owner_id=roster.owner_id,
-                    players=roster.players or [],
-                    starters=roster.starters or [],
-                    reserve=roster.reserve or [],
-                    taxi=roster.taxi or [],
-                    wins=int(rs.get("wins", 0)),
-                    losses=int(rs.get("losses", 0)),
-                    ties=int(rs.get("ties", 0)),
-                    points_for=float(rs.get("fpts", 0)) + float(rs.get("fpts_decimal", 0)) / 100,
-                    points_against=float(rs.get("fpts_against", 0))
-                    + float(rs.get("fpts_against_decimal", 0)) / 100,
-                    streak=_streak(roster.metadata),
-                    potential_points=_potential(rs),
-                )
-            )
-
+        row = _upsert_league(session, league)
+        _upsert_users(session, client, league_id)
+        _upsert_rosters(session, client, league_id)
         played_weeks = set(_weeks_to_sync(client, league.season))
         # Sleeper also returns future pairings (with each team's current starters and 0 points),
         # so sync every regular-season week to be able to show upcoming opponents.
         for week in sorted(played_weeks | set(_regular_season_weeks(league.settings))):
-            for m in client.get_matchups(league_id, week):
-                session.merge(
-                    MatchupRow(
-                        league_id=league_id,
-                        week=week,
-                        roster_id=m.roster_id,
-                        matchup_id=m.matchup_id,
-                        points=m.points,
-                        starters=m.starters or [],
-                        starters_points=m.starters_points or [],
-                        players=m.players or [],
-                        players_points=m.players_points or {},
-                    )
-                )
-            for t in client.get_transactions(league_id, week) if week in played_weeks else []:
-                session.merge(
-                    TransactionRow(
-                        league_id=league_id,
-                        transaction_id=t.transaction_id,
-                        type=t.type,
-                        status=t.status,
-                        week=t.leg,
-                        created_ms=t.created,
-                        payload=t.model_dump(),
-                    )
-                )
+            _upsert_week(session, client, league_id, week, played=week in played_weeks)
         session.commit()
     except Exception:
         session.rollback()
