@@ -17,13 +17,13 @@ from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow, TeamDepthChartRow
 from sleeper_assistant.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
+from sleeper_assistant.injury_status import WILL_NOT_PLAY
 from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
 from sleeper_assistant.roster_players import InjuryInfo, injury_info
 from sleeper_assistant.team_names import team_names
 from sleeper_assistant.team_stats import TeamStat, all_team_stats, build_team_stats
 
 # designations that mean a player will not play
-OUT_STATUSES = {"Out", "IR", "PUP", "Sus", "DNR", "Injured Reserve", "Suspended"}
 _ORDINAL = {1: "Starter", 2: "2nd string", 3: "3rd string"}
 
 
@@ -111,9 +111,9 @@ def _note(players: list[DepthPlayer]) -> str | None:
     if not players:
         return None
     starter_status = _status_of(players[0])
-    if starter_status in OUT_STATUSES:
+    if starter_status in WILL_NOT_PLAY:
         for backup in players[1:]:
-            if _status_of(backup) not in OUT_STATUSES:
+            if _status_of(backup) not in WILL_NOT_PLAY:
                 backup.next_up = True
                 return f"{players[0].name} is out: next up is {backup.name}"
         return f"{players[0].name} is out and no healthy player is listed behind him"

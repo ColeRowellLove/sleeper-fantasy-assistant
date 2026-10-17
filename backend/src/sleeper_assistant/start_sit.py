@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow
+from sleeper_assistant.injury_status import WILL_NOT_PLAY
 from sleeper_assistant.lineup_slots import assign_lineup, starter_slots
 from sleeper_assistant.matchup_rank import (
     DefenseTable,
@@ -29,7 +30,6 @@ from sleeper_assistant.rankings import RankedPlayer, Rankings, build_rankings
 from sleeper_assistant.roster_players import InjuryInfo, injury_info
 
 # designations that mean a player will not play
-_OUT = {"Out", "IR", "PUP", "Suspended", "NA", "DNR", "COV"}
 CLOSE_CALL = 1.5  # projected points apart, or fewer, is a close call
 MAX_COMPARE = 6
 _POSITION_ORDER = {pos: i for i, pos in enumerate(("QB", "RB", "WR", "TE", "K", "DEF"))}
@@ -131,7 +131,7 @@ def _candidate(
                 extra.defense, player.position or "", game.opponent if game else None
             ),
             projected=round(extra.projections[pid], 2), sources=1,
-            out=f"listed {status}" if status in _OUT else (
+            out=f"listed {status}" if status in WILL_NOT_PLAY else (
                 "on a bye" if game is not None and game.state == "bye" else None
             ),
         )  # fmt: skip
@@ -141,7 +141,7 @@ def _candidate(
             player_id=pid, name=r.name, position=r.position, team=r.team, injury=r.injury,
             game=r.game, matchup=r.matchup, projected=r.projected, form=r.form,
             started_pct=r.started_pct, rank=r.rank, score=r.score, sources=r.sources,
-            out=f"listed {status}" if status in _OUT else (
+            out=f"listed {status}" if status in WILL_NOT_PLAY else (
                 "on a bye" if r.game is not None and r.game.state == "bye" else None
             ),
         )  # fmt: skip

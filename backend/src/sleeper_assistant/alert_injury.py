@@ -23,10 +23,11 @@ from sqlalchemy.orm import Session
 from sleeper_assistant import alert_advice
 from sleeper_assistant.alerts import NewAlert, needs_advice, register, register_pre_run
 from sleeper_assistant.db import LeagueRow, PlayerInjuryRow, PlayerRow, RosterRow, as_utc
+from sleeper_assistant.injury_status import UNLIKELY_TO_PLAY
 from sleeper_assistant.lineup_slots import eligible_positions, starter_slots
 from sleeper_assistant.nfl_games import current_week, games_for_week
 from sleeper_assistant.projections import projected_points
-from sleeper_assistant.team_depth import OUT_STATUSES, build_team_depth
+from sleeper_assistant.team_depth import build_team_depth
 
 OUT = "Out"
 RECENT_RULING = timedelta(hours=48)  # a ruling older than this is no longer news
@@ -93,7 +94,7 @@ SWITCH_MARGIN = 2.0  # projected points a bench player must beat the owned next 
 
 def _can_start(p: PlayerRow) -> bool:
     """On an NFL team and not out or doubtful: someone who could be started."""
-    return p.team is not None and (p.injury_status or "") not in OUT_STATUSES | {"Doubtful"}
+    return p.team is not None and (p.injury_status or "") not in UNLIKELY_TO_PLAY
 
 
 def _bench_options(session: Session, spot: Spot) -> list[PlayerRow]:

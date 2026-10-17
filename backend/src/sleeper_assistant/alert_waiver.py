@@ -34,6 +34,7 @@ from sleeper_assistant.db import (
     PlayerTrendRow,
     RosterRow,
 )
+from sleeper_assistant.injury_status import UNLIKELY_TO_PLAY
 from sleeper_assistant.lineup_slots import assign_lineup, eligible_positions, starter_slots
 from sleeper_assistant.matchup_rank import (
     DefenseTable,
@@ -44,14 +45,13 @@ from sleeper_assistant.matchup_rank import (
 from sleeper_assistant.nfl_games import games_for_week
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.rankings import recent_form
-from sleeper_assistant.team_depth import OUT_STATUSES, build_team_depth
+from sleeper_assistant.team_depth import build_team_depth
 from sleeper_assistant.waiver_calendar import coming_week, day_name, waiver_date_if_tomorrow
 
 TARGETS = 5  # how many pickups an alert lists
 ALERT_CAPS = {"QB": 2, "TE": 2, "K": 1, "DEF": 1}  # one slot each: do not list four defenses
 MIN_GAIN = 1.0  # projected points a pickup must add to be worth a mention
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
-NOT_PLAYABLE = OUT_STATUSES | {"Doubtful"}  # someone who probably will not play is no pickup
 
 
 def display_name(p: PlayerRow) -> str:
@@ -255,7 +255,7 @@ class WaiverBoard:
         return (
             p.team is not None
             and p.team not in self.byes
-            and (p.injury_status or "") not in NOT_PLAYABLE
+            and (p.injury_status or "") not in UNLIKELY_TO_PLAY
         )
 
     def lineup(self, roster: RosterRow) -> list[tuple[str, str]]:

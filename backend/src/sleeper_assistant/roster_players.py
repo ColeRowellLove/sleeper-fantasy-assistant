@@ -14,6 +14,7 @@ from sleeper_assistant.db import (
     PlayerRow,
     RosterRow,
 )
+from sleeper_assistant.injury_status import WILL_NOT_PLAY
 from sleeper_assistant.live_projection import live_projection
 from sleeper_assistant.matchup_rank import (
     DefenseTable,
@@ -81,9 +82,6 @@ def display(players: dict[str, PlayerRow], pid: str) -> tuple[str, str | None, s
     return p.full_name or pid, p.position, p.team
 
 
-WONT_PLAY = {"Out", "IR", "Sus", "PUP", "NA"}
-
-
 class Line(NamedTuple):
     text: str
     projected: bool
@@ -105,7 +103,7 @@ def week_lines(
             continue
         if game.state in ("live", "final"):
             started[pid] = p.position
-        elif game.state == "upcoming" and p.injury_status not in WONT_PLAY:
+        elif game.state == "upcoming" and p.injury_status not in WILL_NOT_PLAY:
             waiting[pid] = p.position  # a forecast for someone ruled out would only mislead
     played = week_stat_lines(session, league.season, week, started, league.scoring_settings)
     planned = projected_stat_lines(session, league.season, week, waiting, league.scoring_settings)

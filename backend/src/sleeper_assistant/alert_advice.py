@@ -21,12 +21,11 @@ from sqlalchemy.orm import Session
 from sleeper_assistant import llm
 from sleeper_assistant.alerts import register_pre_run
 from sleeper_assistant.db import LeagueRow, PlayerProjectionRow, PlayerRow, RosterRow
+from sleeper_assistant.injury_status import UNLIKELY_TO_PLAY
 from sleeper_assistant.projections import projected_points
-from sleeper_assistant.team_depth import OUT_STATUSES
 
 log = logging.getLogger(__name__)
 
-NOT_PLAYABLE = OUT_STATUSES | {"Doubtful"}
 FREE_AGENTS = 5  # free agents offered to the model per position
 _LINKS = re.compile(r"https?:|www\.|@|<", re.IGNORECASE)
 
@@ -96,7 +95,7 @@ def free_agents(  # noqa: PLR0913, PLR0917
         if p.player_id in points
         and p.team is not None
         and p.team not in byes
-        and (p.injury_status or "") not in NOT_PLAYABLE
+        and (p.injury_status or "") not in UNLIKELY_TO_PLAY
     ]
     found.sort(key=lambda item: (-item[0], item[1].player_id))
     return [option(p, "pickup", pts) for pts, p in found[: FREE_AGENTS * len(positions)]]
