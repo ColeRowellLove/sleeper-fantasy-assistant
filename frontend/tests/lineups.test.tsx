@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import WeeklyLineups from "../components/WeeklyLineups";
 import type { LineupPlayer, Lineups, TeamLineup } from "../lib/api";
 import {
+  slotShort,
   formatPoints,
   isMine,
   orderMatchups,
@@ -278,5 +279,15 @@ describe("lineup helpers", () => {
   it("formats points", () => {
     expect(formatPoints(3.256)).toBe("3.26");
     expect(formatPoints(null)).toBe("–");
+  });
+});
+
+describe("slotShort", () => {
+  it("shortens the long slot labels for a phone column and leaves the rest", () => {
+    expect(slotShort("Bench")).toBe("BN");
+    expect(slotShort("FLEX")).toBe("FLX");
+    expect(slotShort("Taxi")).toBe("TX");
+    expect(slotShort("QB")).toBe("QB");
+    expect(slotShort("IR")).toBe("IR");
   });
 });
