@@ -28,10 +28,10 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.dashboard import (
     GameInfo,
     InjuryInfo,
-    _injury,
-    _team_names,
     current_week,
     games_for_week,
+    injury_info,
+    team_names,
 )
 from sleeper_assistant.db import (
     LeagueRow,
@@ -43,7 +43,7 @@ from sleeper_assistant.db import (
     RosterRow,
 )
 from sleeper_assistant.matchup_rank import MatchupRank, build_defense_table, matchup_rank
-from sleeper_assistant.players_view import _name
+from sleeper_assistant.players_view import player_name
 from sleeper_assistant.projections import score_projection, score_stats
 
 POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
@@ -227,7 +227,7 @@ def build_rankings(
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team_name, _ = _team_names(session, rosters)
+    team_name, _ = team_names(session, rosters)
     owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
     games = games_for_week(session, season, chosen)
     defense = build_defense_table(session, season, scoring)
@@ -267,10 +267,10 @@ def build_rankings(
             game = games.get(p.team or "")
             ranked[pid] = RankedPlayer(
                 player_id=pid,
-                name=_name(p),
+                name=player_name(p),
                 position=position,
                 team=p.team,
-                injury=_injury({pid: p}, pid),
+                injury=injury_info({pid: p}, pid),
                 game=game,
                 matchup=matchup_rank(defense, position, game.opponent if game else None),
                 owner_roster_id=owner.get(pid),

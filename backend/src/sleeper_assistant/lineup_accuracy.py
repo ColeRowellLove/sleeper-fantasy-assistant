@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import _team_names
+from sleeper_assistant.dashboard import team_names
 from sleeper_assistant.db import LeagueRow, RosterRow
 
 
@@ -34,7 +34,7 @@ def build_lineup_accuracy(session: Session, league: LeagueRow) -> LineupAccuracy
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team, _ = _team_names(session, rosters)
+    team, _ = team_names(session, rosters)
     teams: list[TeamAccuracy] = []
     for roster in rosters:
         potential = roster.potential_points

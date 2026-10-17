@@ -18,10 +18,10 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.dashboard import (
     GameInfo,
     InjuryInfo,
-    _injury,
-    _team_names,
     current_week,
     games_for_week,
+    injury_info,
+    team_names,
 )
 from sleeper_assistant.db import (
     LeagueRow,
@@ -31,7 +31,7 @@ from sleeper_assistant.db import (
     PlayerWeekStatsRow,
     RosterRow,
 )
-from sleeper_assistant.players_view import _name
+from sleeper_assistant.players_view import player_name
 from sleeper_assistant.projections import score_projection, score_stats
 from sleeper_assistant.stat_lines import stat_line
 from sleeper_assistant.team_depth import TeamRecord, team_record
@@ -117,7 +117,7 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
     rosters = list(
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
-    team_name, _ = _team_names(session, rosters)
+    team_name, _ = team_names(session, rosters)
     owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
 
     # stored lines come from Sleeper's JSON: keep only the finite numbers (a null is not fatal)
@@ -184,10 +184,10 @@ def build_games(session: Session, league: LeagueRow, week: int | None = None) ->
         by_team[p.team].append(
             GamePlayer(
                 player_id=p.player_id,
-                name=_name(p),
+                name=player_name(p),
                 position=p.position or "",
                 team=p.team,
-                injury=_injury({p.player_id: p}, p.player_id),
+                injury=injury_info({p.player_id: p}, p.player_id),
                 owner_roster_id=roster_id,
                 owner_team=team_name.get(roster_id) if roster_id is not None else None,
                 points=(
