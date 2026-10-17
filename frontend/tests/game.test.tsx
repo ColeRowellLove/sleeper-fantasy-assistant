@@ -391,7 +391,7 @@ describe("game conditions", () => {
     expect(word({ roof: "outdoors", temp: 40, wind: 5 })).toBe("Cold");
     expect(word({ roof: "outdoors", temp: 90, wind: 5 })).toBe("Hot");
     expect(word({ roof: "outdoors", temp: 60, wind: 20 })).toBe("Windy");
-    expect(word({ roof: "outdoors", temp: 64, wind: 7 })).toBe("Mild");
+    expect(word({ roof: "outdoors", temp: 64, wind: 7 })).toBeUndefined(); // nothing notable: no word
     expect(word({ roof: "outdoors", temp: 28, wind: 20 })).toBe("Freezing");
     expect(weatherWord({})).toBeNull();
   });
@@ -409,9 +409,7 @@ describe("game conditions", () => {
     expect(conditionsLabel({ ...outdoors, conditions: {} })).toBeNull();
     expect(conditionsLabel({ ...outdoors, state: "bye" })).toBeNull();
     expect(conditionsLabel(null)).toBeNull();
-    expect(conditionsLabel({ ...outdoors, conditions: { roof: "outdoors" } }, true)?.setting).toBe(
-      "Outdoors",
-    );
+    expect(conditionsLabel({ ...outdoors, conditions: { roof: "outdoors" } }, true)).toBeNull();
   });
 
   it("is plain text on the badge and has no accessibility violations", async () => {
