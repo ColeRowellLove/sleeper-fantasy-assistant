@@ -27,7 +27,7 @@ import FilterChips from "./FilterChips";
 import PlayerLink from "./PlayerLink";
 import NoteList from "./NoteList";
 
-const TOP_STATS = 10; // the chips show the first ten; the rest are under a disclosure
+const TOP_STATS = 6; // the chips show the first six; the rest are under a disclosure
 
 function PlayerCell({
   player,
