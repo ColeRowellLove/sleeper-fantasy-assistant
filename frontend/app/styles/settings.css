@@ -279,11 +279,6 @@ dialog.player-dialog::backdrop {
   margin: 0 0 0.5rem;
 }
 
-.pd-projected {
-  font-size: 1.1rem;
-  margin: 0 0 0.25rem;
-}
-
 table.players.pd-table {
   min-width: 0; /* the players table's own minimum width would stretch the whole dialog */
 }
@@ -609,15 +604,18 @@ td.season-log {
   text-decoration: none;
 }
 
-.gamelog .diff-easy {
+.gamelog .diff-easy,
+.ps-opp.diff-easy {
   color: var(--game-live);
 }
 
-.gamelog .diff-average {
+.gamelog .diff-average,
+.ps-opp.diff-average {
   color: var(--game-bye);
 }
 
-.gamelog .diff-tough {
+.gamelog .diff-tough,
+.ps-opp.diff-tough {
   color: var(--injury-out);
 }
 
@@ -710,4 +708,124 @@ td.season-log {
   gap: 1.5rem;
   grid-template-columns: minmax(0, 1fr);
   padding-top: 1.25rem;
+}
+
+/* Player summary tab */
+.ps-stats {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  row-gap: 0.75rem;
+}
+
+.ps-note {
+  margin: -0.75rem 0 0;
+}
+
+.ps-stats dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ps-stats dd {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.15rem 0 0;
+}
+
+.ps-game {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.ps-week {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ps-proj {
+  margin: 0;
+}
+
+.ps-game .note {
+  margin: 0;
+}
+
+.ps-strip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.ps-strip {
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+}
+
+.ps-cards {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ps-card {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: grid;
+  flex: none;
+  gap: 0.25rem;
+  min-width: 6.5rem;
+  padding: 0.5rem 0.65rem;
+}
+
+.ps-card-head {
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+
+.ps-line {
+  display: flex;
+  font-variant-numeric: tabular-nums;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.ps-key {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ps-bye {
+  color: var(--muted);
+}
+
+.ps-card-bye {
+  font-weight: 700;
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+.ps-activity {
+  display: flex;
+  gap: 1.5rem;
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
 }
