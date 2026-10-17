@@ -330,6 +330,9 @@ export interface RosterPlayer {
   stat_line?: string | null;
   /** True when `stat_line` is what he is projected to do (his game has not started). */
   stat_line_projected?: boolean;
+  /** ESPN-wide shares of leagues that roster and start him; absent without a number. */
+  owned_pct?: number | null;
+  started_pct?: number | null;
 }
 
 export interface LineupPlayer {

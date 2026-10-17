@@ -189,3 +189,16 @@ export function teamInitials(name: string): string {
     .join("");
   return letters || Array.from(name.trim())[0] || "?"; // an emoji-only name keeps its first symbol
 }
+
+/** "88% Rostered | 53% Start" from ESPN's shares; null unless there is at least one number. */
+export function ownershipText(player: {
+  owned_pct?: number | null;
+  started_pct?: number | null;
+}): string | null {
+  const part = (n: number | null | undefined, word: string) =>
+    n === null || n === undefined ? null : `${Math.round(n)}% ${word}`;
+  const parts = [part(player.owned_pct, "Rostered"), part(player.started_pct, "Start")].filter(
+    (p): p is string => p !== null,
+  );
+  return parts.length > 0 ? parts.join(" | ") : null;
+}

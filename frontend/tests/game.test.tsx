@@ -232,9 +232,9 @@ describe("rosters with game status", () => {
   it("shows each player's game or bye and which NFL week it refers to", async () => {
     render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
     expect(screen.getByText("Bye week")).toBeInTheDocument();
-    expect(screen.getByText("Sun, Sep 20 vs CHI")).toBeInTheDocument();
-    expect(screen.getByText("3rd · Easy")).toBeInTheDocument(); // the opponent's rank for his position
-    expect(screen.getByText("CHI ranks 3rd against RBs (easy matchup)")).toBeInTheDocument();
+    expect(screen.getByText("CHI").closest(".game-line")).toHaveTextContent(/vs\s*CHI/);
+    expect(screen.getByText("CHI")).toHaveClass("diff-easy"); // the opponent is coloured by how easy it is
+    expect(screen.getByText(/CHI ranks 3rd against RBs/)).toBeInTheDocument();
     await expectNoA11yViolations(<RostersPanel leagueId="1" rosters={rosters} myRosterId={1} />);
   });
 });

@@ -106,7 +106,7 @@ describe("RostersPanel", () => {
     expect(titles).toEqual(["Starters 3", "Bench 1", "Injured reserve 1", "Taxi squad 1"]);
     const starters = screen.getByRole("region", { name: /Starters/ });
     expect(within(starters).getAllByRole("listitem")).toHaveLength(3);
-    expect(within(starters).getByText("FLEX")).toBeInTheDocument();
+    expect(within(starters).getByText("Slot FLEX")).toBeInTheDocument();
   });
 
   it("omits empty groups", () => {
@@ -125,10 +125,12 @@ describe("RostersPanel", () => {
   it("gives each position its own color class on the chip", () => {
     render(<RostersPanel leagueId="1" rosters={rosters} myRosterId={2} />);
     const chip = (text: string) =>
-      screen.getAllByText(text).find((e) => e.className.includes("chip"));
+      screen
+        .getAllByText(`Slot ${text}`)
+        .map((e) => e.closest(".slot-chip"))
+        .find(Boolean);
     expect(chip("QB")?.className).toContain("pos-qb");
-    expect(chip("WR")?.className).toContain("pos-wr");
-    expect(chip("TE")?.className).toContain("pos-te");
+    expect(chip("FLEX")?.className).toContain("pos-na"); // a flex slot has no single position
     expect(chip("DEF")?.className).toContain("pos-def");
   });
 

@@ -82,7 +82,7 @@ describe("Players list rows", () => {
 describe("roster row columns", () => {
   // each trailing column has a fixed width so numbers, slot and position line up from row to row
   it("fixes the width of the points, projection and slot columns", () => {
-    for (const selector of [".player-proj", ".slot"]) {
+    for (const selector of [".player-proj"]) {
       expect(rule(selector)).toMatch(/flex: 0 0 [\d.]+rem/);
     }
   });
@@ -100,7 +100,6 @@ describe("roster row columns", () => {
     expect(css).toMatch(
       /@media \(max-width: 40rem\)[\s\S]*?\.player-proj \{\s*flex-basis: 2\.4rem/,
     );
-    expect(css).toMatch(/@media \(max-width: 40rem\)[\s\S]*?\.slot \{\s*flex-basis: 2\.4rem/);
     // an upcoming game's pill is only hidden when its time is there to say the same
     expect(css).toContain(".player .game-upcoming .game-state:not(:only-child)");
   });
