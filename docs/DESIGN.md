@@ -42,6 +42,8 @@ the few screens not yet migrated; that list may only shrink.
 
 ## Checking a change
 
-Look at it before it ships: screenshots at phone and desktop width in both themes, the
+Look at it before it ships: screenshots at phone (390 px) and desktop width in both themes, and
+read the phone one first (a name broken into one letter per line was only caught by the owner's
+phone), the
 `a11y-enforcer` and `perf-profiler` skills, and (once the sandbox can reach it) the production site.
 UI pull requests include before and after screenshots when feasible.

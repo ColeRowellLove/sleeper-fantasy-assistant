@@ -80,7 +80,8 @@ npm run dev
 
 Take inspiration from Sleeper and theScore (inspiration only, no assets): see [docs/DESIGN.md](docs/DESIGN.md).
 Reuse the shared patterns there instead of building a new layout per tab, keep the number of tabs
-small, and look at a UI change (screenshots at phone and desktop width, both themes) before it ships.
+small, and look at a UI change (screenshots at phone and desktop width, both themes) before it ships, and
+check the phone one first: names must not wrap letter by letter and rows must not be tall blocks.
 
 ## Conventions
 

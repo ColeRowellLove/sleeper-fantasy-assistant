@@ -125,6 +125,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
           <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
         </span>
         <span className="player-sub">
+          <PositionChip position={player.position} />
           {player.team ? <TeamLink team={player.team}>{player.team}</TeamLink> : "No team"}
           <InjuryBadge injury={player.injury} />
         </span>
@@ -138,7 +139,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
         </span>
         <PlayerStatLine line={player.stat_line} projected={player.stat_line_projected} />
       </span>
-      {/* four fixed-width columns on every row, so the numbers, slot and position line up; a row with
+      {/* three fixed-width columns on every row, so the numbers and slot line up; a row with
           no value keeps its (empty) column */}
       {player.points !== null && player.points !== undefined ? (
         <span className="player-proj player-pts num">
@@ -178,9 +179,6 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
       ) : (
         <span className="slot" aria-hidden="true" />
       )}
-      <span className="player-chip">
-        <PositionChip position={player.position} />
-      </span>
     </li>
   );
 }

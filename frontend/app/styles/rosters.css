@@ -179,15 +179,13 @@
     flex-basis: 2.4rem;
   }
 
-  .slot,
-  .player-chip {
-    flex-basis: 2.6rem;
+  .slot {
+    flex-basis: 2.4rem;
   }
 
-  .player-chip .chip {
-    font-size: 0.65rem;
-    padding-left: 0.3rem;
-    padding-right: 0.3rem;
+  /* roof and weather are on the game page; a row keeps the state, the time and the matchup */
+  .player .game-conditions {
+    display: none;
   }
 }
 
@@ -317,12 +315,6 @@
   flex: 0 0 3.4rem; /* a fixed column: points and projection line up on every row */
   line-height: 1.1;
   text-align: right;
-}
-
-.player-chip {
-  display: flex;
-  flex: 0 0 3.6rem; /* the position chip's column */
-  justify-content: flex-end;
 }
 
 .player-proj-label {
@@ -870,4 +862,16 @@
 .roster-matchup-scores dd {
   font-weight: 700;
   margin: 0;
+}
+
+/* on a roster row an upcoming game is told by its time, so the "Upcoming" pill is only for screen
+   readers, and only when the time is there to tell it; live and final games keep theirs */
+.player .game-upcoming .game-state:not(:only-child) {
+  border: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
