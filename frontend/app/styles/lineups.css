@@ -450,29 +450,15 @@ table.h2h {
   margin: 0 0 0.75rem;
 }
 
-/* Win chance bar: a bold number and name on each side, a rounded track in two team colours with a
-   marker at 50%. Blue and orange (not red and green) so it reads for colour-blind viewers; the team
-   ahead is the stronger shade. */
+/* Win chance bar: a bold number and team name on each side, a rounded track in two team colours
+   (--win-a blue, --win-b orange: not red and green, so it reads for colour-blind viewers) with a
+   marker at 50%. The team behind is the softer shade. */
 .win-bar {
-  --win-a: #60a5fa;
-  --win-b: #fb923c;
   margin-top: 1rem;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .win-bar {
-    --win-a: #1d4ed8;
-    --win-b: #c2410c;
-  }
-}
-
-:root[data-theme="light"] .win-bar {
-  --win-a: #1d4ed8;
-  --win-b: #c2410c;
-}
-
 .win-bar-labels {
-  align-items: center;
+  align-items: end;
   display: grid;
   gap: 0.5rem;
   grid-template-columns: 1fr auto 1fr;
@@ -503,11 +489,22 @@ table.h2h {
   color: var(--win-b);
 }
 
+.win-team {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .win-caption {
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.06em;
+  padding-bottom: 0.15rem;
   text-transform: uppercase;
 }
 
@@ -543,7 +540,6 @@ table.h2h {
   );
 }
 
-/* the team behind is the softer shade; an even matchup is the same on both sides */
 .win-bar-a.win-trail,
 .win-bar-b.win-trail {
   opacity: 0.55;
@@ -560,36 +556,31 @@ table.h2h {
   width: 2px;
 }
 
-/* a rough estimate is hatched, so it reads as less certain */
-.win-rough .win-bar-a,
+/* a rough estimate is hatched over the team colours, so it reads as less certain */
+.win-rough .win-bar-a {
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--bg) 40%, transparent) 5px 8px
+    ),
+    linear-gradient(90deg, color-mix(in srgb, var(--win-a) 60%, transparent), var(--win-a));
+}
+
 .win-rough .win-bar-b {
-  background-image: repeating-linear-gradient(
-    135deg,
-    transparent 0 5px,
-    color-mix(in srgb, var(--bg) 35%, transparent) 5px 8px
-  );
-  background-color: color-mix(in srgb, currentColor 0%, transparent);
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--bg) 40%, transparent) 5px 8px
+    ),
+    linear-gradient(270deg, color-mix(in srgb, var(--win-b) 60%, transparent), var(--win-b));
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .win-bar-a,
   .win-bar-b {
-    animation: win-grow 0.7s ease-out;
     transition: width 0.4s ease;
-  }
-
-  .win-bar-a {
-    transform-origin: left;
-  }
-
-  .win-bar-b {
-    transform-origin: right;
-  }
-
-  @keyframes win-grow {
-    from {
-      transform: scaleX(0);
-    }
   }
 }
 
