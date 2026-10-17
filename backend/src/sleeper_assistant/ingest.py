@@ -27,6 +27,7 @@ from sleeper_assistant.db import (
     utcnow,
 )
 from sleeper_assistant.sleeper import SleeperClient, SleeperPlayer
+from sleeper_assistant.team_avatar import avatar_id, team_avatar_url
 
 log = logging.getLogger(__name__)
 
@@ -95,12 +96,20 @@ def sync_league(session: Session, client: SleeperClient, league_id: str) -> Leag
         for user in client.get_league_users(league_id):
             session.merge(
                 SleeperUserRow(
-                    user_id=user.user_id, username=user.username, display_name=user.display_name
+                    user_id=user.user_id,
+                    username=user.username,
+                    display_name=user.display_name,
+                    avatar=avatar_id(user.avatar),
                 )
             )
             team_name = str((user.metadata or {}).get("team_name") or "").strip() or None
             session.merge(
-                UserLeagueRow(user_id=user.user_id, league_id=league_id, team_name=team_name)
+                UserLeagueRow(
+                    user_id=user.user_id,
+                    league_id=league_id,
+                    team_name=team_name,
+                    team_avatar=team_avatar_url(user.metadata),
+                )
             )
         session.flush()
 

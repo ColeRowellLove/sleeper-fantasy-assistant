@@ -29,6 +29,7 @@ from sleeper_assistant.matchup_rank import (
 )
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.stat_lines import projected_stat_lines, week_stat_lines
+from sleeper_assistant.team_avatar import team_avatars
 from sleeper_assistant.win_probability import StarterState, matchup_chances
 
 # Sleeper marks an empty starter slot with the player id "0".
@@ -153,6 +154,7 @@ class LineupPlayer(BaseModel):
 class TeamLineup(BaseModel):
     roster_id: int
     team: str
+    avatar: str | None = None  # the team's picture URL, when it has one
     owner_id: str | None = None
     points: float
     projected: float | None = (
@@ -521,6 +523,7 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
         session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
     )
     team, _ = _team_names(session, rosters)
+    avatars = team_avatars(session, rosters)
     owners = {r.roster_id: r.owner_id for r in rosters}
     players = _players(session, {pid for m in week_rows for pid in [*m.starters, *m.players]})
     slots = starter_slots(league)
@@ -554,6 +557,7 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
             defense,
             lines,
         )
+        lineup.avatar = avatars.get(m.roster_id)
         # a missing matchup_id (bye/unscheduled) must not group unrelated teams together
         key = m.matchup_id if m.matchup_id is not None else -m.roster_id
         by_matchup.setdefault(key, []).append(lineup)

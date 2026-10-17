@@ -49,6 +49,7 @@ class SleeperUserRow(Base):
     user_id: Mapped[str] = mapped_column(String, primary_key=True)
     username: Mapped[str | None] = mapped_column(String, index=True)
     display_name: Mapped[str] = mapped_column(String)
+    avatar: Mapped[str | None] = mapped_column(String)  # Sleeper's avatar id
 
 
 class LeagueRow(Base):
@@ -74,6 +75,7 @@ class UserLeagueRow(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("sleeper_users.user_id"), primary_key=True)
     league_id: Mapped[str] = mapped_column(ForeignKey("leagues.league_id"), primary_key=True)
     team_name: Mapped[str | None] = mapped_column(String)  # the name this manager gave their team
+    team_avatar: Mapped[str | None] = mapped_column(String)  # the picture they gave their team
 
 
 class RosterRow(Base):

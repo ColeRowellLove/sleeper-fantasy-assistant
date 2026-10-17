@@ -19,7 +19,8 @@ class SleeperUser(BaseModel):
     user_id: str
     username: str | None = None
     display_name: str
-    metadata: dict[str, Any] | None = None  # includes the manager's chosen "team_name"
+    avatar: str | None = None  # Sleeper's avatar id
+    metadata: dict[str, Any] | None = None  # includes the chosen "team_name" and "avatar"
 
 
 class SleeperLeague(BaseModel):

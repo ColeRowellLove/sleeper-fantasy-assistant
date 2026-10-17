@@ -127,7 +127,14 @@
   font-weight: 700;
   height: 2.6rem;
   justify-content: center;
+  overflow: hidden;
   width: 2.6rem;
+}
+
+.team-avatar img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
 }
 
 .mh-names {
