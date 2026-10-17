@@ -34,7 +34,7 @@ preview-data: migrate
 	cd backend && uv run python -m sleeper_assistant.sample_league
 
 boot:
-	cd backend && uv run python -m sleeper_assistant.boot
+	-cd backend && uv run python -m sleeper_assistant.boot  # a boot failure never stops the servers
 
 dev: migrate
 	$(MAKE) -j3 boot dev-api dev-web

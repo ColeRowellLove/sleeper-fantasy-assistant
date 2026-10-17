@@ -8,7 +8,7 @@ from sleeper_assistant.boot import boot, leagues_for_user, load_leagues
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow
 from sleeper_assistant.sample_league import LEAGUE_ID
 from sleeper_assistant.sleeper import BASE_URL, SleeperClient
-from test_api_connect import FIXTURE, _handler
+from test_api_connect import FAILING, FIXTURE, _handler
 
 
 def _with_user_league(request: httpx.Request) -> httpx.Response:
@@ -45,3 +45,18 @@ def test_with_nothing_given_an_empty_database_gets_the_sample_league(session: Se
     assert boot(session, _sleeper(), None, None) == 1
     assert session.get(LeagueRow, LEAGUE_ID) is not None
     assert boot(session, _sleeper(), None, None) == 0  # already has a league: nothing to do
+
+
+def test_an_unknown_username_loads_nothing_and_does_not_crash(session: Session) -> None:
+    assert boot(session, _sleeper(), "nobody", None) == 0
+
+
+def test_one_league_failing_does_not_stop_the_others(session: Session) -> None:
+    FAILING.add("/league/999")
+    assert load_leagues(session, _sleeper(), ["999", "1"]) == ["1"]
+
+
+def test_the_sample_league_is_not_seeded_over_existing_players(session: Session) -> None:
+    session.add(PlayerRow(player_id="s1", full_name="x", position="QB", team="SF", external_ids={}))
+    session.commit()
+    assert boot(session, _sleeper(), None, None) == 0

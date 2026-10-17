@@ -29,7 +29,7 @@ from sleeper_assistant.db import (
 )
 from sleeper_assistant.depth import TEAM_IDS
 from sleeper_assistant.games_view import Games, build_games
-from sleeper_assistant.ingest import ensure_players, ensure_schedule, sync_league
+from sleeper_assistant.ingest import finish_connect, sync_league
 from sleeper_assistant.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
 from sleeper_assistant.live_window import live_window_cached
 from sleeper_assistant.player_detail import PlayerDetail, build_player_detail
@@ -201,10 +201,7 @@ def connect_league(
             raise HTTPException(
                 status_code=502, detail="Unexpected response from Sleeper"
             ) from None
-    ensure_players(session, sleeper)
-    ensure_schedule(session, sleeper, row.season)
-    row.last_viewed_at = utcnow()
-    session.commit()
+    finish_connect(session, sleeper, row)
     return _connected(row)
 
 

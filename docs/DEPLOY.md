@@ -67,12 +67,10 @@ SLEEPER_USERNAME=yourname make dev   # also loads every league of that user on b
 
 On boot, `SLEEPER_USERNAME` (every league of that user) or `SLEEPER_LEAGUE_ID` (one league) loads the
 league, Sleeper's player list and the schedule, then runs one worker batch for projections, rankings
-and depth charts, so every page has data without connecting by hand. With neither set, an empty
-database gets the made-up sample league. For a first look without Sleeper, `make preview-data` also loads it: it loads a made-up league (id 100001,
-open http://localhost:3000/league/100001). Or open http://localhost:3000 and connect your Sleeper username once to load a league (the first
-connect also loads Sleeper's player list). The worker is not needed for a first look; run
-`uv run python -m sleeper_assistant.worker --once` in `backend/` to fetch projections and rankings.
-To see how a page looks at phone and desktop width, run `npm run screenshots` in `frontend/`.
+and depth charts, so every page has data without connecting by hand. It runs next to the servers, so
+pages fill in over the first minutes. It only writes to SQLite (never a shared `DATABASE_URL`) unless
+`BOOT_ALLOW_SHARED_DB=1`. With neither variable set, an empty database gets the made-up sample
+league (also loadable with `make preview-data`; open http://localhost:3000/league/100001).
 
 ## LLM (optional)
 

@@ -288,3 +288,12 @@ def ensure_players(session: Session, sleeper: SleeperClient) -> None:
     except (httpx.HTTPError, ValidationError):
         session.rollback()
         log.exception("could not load the Sleeper player database; names will show as ids")
+
+
+def finish_connect(session: Session, sleeper: SleeperClient, league: LeagueRow) -> None:
+    """What connecting a synced league also does: the player list and schedule the first time, and
+    marking the league active so the worker keeps it fresh. Shared by the API and boot loading."""
+    ensure_players(session, sleeper)
+    ensure_schedule(session, sleeper, league.season)
+    league.last_viewed_at = utcnow()
+    session.commit()
