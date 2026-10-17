@@ -36,7 +36,7 @@ import type {
 } from "../../../lib/api";
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
-import { leaguePath, parseTab } from "../../../lib/league";
+import { LIVE_TABS, leaguePath, parseTab } from "../../../lib/league";
 import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
 import {
@@ -257,7 +257,7 @@ export default async function LeaguePage({
     <main id="main" className="container">
       <LeagueHeader data={dashboard} myRosterId={myRosterId} />
       <LeagueTabs leagueId={leagueId} active={tab} unreadAlerts={newAlerts} />
-      <LiveRefresh active={liveNow} />
+      <LiveRefresh active={liveNow && LIVE_TABS.includes(tab)} />
       {tab === "standings" && (
         <StandingsTable
           leagueId={leagueId}
