@@ -9,42 +9,33 @@ in the last ``TELL_BEFORE`` before the week's first game, when the lineup is nea
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.alert_helpers import alert_key, lineup_week
 from sleeper_assistant.alerts import NewAlert, register
-from sleeper_assistant.db import LeagueRow, NflGameRow, RosterRow
-from sleeper_assistant.nfl_games import current_week
+from sleeper_assistant.db import LeagueRow
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.start_sit import Candidate, best_lineup, candidate_line
 
 MIN_GAIN = 3.0  # projected points a swap must add, so small differences are not noise
+KIND = "lineup_move"
 TELL_BEFORE = timedelta(days=2)  # said this long before the week's first game
 _LOCKED = {"live", "final"}
-
-
-def _first_game(session: Session, season: str, week: int) -> date | None:
-    days = session.scalars(
-        select(NflGameRow.game_date).where(NflGameRow.season == season, NflGameRow.week == week)
-    ).all()
-    return min((date.fromisoformat(d[:10]) for d in days if d), default=None)
 
 
 def _locked(candidate: Candidate) -> bool:
     return candidate.game is not None and candidate.game.state in _LOCKED
 
 
-@register("lineup_move")
+@register(KIND)
 def detect_lineup_move(session: Session, league: LeagueRow, now: datetime) -> list[NewAlert]:
-    week = current_week(session, league.season)
+    week = lineup_week(session, league, now, TELL_BEFORE)
     if not week:
-        return []
-    first = _first_game(session, league.season, week)
-    if first is None or now.date() < first - TELL_BEFORE:
-        return []  # the lineup is not being set yet
+        return []  # no current week, or too early: the lineup is not being set yet
     raised: list[NewAlert] = []
-    rosters = session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
+    rosters = league_rosters(session, league.league_id)
     for roster in rosters:
         best = best_lineup(session, league, roster.roster_id, week)
         if best is None:
@@ -58,10 +49,8 @@ def detect_lineup_move(session: Session, league: LeagueRow, now: datetime) -> li
             raised.append(
                 NewAlert(
                     roster_id=roster.roster_id,
-                    kind="lineup_move",
-                    dedupe_key=(
-                        f"lineup_move:{start.player_id}:{sit.player_id}:{league.season}:{week}"
-                    ),
+                    kind=KIND,
+                    dedupe_key=alert_key(KIND, start.player_id, sit.player_id, league.season, week),
                     title=(
                         f"Start {start.name} over {sit.name}: +{change.gain:.1f} projected points"
                     ),

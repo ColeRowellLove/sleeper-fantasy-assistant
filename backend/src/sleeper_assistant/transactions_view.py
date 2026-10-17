@@ -9,8 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow, TransactionRow
-from sleeper_assistant.players_view import player_name
+from sleeper_assistant.db import LeagueRow, PlayerRow, TransactionRow
+from sleeper_assistant.player_names import player_name
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_names import team_names
 
 Kind = Literal["waiver", "free_agent", "trade", "commissioner"]
@@ -65,9 +66,7 @@ def build_transactions(session: Session, league: LeagueRow) -> TransactionsView:
     ]
     rows.sort(key=lambda r: (r.created_ms or 0, r.transaction_id), reverse=True)
     rows = rows[:LIMIT]
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     team, manager = team_names(session, rosters)
     ids = {pid for r in rows for key in ("adds", "drops") for pid in (r.payload.get(key) or {})}
     players = {

@@ -23,7 +23,6 @@ from sleeper_assistant.db import (
     PlayerSeasonStatsRow,
     PlayerTrendRow,
     PlayerWeekStatsRow,
-    RosterRow,
 )
 from sleeper_assistant.matchup_rank import (
     DefenseTable,
@@ -34,9 +33,10 @@ from sleeper_assistant.matchup_rank import (
 from sleeper_assistant.news_view import NewsEntryView, player_news
 from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
 from sleeper_assistant.player_history import HistoryEvent, build_history
-from sleeper_assistant.players_view import player_name
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.projections import score_projection, score_stats
 from sleeper_assistant.roster_players import InjuryInfo, injury_info
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_depth import TeamDepth, build_team_depth
 from sleeper_assistant.team_names import team_names
 from sleeper_assistant.team_stats import TeamStat, build_team_stats, stats_for_position
@@ -231,9 +231,7 @@ def build_player_detail(session: Session, league: LeagueRow, player_id: str) -> 
     scoring = league.scoring_settings
     season = league.season
 
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     team_name, manager_name = team_names(session, rosters)
     owner = next(
         (r.roster_id for r in rosters if player_id in [*r.players, *r.reserve, *r.taxi]), None

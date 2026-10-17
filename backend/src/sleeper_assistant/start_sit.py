@@ -24,7 +24,7 @@ from sleeper_assistant.matchup_rank import (
     matchup_rank,
 )
 from sleeper_assistant.nfl_games import GameInfo, games_for_week
-from sleeper_assistant.players_view import player_name
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.projections import projected_points
 from sleeper_assistant.rankings import RankedPlayer, Rankings, build_rankings
 from sleeper_assistant.roster_players import InjuryInfo, injury_info

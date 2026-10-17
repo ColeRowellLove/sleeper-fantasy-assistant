@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.db import (
     LeagueRow,
     PlayerOwnershipRow,
-    RosterRow,
 )
 from sleeper_assistant.lineup_slots import starter_slots
 from sleeper_assistant.matchup_rank import (
@@ -24,6 +23,7 @@ from sleeper_assistant.roster_players import (
     week_lines,
     week_points,
 )
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_names import team_names
 
 
@@ -58,9 +58,7 @@ class Dashboard(BaseModel):
 
 
 def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     team, manager = team_names(session, rosters)
     owners = {r.roster_id: r.owner_id for r in rosters}
     players = load_players(

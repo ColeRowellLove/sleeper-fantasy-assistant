@@ -15,11 +15,12 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow, TeamDepthChartRow
+from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, TeamDepthChartRow
 from sleeper_assistant.depth import GROUPS, SKILL_SLOTS, slot_label, slot_order
 from sleeper_assistant.injury_status import WILL_NOT_PLAY
 from sleeper_assistant.nfl_games import GameInfo, current_week, games_for_week
 from sleeper_assistant.roster_players import InjuryInfo, injury_info
+from sleeper_assistant.rosters import league_rosters
 from sleeper_assistant.team_names import team_names
 from sleeper_assistant.team_stats import TeamStat, all_team_stats, build_team_stats
 
@@ -125,9 +126,7 @@ def _note(players: list[DepthPlayer]) -> str | None:
 def build_team_depth(session: Session, league: LeagueRow, team: str) -> TeamDepth:
     """The stored depth chart for one NFL team, with this league's ownership and injuries."""
     row = session.get(TeamDepthChartRow, team)
-    rosters = list(
-        session.scalars(select(RosterRow).where(RosterRow.league_id == league.league_id))
-    )
+    rosters = league_rosters(session, league.league_id)
     team_name, _ = team_names(session, rosters)
     owner = {pid: r.roster_id for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
 

@@ -22,6 +22,7 @@ from sleeper_assistant import llm
 from sleeper_assistant.alerts import register_pre_run
 from sleeper_assistant.db import LeagueRow, PlayerProjectionRow, PlayerRow, RosterRow
 from sleeper_assistant.injury_status import UNLIKELY_TO_PLAY
+from sleeper_assistant.player_names import player_name
 from sleeper_assistant.projections import projected_points
 
 log = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ def option(
 ) -> dict[str, object]:
     return {
         "player_id": p.player_id,
-        "name": p.full_name or p.player_id,
+        "name": player_name(p),
         "position": p.position,
         "team": p.team,
         "source": source,
