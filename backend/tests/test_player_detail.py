@@ -375,3 +375,20 @@ def test_no_schedule_without_his_teams_games(session: Session) -> None:
     session.commit()
     detail = build_player_detail(session, league, "1")
     assert detail is not None and detail.schedule == []
+
+
+def test_his_teams_depth_chart_comes_with_the_detail(session: Session) -> None:
+    league = _setup(session)
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None and detail.depth is not None
+    assert detail.depth.team == "LAR"
+
+
+def test_no_depth_chart_for_a_free_agent_without_a_team(session: Session) -> None:
+    league = _setup(session)
+    player = session.get(PlayerRow, "1")
+    assert player is not None
+    player.team = None
+    session.commit()
+    detail = build_player_detail(session, league, "1")
+    assert detail is not None and detail.depth is None

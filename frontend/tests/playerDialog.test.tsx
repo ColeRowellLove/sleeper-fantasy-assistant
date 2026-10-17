@@ -268,13 +268,14 @@ describe("PlayerDialog", () => {
     expect(within(dialog).getByText(/^On/)).toHaveTextContent("On Cole (colerowell)");
   });
 
-  it("shows the player's team stats with their league rank", () => {
+  it("shows the player's team rank chips with the per-game numbers", () => {
     renderDialog();
     openTab("Team");
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
-    expect(within(dialog).getByRole("heading", { name: "LAR team stats" })).toBeInTheDocument();
-    const row = within(dialog).getByRole("row", { name: /Targets per game/ });
-    expect(within(row).getByText("3rd of 32")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "LAR team rank" })).toBeInTheDocument();
+    const chip = within(dialog).getByText("Targets per game").closest("li");
+    expect(chip).toHaveTextContent("3rd");
+    expect(chip).toHaveTextContent("34.2");
   });
 
   it("shows ESPN's ownership and start percentages, labelled as ESPN's", () => {

@@ -27,6 +27,7 @@ from sleeper_assistant.db import (
     PlayerWeekStatsRow,
     RosterRow,
     SleeperUserRow,
+    TeamDepthChartRow,
     UserLeagueRow,
     database_url,
     make_engine,
@@ -185,6 +186,28 @@ def _players(rng: random.Random) -> list[PlayerRow]:
     return players
 
 
+def _depth_charts(session: Session, players: list[PlayerRow], now: datetime) -> None:
+    """A simple depth chart per team: its QBs, RBs, WRs (split over three slots) and TEs."""
+    for team in TEAMS:
+        mine = [p for p in players if p.team == team]
+        by_pos = {pos: [p for p in mine if p.position == pos] for pos in ("QB", "RB", "WR", "TE")}
+        wrs = by_pos["WR"]
+
+        def entry(p: PlayerRow) -> dict[str, str]:
+            return {"name": p.full_name or "", "sleeper_id": p.player_id}
+
+        slots = {
+            "qb": by_pos["QB"],
+            "rb": by_pos["RB"],
+            "wr1": wrs[0::3],
+            "wr2": wrs[1::3],
+            "wr3": wrs[2::3],
+            "te": by_pos["TE"],
+        }
+        chart = {"offense": {k: [entry(p) for p in v] for k, v in slots.items() if v}}
+        session.add(TeamDepthChartRow(team=team, source="Sample", chart=chart, fetched_at=now))
+
+
 def _draft(players: list[PlayerRow], rng: random.Random) -> list[list[PlayerRow]]:
     """Deal each fantasy team a roster that can fill the starting slots."""
     pools: dict[str, list[PlayerRow]] = {}
@@ -220,6 +243,7 @@ def seed(session: Session) -> None:
     now = datetime.now(UTC)
     players = _players(rng)
     session.add_all(players)
+    _depth_charts(session, players, now)
     rosters = _draft(players, rng)
     free_agents = {p.player_id for p in players} - {p.player_id for r in rosters for p in r}
 
