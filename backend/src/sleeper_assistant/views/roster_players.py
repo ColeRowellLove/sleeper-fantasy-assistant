@@ -9,13 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import EMPTY_SLOT
-from sleeper_assistant.core.nfl.injury_status import WILL_NOT_PLAY, InjuryInfo, injury_info
-from sleeper_assistant.core.nfl.matchup_rank import (
-    DefenseTable,
-    MatchupRank,
-    matchup_rank,
-)
-from sleeper_assistant.core.nfl.nfl_games import GameInfo
+from sleeper_assistant.core.models.games import GameInfo
+from sleeper_assistant.core.models.injury import InjuryInfo
+from sleeper_assistant.core.models.matchup import MatchupRank
+from sleeper_assistant.core.nfl.injury_status import WILL_NOT_PLAY, injury_info
+from sleeper_assistant.core.nfl.matchup_rank import DefenseTable, matchup_rank
 from sleeper_assistant.core.scoring.live_projection import live_projection
 from sleeper_assistant.core.scoring.stat_lines import projected_stat_lines, week_stat_lines
 from sleeper_assistant.db import (

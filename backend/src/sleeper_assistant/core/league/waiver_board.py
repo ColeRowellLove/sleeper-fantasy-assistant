@@ -15,13 +15,9 @@ from sleeper_assistant.core.league.lineup_slots import (
 )
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.models.matchup import MatchupRank
 from sleeper_assistant.core.nfl.injury_status import UNLIKELY_TO_PLAY
-from sleeper_assistant.core.nfl.matchup_rank import (
-    DefenseTable,
-    MatchupRank,
-    build_defense_table,
-    matchup_rank,
-)
+from sleeper_assistant.core.nfl.matchup_rank import DefenseTable, build_defense_table, matchup_rank
 from sleeper_assistant.core.nfl.nfl_games import games_for_week
 from sleeper_assistant.core.nfl.team_depth import build_team_depth
 from sleeper_assistant.core.scoring.form import recent_form
