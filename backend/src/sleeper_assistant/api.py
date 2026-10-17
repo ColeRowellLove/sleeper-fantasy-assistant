@@ -45,6 +45,7 @@ from sleeper_assistant.start_sit import (
     compare_players,
 )
 from sleeper_assistant.team_depth import TeamDepth, build_team_depth
+from sleeper_assistant.transactions_view import TransactionsView, build_transactions
 from sleeper_assistant.waiver_wire import WaiverWire, build_waiver_wire
 
 log = logging.getLogger(__name__)
@@ -269,6 +270,18 @@ def get_league_players(
         raise HTTPException(status_code=404, detail="League not connected yet")
     response.headers["Cache-Control"] = read_cache(session, row.season)
     return build_players(session, row)
+
+
+@app.get("/api/leagues/{league_id}/transactions")
+def get_league_transactions(
+    league_id: LeagueId, session: SessionDep, response: Response
+) -> TransactionsView:
+    """The league's latest adds, drops, waiver claims and trades, newest first."""
+    row = session.get(LeagueRow, league_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="League not connected yet")
+    response.headers["Cache-Control"] = read_cache(session, row.season)
+    return build_transactions(session, row)
 
 
 PlayerId = Annotated[str, Path(pattern=r"^[A-Za-z0-9]{1,12}$")]

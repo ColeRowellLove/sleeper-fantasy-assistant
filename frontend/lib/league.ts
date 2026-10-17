@@ -40,6 +40,7 @@ export const SECTIONS = [
     label: "League",
     pages: [
       { key: "standings", label: "Standings" },
+      { key: "transactions", label: "Transactions" },
       { key: "settings", label: "Rules" },
     ],
   },
