@@ -8,6 +8,7 @@ import {
   agreementText,
   sourcesQuery,
   rankedFor,
+  extraWhy,
   type RankAvailability,
   type RankPosition,
 } from "../lib/rankings";
@@ -19,6 +20,7 @@ import StatTable from "./StatTable";
 import { leaguePath } from "../lib/league";
 import WeekChips from "./WeekChips";
 import NoteList from "./NoteList";
+import ReasonChips from "./ReasonChips";
 
 const AVAILABILITY: { value: RankAvailability; label: string }[] = [
   { value: "all", label: "All players" },
@@ -98,11 +100,14 @@ export default function RankingsPanel({
               ))}
             </ul>
           </fieldset>
-          <button type="submit" className="btn">
-            Update rankings
+          <button type="submit" className="btn" aria-label="Update rankings">
+            Update
           </button>
           {data.unavailable && Object.keys(data.unavailable).length > 0 && (
-            <p className="note">Not included yet: {Object.values(data.unavailable).join(", ")}.</p>
+            <details className="rank-missing">
+              <summary>Not included yet</summary>
+              <p className="note">{Object.values(data.unavailable).join(", ")}.</p>
+            </details>
           )}
         </form>
       )}
@@ -175,7 +180,10 @@ export default function RankingsPanel({
                       )
                     }
                   >
-                    <span className="player-meta rank-why">{p.why}</span>
+                    <ReasonChips
+                      label={`Why ${p.name} is ranked here`}
+                      reasons={extraWhy(p.why).map((label) => ({ label }))}
+                    />
                   </PlayerIdentity>
                 </th>
                 <td>
