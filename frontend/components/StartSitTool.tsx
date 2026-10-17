@@ -8,7 +8,7 @@ import PlayerIdentity from "./PlayerIdentity";
 import PlayerLink from "./PlayerLink";
 import PositionChip from "./PositionChip";
 import StatTable from "./StatTable";
-import NoteList from "./NoteList";
+import AutoSubmitForm from "./AutoSubmitForm";
 
 const number = fixed;
 
@@ -70,15 +70,9 @@ export default function StartSitTool({
   return (
     <section aria-labelledby="startsit-heading">
       <h2 id="startsit-heading">Start/Sit</h2>
-      <NoteList
-        items={[
-          "Compare players for a lineup spot",
-          "See the best lineup for the week",
-          "Projections use this league's scoring",
-        ]}
-      />
+      <p className="note rank-line">Compare players for a lineup spot, or see the best lineup.</p>
 
-      <form method="get" action={action} className="players-controls">
+      <AutoSubmitForm action={action} className="players-controls" submitLabel="Show team">
         <input type="hidden" name="tab" value="startsit" />
         {weekField}
         <label>
@@ -91,10 +85,7 @@ export default function StartSitTool({
             ))}
           </select>
         </label>
-        <button type="submit" className="btn">
-          Show team
-        </button>
-      </form>
+      </AutoSubmitForm>
 
       {best && (
         <section aria-labelledby="best-heading" className="card flush">
