@@ -39,7 +39,8 @@ describe("LiveRefresh", () => {
 
   it("refreshes the page data every interval while a game is live, and says so", () => {
     render(<LiveRefresh active seconds={15} />);
-    expect(screen.getByText(/Live: updating every 15 seconds\./)).toBeInTheDocument();
+    expect(screen.getByText(/updating every 15 seconds/)).toBeInTheDocument();
+    expect(screen.getByText("Live")).toBeInTheDocument();
     act(() => {
       vi.advanceTimersByTime(14_000);
     });
@@ -52,7 +53,7 @@ describe("LiveRefresh", () => {
       vi.advanceTimersByTime(30_000);
     });
     expect(refresh).toHaveBeenCalledTimes(3);
-    expect(screen.getByText(/Last update/)).toBeInTheDocument();
+    expect(screen.getByText(/Updated/)).toBeInTheDocument();
   });
 
   it("can be paused and resumed", () => {

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import LeagueHeader from "../components/LeagueHeader";
 import LeagueTabs from "../components/LeagueTabs";
 import type { Dashboard } from "../lib/api";
-import { TABS, formatRecord, parseTab, ruleChips, sectionOf } from "../lib/league";
+import { LIVE_TABS, TABS, formatRecord, parseTab, ruleChips, sectionOf } from "../lib/league";
 import { expectNoA11yViolations } from "./a11y";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -119,6 +119,11 @@ describe("LeagueTabs", () => {
   it("has no second row for a section with one page", () => {
     render(<LeagueTabs leagueId="9" active="alerts" />);
     expect(screen.queryByRole("navigation", { name: "Alerts pages" })).not.toBeInTheDocument();
+  });
+
+  it("only the pages that show live data refresh during a game", () => {
+    expect([...LIVE_TABS]).toEqual(["rosters", "startsit", "lineups", "games", "teams"]);
+    for (const tab of LIVE_TABS) expect(TABS.map((t) => t.key)).toContain(tab);
   });
 
   it("every page belongs to exactly one section and old links still resolve", () => {
