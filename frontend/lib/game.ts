@@ -308,3 +308,94 @@ export function needsLiveRefresh(
     }),
   );
 }
+
+/** "J. Daniels": the first initial and the rest. One-word names and team defenses stay whole. */
+export function abbreviateName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length < 2 || /\bdefense$/i.test(name.trim())) return name.trim();
+  return `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
+}
+
+/** "Mon 5:15 PM" in the viewer's own time zone (browser only, like `formatKickoff`). */
+export function formatKickoffShort(kickoff: string | null | undefined): string | null {
+  if (!kickoff) return null;
+  const parsed = new Date(kickoff);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
+}
+
+export interface GameLineParts {
+  state: GameInfo["state"];
+  /** The lead words: "Mon 5:15 PM", "Q2 2:24", "Final" or "Bye week". */
+  time: string;
+  /** "W 24-20", "L 14-17" or "14-17" once there is a score; the player's team first. */
+  score: string | null;
+  /** "@" or "vs", with the opponent's code; both null on a bye or without an opponent. */
+  versus: "@" | "vs" | null;
+  opponent: string | null;
+}
+
+/** The game as one short line of parts, like Sleeper's "Mon 5:15 PM @ SF". Null without a game. */
+export function gameLineParts(
+  game: GameInfo | null | undefined,
+  kickoffShort: string | null = null,
+): GameLineParts | null {
+  if (!game) return null;
+  if (game.state === "bye") {
+    return { state: "bye", time: "Bye week", score: null, versus: null, opponent: null };
+  }
+  const versus = game.opponent ? (game.home === false ? "@" : "vs") : null;
+  const opponent = game.opponent ?? null;
+  const mine = game.team_score;
+  const theirs = game.opponent_score;
+  const haveScore = mine !== null && mine !== undefined && theirs !== null && theirs !== undefined;
+  const numbers = haveScore ? `${mine}-${theirs}` : null;
+  if (game.state === "upcoming") {
+    return {
+      state: "upcoming",
+      time: kickoffShort ?? formatGameDate(game.date) ?? "Upcoming",
+      score: null,
+      versus,
+      opponent,
+    };
+  }
+  if (game.state === "live") {
+    return {
+      state: "live",
+      time: game.period_text || "Live",
+      score: numbers,
+      versus,
+      opponent,
+    };
+  }
+  const result = haveScore ? (mine > theirs ? "W " : mine < theirs ? "L " : "T ") : "";
+  return {
+    state: "final",
+    time: "Final",
+    score: numbers ? `${result}${numbers}` : null,
+    versus,
+    opponent,
+  };
+}
+
+export interface WeatherIcon {
+  icon: string;
+  /** The word for a screen reader and a tooltip. */
+  label: string;
+}
+
+const WEATHER_ICONS: Record<string, string> = {
+  Dome: "🏟️",
+  "Closed roof": "🏟️",
+  Freezing: "❄️",
+  Cold: "🥶",
+  Hot: "🔥",
+  Windy: "💨",
+};
+
+/** A small icon for notable weather only (nothing for mild weather), for a one-line game. */
+export function weatherIcon(game: GameInfo | null | undefined): WeatherIcon | null {
+  if (!game || game.state === "bye" || !game.conditions) return null;
+  const word = weatherWord(game.conditions);
+  return word ? { icon: WEATHER_ICONS[word] ?? "", label: word } : null;
+}
