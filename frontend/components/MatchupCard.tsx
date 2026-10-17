@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import type { LineupPlayer, Lineups, TeamLineup } from "../lib/api";
+import { abbreviateName } from "../lib/game";
 import { rosterPath } from "../lib/league";
+import { positionClass } from "../lib/positions";
 import {
   formatPoints,
   formatProjection,
@@ -12,13 +14,12 @@ import {
   winnerId,
   type WeekState,
 } from "../lib/lineups";
-import GameBadge from "./GameBadge";
+import GameLine from "./GameLine";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
 import PlayerStatLine from "./PlayerStatLine";
 import TeamLink from "./TeamLink";
-import PositionChip from "./PositionChip";
 import WinBar from "./WinBar";
 
 type Matchup = Lineups["matchups"][number];
@@ -153,28 +154,35 @@ function Cell({
         <span className="cell-text">
           <span className="cell-name">
             {player.player_id ? (
-              <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
+              <PlayerLink playerId={player.player_id}>
+                <span className="name-full">{player.name}</span>
+                <span className="name-short" aria-hidden="true">
+                  {abbreviateName(player.name)}
+                </span>
+              </PlayerLink>
             ) : (
               player.name
             )}
           </span>
           <span className="cell-meta">
-            <PositionChip position={player.position} />
+            <span className={`pos-text ${positionClass(player.position)}`}>
+              {player.position ?? "–"}
+            </span>
+            {player.team && (
+              <>
+                <span className="dot" aria-hidden="true">
+                  •
+                </span>
+                <span className="cell-team">
+                  <TeamLink team={player.team}>{player.team}</TeamLink>
+                </span>
+              </>
+            )}
             {/* the designation is the current one, so it is not shown against weeks already played */}
             {state !== "played" && <InjuryBadge injury={player.injury} />}
           </span>
-          <span className="cell-meta">
-            {player.team && (
-              <span className="cell-team">
-                <TeamLink team={player.team}>{player.team}</TeamLink>
-              </span>
-            )}
-            <GameBadge
-              game={player.game}
-              matchup={player.matchup}
-              position={player.position}
-              conditions="compact"
-            />
+          <span className="cell-meta cell-game">
+            <GameLine game={player.game} matchup={player.matchup} position={player.position} />
           </span>
           <PlayerStatLine line={player.stat_line} projected={player.stat_line_projected} />
         </span>
@@ -273,9 +281,9 @@ export default function MatchupCard({
             <tr key={`${row.slot}-${i}`} className={row.kind === "starter" ? undefined : row.kind}>
               <Cell player={row.left} state={state} side="left" priority={priority} />
               <th scope="row" className="slot-cell">
-                <span className="slot-full">{row.slot}</span>
-                <span className="slot-short" aria-hidden="true">
-                  {slotShort(row.slot)}
+                <span className={`slot-chip ${positionClass(row.slot)}`}>
+                  <span className="visually-hidden">{row.slot}</span>
+                  <span aria-hidden="true">{slotShort(row.slot)}</span>
                 </span>
               </th>
               <Cell player={row.right} state={state} side="right" priority={priority} />

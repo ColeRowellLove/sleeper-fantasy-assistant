@@ -171,10 +171,6 @@ table.h2h {
   width: 4.5rem;
 }
 
-.slot-short {
-  display: none;
-}
-
 .h2h .slot-cell {
   color: var(--muted);
   padding-left: 0.5rem;
@@ -304,6 +300,83 @@ table.h2h {
   margin-top: 0;
 }
 
+/* a player's name is whole on a wide screen and short ("J. Daniels") on a phone */
+.name-short {
+  display: none;
+}
+
+/* position as coloured text and the team after a dot, like Sleeper: no chips on matchup rows */
+.pos-text {
+  color: var(--pos);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.cell-meta .dot {
+  color: var(--muted);
+}
+
+/* the game in one short line; the opponent is coloured by how hard the matchup is */
+.game-line {
+  align-items: baseline;
+  color: var(--muted);
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  gap: 0 0.4rem;
+}
+
+.game-line-live .gl-time {
+  color: var(--game-live);
+  font-weight: 700;
+}
+
+.game-line-bye .gl-time {
+  color: var(--game-bye);
+  font-weight: 700;
+}
+
+.gl-score {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.gl-opponent {
+  font-weight: 700;
+}
+
+.gl-opponent.diff-easy {
+  color: var(--game-live);
+}
+
+.gl-opponent.diff-average {
+  color: var(--game-bye);
+}
+
+.gl-opponent.diff-tough {
+  color: var(--injury-out);
+}
+
+.gl-weather {
+  font-size: 0.9rem;
+}
+
+/* the slot as a coloured square in the centre column */
+.slot-chip {
+  align-items: center;
+  background: color-mix(in srgb, var(--pos) 18%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--pos) 45%, transparent);
+  border-radius: 0.5rem;
+  color: var(--pos);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 1.9rem;
+  min-width: 2.2rem;
+  padding: 0 0.3rem;
+}
+
 /* lineup rows: smaller faces so a full roster fits without much scrolling */
 .h2h .avatar {
   --size: 2.1rem;
@@ -401,14 +474,6 @@ table.h2h {
     width: auto;
   }
 
-  .slot-full {
-    display: none;
-  }
-
-  .slot-short {
-    display: inline;
-  }
-
   /* "0.00 · Proj 18.16" on one line under the name */
   .h2h .pts-cell .proj {
     display: inline;
@@ -424,12 +489,26 @@ table.h2h {
     gap: 0.4rem;
   }
 
-  /* a phone has room for the name, position and numbers only: the face, the game line and the
-     stat line are on the roster and game pages */
+  /* a phone keeps the name, position, one game line and the numbers: the face and the stat line
+     are on the roster and game pages */
   .h2h .avatar,
-  .h2h .cell-meta + .cell-meta,
   .h2h .stat-line {
     display: none;
+  }
+
+  /* names are short on a phone, like Sleeper's \"J. Daniels\" */
+  .name-full {
+    border: 0;
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px; /* still read by a screen reader: the short name is aria-hidden */
+  }
+
+  .name-short {
+    display: inline;
   }
 
   .cell-name {

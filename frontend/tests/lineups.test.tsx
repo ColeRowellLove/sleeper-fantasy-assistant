@@ -139,8 +139,8 @@ describe("WeeklyLineups", () => {
 
   it("shows each player's game status in the lineup", () => {
     render(<WeeklyLineups data={data} leagueId="9" myRosterId={1} />);
-    expect(screen.getByText("Played")).toBeInTheDocument();
-    expect(screen.getByText("vs CHI")).toBeInTheDocument();
+    expect(screen.getByText("Final")).toBeInTheDocument();
+    expect(screen.getByText("CHI")).toBeInTheDocument(); // the opponent, after "vs"
   });
 
   it("summarises how a player did once his game has started, and says nothing before", () => {

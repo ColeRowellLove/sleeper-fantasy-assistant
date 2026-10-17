@@ -127,6 +127,8 @@ describe("lineups on a phone", () => {
   it("lays each row out as a grid so names and numbers cannot share a line", () => {
     expect(css).toMatch(/@media \(max-width: 40rem\)[\s\S]*?\.h2h tbody tr \{[^}]*display: grid/);
     expect(css).toMatch(/\.h2h \.pts-left \{[^}]*grid-row: 2/);
-    expect(css).toMatch(/\.slot-full \{\s*display: none/);
+    // the full name stays for screen readers on a phone (clipped, never display: none)
+    expect(css).toMatch(/@media \(max-width: 40rem\)[\s\S]*?\.name-full \{[^}]*clip-path/);
+    expect(css).toMatch(/\.name-short \{\s*display: none/);
   });
 });
