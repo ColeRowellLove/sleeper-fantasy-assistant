@@ -21,6 +21,8 @@ import InjuryBadge from "./InjuryBadge";
 import TeamLogo from "./TeamLogo";
 import TeamRankChips from "./TeamRankChips";
 import TeamStatsTable from "./TeamStatsTable";
+import { splitName } from "../lib/playerName";
+import { positionClass } from "../lib/positions";
 import FilterChips from "./FilterChips";
 import PlayerLink from "./PlayerLink";
 import NoteList from "./NoteList";
@@ -37,6 +39,17 @@ function PlayerCell({
   highlightId?: string | null;
 }) {
   const mine = myRosterId !== null && player.owner_roster_id === myRosterId;
+  const name = splitName(player.name);
+  const full = (
+    <>
+      {name.first && (
+        <>
+          <span className="depth-first">{name.first}</span>{" "}
+        </>
+      )}
+      <span className="depth-last">{name.last}</span>
+    </>
+  );
   return (
     <span
       className={`depth-player${player.next_up ? " next-up" : ""}${
@@ -44,21 +57,31 @@ function PlayerCell({
       }`}
     >
       <span className="depth-name">
-        {player.player_id ? (
-          <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
-        ) : (
-          player.name
-        )}
+        {player.player_id ? <PlayerLink playerId={player.player_id}>{full}</PlayerLink> : full}
       </span>
-      <InjuryBadge injury={player.injury} />
-      {player.next_up && <span className="depth-tag">Next up</span>}
-      {player.owner_team ? (
-        <span className="depth-owner">{mine ? "On your team" : `On ${player.owner_team}`}</span>
-      ) : player.player_id ? (
-        <span className="depth-available">Available</span>
-      ) : null}
+      <span className="depth-marks">
+        <InjuryBadge injury={player.injury} />
+        {player.next_up && <span className="depth-tag">Next up</span>}
+        {player.owner_team ? (
+          <span className={mine ? "depth-mine" : "depth-owner"}>
+            {mine ? "You" : <span className="depth-owner-text">{player.owner_team}</span>}
+            <span className="visually-hidden">
+              {mine ? " (on your team)" : `On ${player.owner_team}`}
+            </span>
+          </span>
+        ) : player.player_id ? (
+          <span className="depth-available" title="Available in this league">
+            FA<span className="visually-hidden"> (available in this league)</span>
+          </span>
+        ) : null}
+      </span>
     </span>
   );
+}
+
+/** QB, RB, WR1: the slot's own short code, or its full label when the code is long. */
+function slotCode(slot: DepthSlot): string {
+  return slot.slot.length <= 4 ? slot.slot.toUpperCase() : slot.label;
 }
 
 function SlotTable({
@@ -100,8 +123,11 @@ function SlotTable({
           <tbody>
             {rows.map(({ slot, cells }) => (
               <tr key={slot.slot}>
-                <th scope="row">
-                  {slot.label}
+                <th scope="row" title={slot.label}>
+                  <span className={`depth-slot ${positionClass(slot.slot.replace(/\d+$/, ""))}`}>
+                    <span aria-hidden="true">{slotCode(slot)}</span>
+                    <span className="visually-hidden">{slot.label}</span>
+                  </span>
                   {slot.note && <span className="depth-note">{slot.note}</span>}
                 </th>
                 {cells.map((player, i) =>

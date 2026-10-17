@@ -416,7 +416,7 @@ table.players.pd-table {
 .depth-section-title {
   font-size: 1rem;
   margin: 0;
-  padding: 1rem 1.25rem 0.5rem;
+  padding: 0.7rem 0.9rem 0.3rem;
 }
 
 .depth-details {
@@ -431,14 +431,14 @@ table.players.pd-table {
 
 table.depth-table {
   border-collapse: collapse;
-  min-width: 40rem;
+  min-width: 0;
   width: 100%;
 }
 
 .depth-table th,
 .depth-table td {
   border-top: 1px solid var(--line);
-  padding: 0.6rem 0.75rem;
+  padding: 0.45rem 0.6rem;
   text-align: left;
   vertical-align: top;
 }
@@ -450,7 +450,7 @@ table.depth-table {
 }
 
 .depth-table td {
-  min-width: 11rem;
+  min-width: 7.5rem;
 }
 
 .depth-table tbody th {
@@ -462,9 +462,9 @@ table.depth-table {
 
 .depth-slide-hint {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   margin: 0;
-  padding: 0.5rem 1.25rem 0;
+  padding: 0 0.9rem 0.3rem;
 }
 
 .depth-table thead th {
@@ -474,8 +474,62 @@ table.depth-table {
 }
 
 .depth-table tbody th {
-  font-weight: 600;
-  min-width: 9rem;
+  font-weight: 700;
+  min-width: 0;
+  width: 3.4rem;
+}
+
+.depth-slot {
+  color: var(--pos, var(--muted));
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.depth-name {
+  line-height: 1.15;
+}
+
+.depth-name a {
+  display: grid;
+}
+
+.depth-name .depth-first {
+  display: block;
+}
+
+.depth-first {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.depth-last {
+  font-weight: 700;
+}
+
+.depth-marks {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.4rem;
+}
+
+.depth-mine {
+  background: var(--accent);
+  border-radius: 999px;
+  color: var(--on-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 0.45rem;
+}
+
+.depth-owner-text {
+  display: none;
+}
+
+@media (min-width: 40rem) {
+  .depth-owner-text {
+    display: inline;
+  }
 }
 
 .depth-note {
