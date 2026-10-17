@@ -1,6 +1,7 @@
 import type { PlayerDetail } from "../lib/api";
 import { describeStats } from "../lib/playerDetail";
-import { countText, projectionCards, summaryStats } from "../lib/playerSummary";
+import { count } from "../lib/format";
+import { projectionCards, summaryStats } from "../lib/playerSummary";
 import GameLine from "./GameLine";
 
 /**
@@ -88,10 +89,10 @@ export default function PlayerSummary({ detail }: { detail: PlayerDetail }) {
         <h3 id="pd-activity">Sleeper activity, last 24 hours</h3>
         <ul className="ps-activity">
           <li>
-            Adds <strong>{countText(detail.adds)}</strong>
+            Adds <strong>{count(detail.adds)}</strong>
           </li>
           <li>
-            Drops <strong>{countText(detail.drops)}</strong>
+            Drops <strong>{count(detail.drops)}</strong>
           </li>
         </ul>
       </section>

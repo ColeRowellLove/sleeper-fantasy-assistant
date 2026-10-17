@@ -1,3 +1,4 @@
+import { fixed } from "../lib/format";
 import type { BestLineup, Dashboard, StartSitCandidate, StartSitComparison } from "../lib/api";
 import { leaguePath } from "../lib/league";
 import GameBadge from "./GameBadge";
@@ -9,8 +10,7 @@ import PositionChip from "./PositionChip";
 import StatTable from "./StatTable";
 import NoteList from "./NoteList";
 
-const number = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : n.toFixed(1);
+const number = fixed;
 
 function PlayerCell({ c }: { c: StartSitCandidate }) {
   return (

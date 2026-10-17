@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import PlayerSummary from "../components/PlayerSummary";
 import type { PlayerDetail } from "../lib/api";
-import { countText, percentText, projectionCards, summaryStats } from "../lib/playerSummary";
+import { count, percent } from "../lib/format";
+import { projectionCards, summaryStats } from "../lib/playerSummary";
 import { expectNoA11yViolations } from "./a11y";
 
 const detail: PlayerDetail = {
@@ -40,10 +41,10 @@ const detail: PlayerDetail = {
 
 describe("summary helpers", () => {
   it("writes percentages and counts, with a dash for a missing number", () => {
-    expect(percentText(88)).toBe("88.0%");
-    expect(percentText(null)).toBe("–");
-    expect(countText(1204)).toBe("1,204");
-    expect(countText(undefined)).toBe("–");
+    expect(percent(88)).toBe("88.0%");
+    expect(percent(null)).toBe("–");
+    expect(count(1204)).toBe("1,204");
+    expect(count(undefined)).toBe("–");
   });
 
   it("gives rank, points per game, owned and started", () => {

@@ -55,13 +55,3 @@ export function trendRows(
     return { player, rank: i + 1, count, share: Math.max(4, Math.round((count / top) * 100)) };
   });
 }
-
-/** "64%" for ESPN's rostered share, a dash when there is none. */
-export function rosterShare(pct: number | null | undefined): string {
-  return pct === null || pct === undefined ? "–" : `${Math.round(pct)}%`;
-}
-
-/** "13.5" for a points figure, a dash when there is none (never a made-up 0). */
-export function pointsFigure(points: number | null | undefined): string {
-  return points === null || points === undefined ? "–" : points.toFixed(1);
-}

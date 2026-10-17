@@ -13,8 +13,8 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
 
 1. **Reuse before you write.** Before adding code, look for what already exists and use it:
    `backend/src/sleeper_assistant` (helpers such as `stat_lines`, `projections`, `lineup_slots`,
-   `matchup_rank`, `alerts`), `frontend/lib` (formatting, game state, lineups, alerts, positions) and
-   `frontend/components` (`PlayerIdentity`, `PlayerStatLine`, `StatTable`, `FilterChips`, `GameBadge`,
+   `matchup_rank`, `alerts`), `frontend/lib` (`format.ts` numbers, `time.ts` times, game state, lineups, alerts, positions) and
+   `frontend/components` (`PlayerIdentity`, `PlayerStatLine`, `StatTable`, `FilterChips`, `GameBadge`, `GameLine`, `ReasonChips`, `PanelTabs`, `LocalTime`,
    `WinBar`). Search first (`grep`), read the module, then extend it. Do not write a second version.
 2. **Duplicated logic becomes a shared util.** The second time the same logic is needed, move it to
    one shared module (backend: a small module named for what it does; frontend: `lib/<topic>.ts`),

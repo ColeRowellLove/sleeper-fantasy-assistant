@@ -18,6 +18,7 @@ import {
   type PositionFilter,
   type SortKey,
 } from "../lib/playersFilter";
+import { NONE, count, fixed, percent } from "../lib/format";
 import { rosterPath } from "../lib/league";
 import GameBadge from "./GameBadge";
 import FilterChips from "./FilterChips";
@@ -44,10 +45,6 @@ const AVAILABILITY: { value: Availability; label: string }[] = [
   { value: "available", label: "Available" },
   { value: "rostered", label: "Rostered" },
 ];
-
-const count = (n: number | null) => (n === null ? "–" : n.toLocaleString("en-US"));
-const percent = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : `${n.toFixed(1)}%`;
 
 /** Every relevant NFL player through this league: filter, search and sort by the numbers that matter. */
 export default function PlayersTable({
@@ -178,11 +175,9 @@ export default function PlayersTable({
                 <td className="num num-col">{count(p.drops)}</td>
                 <td className="num num-col">{percent(p.owned_pct)}</td>
                 <td className="num num-col">{percent(p.started_pct)}</td>
-                <td className="num num-col">{p.rank === null ? "–" : `${p.position}${p.rank}`}</td>
+                <td className="num num-col">{p.rank === null ? NONE : `${p.position}${p.rank}`}</td>
                 <td className="num num-col">{p.total_points.toFixed(1)}</td>
-                <td className="num num-col">
-                  {p.projected === null ? "–" : p.projected.toFixed(1)}
-                </td>
+                <td className="num num-col">{fixed(p.projected)}</td>
               </tr>
             );
           })}

@@ -7,12 +7,11 @@ import {
   DIRECTIONS,
   POSITION_OPTIONS,
   formatTrendCount,
-  pointsFigure,
-  rosterShare,
   trendRows,
   type TrendPosition,
   type TrendDirection,
 } from "../lib/trending";
+import { fixed, percentWhole } from "../lib/format";
 import FilterChips from "./FilterChips";
 import GameLine from "./GameLine";
 import NoteList from "./NoteList";
@@ -65,15 +64,15 @@ export default function TrendingPanel({ data }: { data: PlayersData }) {
                 <dl className="trend-stats">
                   <div>
                     <dt>Rostered</dt>
-                    <dd>{rosterShare(player.owned_pct)}</dd>
+                    <dd>{percentWhole(player.owned_pct)}</dd>
                   </div>
                   <div>
                     <dt>{week && week > 1 ? `Wk ${week - 1} pts` : "Last wk"}</dt>
-                    <dd>{pointsFigure(player.last_points)}</dd>
+                    <dd>{fixed(player.last_points)}</dd>
                   </div>
                   <div>
                     <dt>{week ? `Wk ${week} proj` : "Proj"}</dt>
-                    <dd>{pointsFigure(player.projected)}</dd>
+                    <dd>{fixed(player.projected)}</dd>
                   </div>
                 </dl>
               </div>

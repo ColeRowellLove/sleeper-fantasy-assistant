@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { Rankings } from "../lib/api";
+import { fixed } from "../lib/format";
 import {
   RANK_POSITIONS,
   agreementText,
@@ -28,8 +29,7 @@ const AVAILABILITY: { value: RankAvailability; label: string }[] = [
   { value: "mine", label: "My team" },
 ];
 
-const number = (n: number | null | undefined, digits = 1) =>
-  n === null || n === undefined ? "–" : n.toFixed(digits);
+const number = fixed;
 
 /**
  * Weekly rankings by position: the consensus of several signals, with the numbers behind each

@@ -1,17 +1,8 @@
 import type { PlayerDetail } from "./api";
+import { fixed, percent } from "./format";
 import type { Difficulty } from "./game";
 import { gameLogRows, opponentText } from "./gameLog";
 import { rankText } from "./playerDetail";
-
-/** "88.0%", or a dash when there is no number (never 0, which would be a claim). */
-export function percentText(n: number | null | undefined): string {
-  return n === null || n === undefined ? "–" : `${n.toFixed(1)}%`;
-}
-
-/** "1,204", or a dash when there is no number. */
-export function countText(n: number | null | undefined): string {
-  return n === null || n === undefined ? "–" : n.toLocaleString("en-US");
-}
 
 export interface SummaryStat {
   label: string;
@@ -27,13 +18,13 @@ export function summaryStats(detail: PlayerDetail): SummaryStat[] {
     { label: "Rank", value: rankText(detail.position, detail.season.rank), title: "Position rank" },
     {
       label: "Pts/game",
-      value: average === null || average === undefined ? "–" : average.toFixed(1),
+      value: fixed(average),
       title: "Points per game",
     },
     { label: "Points", value: detail.season.points.toFixed(1), title: "Season points" },
     { label: "Games", value: String(detail.season.games), title: "Games played" },
-    { label: "Owned", value: percentText(detail.owned_pct), title: "Owned % (ESPN)" },
-    { label: "Started", value: percentText(detail.started_pct), title: "Started % (ESPN)" },
+    { label: "Owned", value: percent(detail.owned_pct), title: "Owned % (ESPN)" },
+    { label: "Started", value: percent(detail.started_pct), title: "Started % (ESPN)" },
   ];
 }
 
