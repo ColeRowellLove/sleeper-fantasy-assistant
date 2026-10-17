@@ -29,6 +29,7 @@ export const SECTIONS = [
     label: "Players",
     pages: [
       { key: "players", label: "Browse" },
+      { key: "trending", label: "Trending" },
       { key: "waiver", label: "Waiver wire" },
       { key: "rankings", label: "Rankings" },
       { key: "teams", label: "NFL teams" },

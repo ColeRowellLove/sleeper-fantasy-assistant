@@ -49,6 +49,8 @@ export interface PlayerListing {
   /** Rank within position by total points; null until the player has points. */
   rank: number | null;
   projected: number | null;
+  /** Last week's points; null when he did not play. */
+  last_points?: number | null;
   /** ESPN-wide share of leagues that roster / start the player (not Sleeper's). */
   owned_pct?: number | null;
   started_pct?: number | null;

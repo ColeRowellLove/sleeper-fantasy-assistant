@@ -11,6 +11,7 @@ import TeamDepthChart from "../../../components/TeamDepthChart";
 import TeamDialog from "../../../components/TeamDialog";
 import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
+import TrendingPanel from "../../../components/TrendingPanel";
 import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
 import LiveRefresh from "../../../components/LiveRefresh";
@@ -146,7 +147,7 @@ export default async function LeaguePage({
     tab === "settings"
       ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
       : Promise.resolve(null),
-    tab === "players"
+    tab === "players" || tab === "trending"
       ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
       : Promise.resolve(null),
     // an unknown or malformed ?player= simply opens nothing
@@ -331,6 +332,7 @@ export default async function LeaguePage({
       {tab === "players" && players && (
         <PlayersTable data={players} myRosterId={myRosterId} leagueId={leagueId} />
       )}
+      {tab === "trending" && players && <TrendingPanel data={players} />}
       {tab === "teams" && (
         <>
           <TeamPicker leagueId={leagueId} selected={isTeamCode(team) ? team : null} />
