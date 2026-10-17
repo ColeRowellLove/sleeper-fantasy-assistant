@@ -85,6 +85,13 @@ async function layoutProblems(page) {
         text: `the page scrolls sideways (${root.scrollWidth}px wide in ${window.innerWidth}px)`,
       });
     }
+    // a matchup card clips what does not fit (overflow: hidden), so cut-off content is only seen here
+    for (const card of document.querySelectorAll(".matchup-card")) {
+      if (card.scrollWidth > card.clientWidth + 1) {
+        problems.push({ kind: "card-clipped", text: "a matchup card is cut off at its edge" });
+        break;
+      }
+    }
     // a name is squeezed when it is cut off ("Jayd…") or wraps onto more than two lines
     for (const el of document.querySelectorAll(".player-name, .cell-name")) {
       const box = el.getBoundingClientRect();
