@@ -8,6 +8,8 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, Field
 
+from sleeper_assistant.constants import FANTASY_POSITIONS
+
 BASE_URL = "https://api.sleeper.app/v1"
 
 
@@ -98,8 +100,6 @@ SleeperProjection = SleeperStatLine
 
 
 # a defense's row carries its projected points allowed (the betting line's implied opponent total)
-PROJECTION_POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
-STATS_POSITIONS = PROJECTION_POSITIONS
 
 
 class SleeperPlayer(BaseModel):
@@ -200,7 +200,7 @@ class SleeperClient:
 
     def get_projections(self, season: str, week: int) -> list[SleeperProjection]:
         """Projected stat lines for one week; players with no projection are left out."""
-        positions = "&".join(f"position%5B%5D={p}" for p in PROJECTION_POSITIONS)
+        positions = "&".join(f"position%5B%5D={p}" for p in FANTASY_POSITIONS)
         data = self.get_json(
             f"https://api.sleeper.com/projections/nfl/{season}/{week}?season_type=regular&{positions}"
         )
@@ -220,7 +220,7 @@ class SleeperClient:
 
     def get_stats(self, season: str, week: int) -> list[SleeperStatLine]:
         """Actual stat lines for one week; players with no stats are left out."""
-        positions = "&".join(f"position%5B%5D={p}" for p in STATS_POSITIONS)
+        positions = "&".join(f"position%5B%5D={p}" for p in FANTASY_POSITIONS)
         data = self.get_json(
             f"https://api.sleeper.com/stats/nfl/{season}/{week}?season_type=regular&{positions}"
         )

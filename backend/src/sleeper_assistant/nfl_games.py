@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import GAME_COMPLETE, GAME_LIVE, GAME_PRE
 from sleeper_assistant.db import (
     NflGameRow,
 )
@@ -20,9 +21,9 @@ GameState = Literal["upcoming", "live", "final", "bye"]
 
 # Sleeper schedule statuses -> what we show. Unknown statuses show nothing rather than a guess.
 _STATUS_STATE: dict[str, GameState] = {
-    "pre_game": "upcoming",
-    "in_game": "live",
-    "complete": "final",
+    GAME_PRE: "upcoming",
+    GAME_LIVE: "live",
+    GAME_COMPLETE: "final",
 }
 
 
@@ -67,7 +68,7 @@ def current_week(session: Session, season: str) -> int | None:
     if not rows:
         return None
     weeks = sorted({week for week, _ in rows})
-    fully_complete = {w for w in weeks if all(s == "complete" for wk, s in rows if wk == w)}
+    fully_complete = {w for w in weeks if all(s == GAME_COMPLETE for wk, s in rows if wk == w)}
     last_complete = max(fully_complete, default=0)
     for week in weeks:
         if week > last_complete:
@@ -85,7 +86,7 @@ def utc_iso(moment: datetime | None) -> str | None:
 
 def _live_games(week_games: list[NflGameRow], week: int) -> dict[tuple[str, str], LiveGame]:
     """ESPN's live status for this week's games, only while a game could be on (else empty)."""
-    in_progress = any(g.status == "in_game" for g in week_games)
+    in_progress = any(g.status == GAME_LIVE for g in week_games)
     if not live_window_open([g.kickoff for g in week_games], in_progress):
         return {}
     return {(g.home, g.away): g for g in current_games() if g.week in (None, week)}

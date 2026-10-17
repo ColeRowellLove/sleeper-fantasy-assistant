@@ -19,11 +19,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import GAME_COMPLETE, PLAYER_POSITIONS
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
 from sleeper_assistant.projections import score_stats
 from sleeper_assistant.stats_version import season_stats_version
 
-RANKED_POSITIONS = ("QB", "RB", "WR", "TE", "K")
 DEFENSE = "DEF"
 
 
@@ -79,7 +79,7 @@ def _build_defense_table(
 ) -> DefenseTable:
     opponent_of: dict[tuple[str, int], str] = {}
     for g in session.scalars(
-        select(NflGameRow).where(NflGameRow.season == season, NflGameRow.status == "complete")
+        select(NflGameRow).where(NflGameRow.season == season, NflGameRow.status == GAME_COMPLETE)
     ):
         opponent_of[(g.home, g.week)] = g.away
         opponent_of[(g.away, g.week)] = g.home
@@ -87,7 +87,7 @@ def _build_defense_table(
     position_of = {
         pid: pos
         for pid, pos in session.execute(select(PlayerRow.player_id, PlayerRow.position))
-        if pos in RANKED_POSITIONS
+        if pos in PLAYER_POSITIONS
     }
     allowed: dict[tuple[str, str], float] = defaultdict(float)
     scored: dict[str, float] = defaultdict(float)  # an offense's own fantasy points
@@ -122,7 +122,7 @@ def _build_defense_table(
         offense_games[team] += 1
 
     table: DefenseTable = {}
-    for position in RANKED_POSITIONS:
+    for position in PLAYER_POSITIONS:
         per_game = {
             team: allowed.get((team, position), 0.0) / n for team, n in defense_games.items()
         }

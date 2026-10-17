@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import GAME_COMPLETE
 from sleeper_assistant.db import NflGameRow, PlayerWeekStatsRow
 
 
@@ -13,7 +14,7 @@ def season_stats_version(session: Session, season: str) -> tuple[int, int]:
     games = session.scalar(
         select(func.count())
         .select_from(NflGameRow)
-        .where(NflGameRow.season == season, NflGameRow.status == "complete")
+        .where(NflGameRow.season == season, NflGameRow.status == GAME_COMPLETE)
     )
     rows = session.scalar(
         select(func.count())

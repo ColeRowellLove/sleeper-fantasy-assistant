@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import EASTERN
 from sleeper_assistant.db import LeagueRow, NflGameRow
 from sleeper_assistant.nfl_games import current_week
 
-EASTERN = ZoneInfo("America/New_York")
 DEFAULT_WAIVER_DAY = 2  # Tuesday, with Sunday as 0 (Sleeper's numbering)
 FIRST_HOUR = 9  # no alert before 9 am Eastern, so the overnight syncs have landed
 _DAYS = ("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")

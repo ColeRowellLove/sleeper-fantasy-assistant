@@ -11,16 +11,15 @@ import csv
 import io
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import EASTERN
 from sleeper_assistant.db import NflGameRow
 
 SCHEDULE_URL = "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv"
-EASTERN = ZoneInfo("America/New_York")
 # nflverse and Sleeper disagree on one team code; every other code matches
 _TEAM_CODES = {"LA": "LAR"}
 

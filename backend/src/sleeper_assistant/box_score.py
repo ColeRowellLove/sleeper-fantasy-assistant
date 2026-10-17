@@ -22,14 +22,13 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import ESPN_SCOREBOARD_URL, ESPN_TEAM_CODES
 from sleeper_assistant.db import PlayerRow
 from sleeper_assistant.espn import normalize_name
 
 log = logging.getLogger(__name__)
 
-SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 SUMMARY_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary"
-_CODES = {"WSH": "WAS", "JAC": "JAX", "LA": "LAR"}
 LIVE_SECONDS = 15.0  # a viewer sees a box score at most this old while the game is on
 FINAL_SECONDS = 600.0  # a finished game only changes with stat corrections
 TIMEOUT = 8.0
@@ -69,7 +68,7 @@ class BoxScore(BaseModel):
 def _code(value: Any) -> str | None:
     if not isinstance(value, str) or not value:
         return None
-    return _CODES.get(value, value)
+    return ESPN_TEAM_CODES.get(value, value)
 
 
 def _strings(values: Any) -> list[str]:
@@ -165,7 +164,7 @@ def fetch_box_score(season: str, week: int, home: str, away: str) -> BoxScore:
     try:
         with httpx.Client(timeout=TIMEOUT) as http:
             board = http.get(
-                SCOREBOARD_URL, params={"dates": season, "seasontype": 2, "week": week}
+                ESPN_SCOREBOARD_URL, params={"dates": season, "seasontype": 2, "week": week}
             )
             board.raise_for_status()
             event_id = find_event_id(board.json(), home, away)

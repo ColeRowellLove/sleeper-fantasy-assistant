@@ -8,7 +8,7 @@ does; leagues that mix REC_FLEX and WRRB_FLEX may be slightly off.
 
 from __future__ import annotations
 
-NON_STARTER_SLOTS = frozenset({"BN", "IR", "TAXI"})  # bench, injured reserve and taxi squad
+from sleeper_assistant.constants import FLEX_POSITIONS, NON_STARTER_SLOTS
 
 # which positions can fill a slot; a slot Sleeper adds later that we do not know counts as no slot
 _ELIGIBLE: dict[str, frozenset[str]] = {
@@ -20,7 +20,7 @@ _ELIGIBLE: dict[str, frozenset[str]] = {
     "DEF": frozenset({"DEF"}),
     "REC_FLEX": frozenset({"WR", "TE"}),
     "WRRB_FLEX": frozenset({"WR", "RB"}),
-    "FLEX": frozenset({"RB", "WR", "TE"}),
+    "FLEX": FLEX_POSITIONS,
     "SUPER_FLEX": frozenset({"QB", "RB", "WR", "TE"}),
 }
 

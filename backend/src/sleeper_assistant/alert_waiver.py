@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from sleeper_assistant import alert_advice
 from sleeper_assistant.alert_helpers import alert_key
 from sleeper_assistant.alerts import NewAlert, needs_advice, register
+from sleeper_assistant.constants import FANTASY_POSITIONS
 from sleeper_assistant.db import (
     LeagueRow,
     PlayerProjectionRow,
@@ -55,7 +56,6 @@ KIND = "waiver_targets"
 TARGETS = 5  # how many pickups an alert lists
 ALERT_CAPS = {"QB": 2, "TE": 2, "K": 1, "DEF": 1}  # one slot each: do not list four defenses
 MIN_GAIN = 1.0  # projected points a pickup must add to be worth a mention
-POSITIONS = ("QB", "RB", "WR", "TE", "K", "DEF")
 
 
 def capped(picks: list[Pickup], caps: dict[str, int], limit: int | None = None) -> list[Pickup]:
@@ -205,7 +205,7 @@ class WaiverBoard:
             for p in session.scalars(
                 select(PlayerRow).where(
                     PlayerRow.player_id.in_(projected_ids | taken),
-                    PlayerRow.position.in_(POSITIONS),
+                    PlayerRow.position.in_(FANTASY_POSITIONS),
                 )
             )
         }

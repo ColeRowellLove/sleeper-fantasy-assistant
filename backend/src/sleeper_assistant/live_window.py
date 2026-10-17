@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.constants import GAME_LIVE
 from sleeper_assistant.db import NflGameRow
 from sleeper_assistant.live import WINDOW_AFTER, WINDOW_BEFORE, window_open
 
@@ -33,7 +34,7 @@ def live_window_open(
     moment = now or datetime.now(UTC)
     query = select(NflGameRow.kickoff, NflGameRow.status).where(
         (
-            (NflGameRow.status == "in_game")
+            (NflGameRow.status == GAME_LIVE)
             & ((NflGameRow.kickoff.is_(None)) | (NflGameRow.kickoff >= moment - STALE_IN_GAME))
         )
         | (
@@ -45,7 +46,7 @@ def live_window_open(
         query = query.where(NflGameRow.season == season)
     rows = session.execute(query).all()
     return window_open(
-        [kickoff for kickoff, _ in rows], any(status == "in_game" for _, status in rows), moment
+        [kickoff for kickoff, _ in rows], any(status == GAME_LIVE for _, status in rows), moment
     )
 
 
