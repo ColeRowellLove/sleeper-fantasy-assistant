@@ -1159,28 +1159,8 @@ td.season-log {
   width: max-content;
 }
 
-.trend-about {
-  margin-top: 1rem;
-}
-
-.trend-about > summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
 .depth-chart > * + * {
   margin-top: 1rem;
-}
-
-.depth-all-stats {
-  margin-top: 0.75rem;
-}
-
-.depth-all-stats > summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.85rem;
 }
 
 /* Transactions board */
@@ -1243,4 +1223,15 @@ td.season-log {
 .txn-dropped .txn-sign {
   background: color-mix(in srgb, var(--injury-out) 18%, var(--surface-2));
   color: var(--injury-out);
+}
+
+/* a quiet fold-out for explanations and extras: one look everywhere (about, notes, all stats) */
+.fold {
+  margin-top: 0.75rem;
+}
+
+.fold > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
 }

@@ -94,7 +94,7 @@ export default function WaiverWirePanel({
             Best adds for the {data.waiver_day} ({waiverDateLabel(data.waiver_date)}) waivers
             {data.week !== null && `, scored for week ${data.week}`}
           </p>
-          <details className="rank-about">
+          <details className="fold">
             <summary>About the waiver wire</summary>
             <NoteList
               items={[

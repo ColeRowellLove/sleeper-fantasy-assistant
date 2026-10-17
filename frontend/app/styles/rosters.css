@@ -622,12 +622,6 @@
   margin: 0 0.6rem 0 0;
 }
 
-.rank-missing > summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
 .rank-sources .note {
   margin: 0;
 }
@@ -1049,16 +1043,6 @@
   font-size: 0.7rem;
   font-weight: 400;
   line-height: 1.15;
-}
-
-.rank-about {
-  margin-top: 1rem;
-}
-
-.rank-about > summary {
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.85rem;
 }
 
 /* on a phone the opponent column already says how hard the matchup is: keep the rows short */

@@ -276,7 +276,7 @@ export default function TeamDepthChart({
             headingId={`${headingId}-rank`}
           />
           {unitStats.length > TOP_STATS && (
-            <details className="depth-all-stats">
+            <details className="fold">
               <summary>All {unitStats.length} team stats</summary>
               <TeamStatsTable
                 stats={unitStats}
