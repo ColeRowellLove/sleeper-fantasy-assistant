@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.alerts.engine import run_alerts
 from sleeper_assistant.alerts.waiver import detect_waiver_targets
 from sleeper_assistant.core.league.waiver_board import Pickup
-from sleeper_assistant.core.nfl.matchup_rank import MatchupRank
+from sleeper_assistant.core.models.matchup import MatchupRank
 from sleeper_assistant.db import (
     AlertRow,
     PlayerOwnershipRow,

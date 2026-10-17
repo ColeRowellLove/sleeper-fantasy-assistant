@@ -2,28 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_COMPLETE, GAME_LIVE, GAME_PRE
-from sleeper_assistant.core.sources.live import (
-    LiveGame,
-    Situation,
-    current_games,
-    describe,
-    fraction_elapsed,
-)
+from sleeper_assistant.core.models.games import GameConditions, GameInfo, GameState
+from sleeper_assistant.core.sources.live import LiveGame, current_games, describe, fraction_elapsed
 from sleeper_assistant.core.sources.live import window_open as live_window_open
 from sleeper_assistant.db import (
     NflGameRow,
 )
 from sleeper_assistant.utils.clock import utc_iso
-
-GameState = Literal["upcoming", "live", "final", "bye"]
-
 
 # Sleeper schedule statuses -> what we show. Unknown statuses show nothing rather than a guess.
 _STATUS_STATE: dict[str, GameState] = {
@@ -31,35 +20,6 @@ _STATUS_STATE: dict[str, GameState] = {
     GAME_LIVE: "live",
     GAME_COMPLETE: "final",
 }
-
-
-class GameConditions(BaseModel):
-    """The setting of a game: roof, surface, weather and the betting line, from this team's side."""
-
-    roof: str | None = None  # outdoors, dome, closed or open
-    surface: str | None = None
-    stadium: str | None = None
-    temp: int | None = None  # degrees Fahrenheit
-    wind: int | None = None  # miles per hour
-    spread: float | None = None  # this team's spread: -3.5 means favoured by 3.5, +3.5 an underdog
-    total: float | None = None  # the over/under for the game
-
-
-class GameInfo(BaseModel):
-    """A player's NFL game in a week: upcoming, live, final, or the team is on a bye."""
-
-    state: GameState
-    date: str | None = None  # ISO date
-    kickoff: str | None = None  # ISO UTC timestamp, once the schedule publishes a time
-    team: str | None = None  # the NFL team this game is for
-    team_score: int | None = None  # live or final score, from this team's side
-    opponent_score: int | None = None
-    period_text: str | None = None  # where a live game is: "Q2 2:24", "Halftime"; "Final" when over
-    elapsed: float | None = None  # share of the game played, 0 to 1; None when the clock is unknown
-    opponent: str | None = None
-    home: bool | None = None
-    conditions: GameConditions | None = None
-    situation: Situation | None = None  # who has the ball and where, while the game is live
 
 
 def current_week(session: Session, season: str) -> int | None:

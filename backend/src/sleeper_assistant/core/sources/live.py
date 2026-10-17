@@ -21,6 +21,7 @@ import httpx
 from pydantic import BaseModel
 
 from sleeper_assistant.constants import ESPN_SCOREBOARD_URL
+from sleeper_assistant.core.models.games import Situation
 from sleeper_assistant.utils.parse import clean_text, espn_team_code, int_or_none
 
 log = logging.getLogger(__name__)
@@ -36,15 +37,6 @@ _STATES: dict[str, Literal["upcoming", "live", "final"]] = {
     "in": "live",
     "post": "final",
 }
-
-
-class Situation(BaseModel):
-    """Who has the ball and where, for a game in progress."""
-
-    possession: str | None = None  # the team code with the ball
-    down_distance: str | None = None  # "1st & 10"
-    ball_on: str | None = None  # "DEN 35": the yard line and the side of the field
-    red_zone: bool = False  # the offense is inside the opponent's 20
 
 
 class LiveGame(BaseModel):

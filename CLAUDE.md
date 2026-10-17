@@ -54,7 +54,9 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
     `core/scoring` (scoring stats and projections, stat lines, live projections, win chances, recent form),
     `core/nfl` (games and schedule, teams, depth charts, injury statuses, matchup ranks, team stats, waiver calendar),
     `core/sources` (outside services: Sleeper, ESPN scoreboard, ownership and box score, news feeds, and the
-    language model client with its `prompts/`; parsing of an unofficial source lives here).
+    language model client with its `prompts/`; parsing of an unofficial source lives here),
+    `core/models` (pydantic models more than one module uses: games, injuries, matchup ranks; a model one module
+    uses stays in that module).
   - `views/` read models that only one page uses (dashboard, lineups, games, players, player detail, waiver wire,
     transactions, news, lineup accuracy). They read stored data, never fetch.
   - `alerts/` the engine (`engine`), what every detector needs (`helpers`), model `advice` and the detectors

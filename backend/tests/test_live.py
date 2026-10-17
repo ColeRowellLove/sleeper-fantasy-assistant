@@ -11,11 +11,11 @@ import pytest
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import ESPN_SCOREBOARD_URL
+from sleeper_assistant.core.models.games import Situation
 from sleeper_assistant.core.nfl.nfl_games import games_for_week
 from sleeper_assistant.core.sources import live
 from sleeper_assistant.core.sources.live import (
     LiveGame,
-    Situation,
     current_games,
     describe,
     parse_scoreboard,

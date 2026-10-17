@@ -6,8 +6,7 @@ about the same player.
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-
+from sleeper_assistant.core.models.injury import InjuryInfo
 from sleeper_assistant.db import PlayerRow
 
 # ruled out, on a reserve list, suspended, not active or otherwise unavailable this week
@@ -16,13 +15,6 @@ WILL_NOT_PLAY = frozenset(
 )
 # a player listed Doubtful rarely plays, so no one starts or picks him up on hope
 UNLIKELY_TO_PLAY = WILL_NOT_PLAY | {"Doubtful"}
-
-
-class InjuryInfo(BaseModel):
-    """Injury designation from Sleeper (Out, Doubtful, Questionable, IR, PUP, ...)."""
-
-    status: str
-    body_part: str | None = None
 
 
 # Designations that carry no information for a fantasy manager are hidden.

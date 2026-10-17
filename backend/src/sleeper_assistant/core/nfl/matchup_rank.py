@@ -13,37 +13,18 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Mapping
-from typing import Literal
 
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_COMPLETE, PLAYER_POSITIONS
+from sleeper_assistant.core.models.matchup import DefenseRank, MatchupRank
 from sleeper_assistant.core.nfl.stats_version import season_stats_version
 from sleeper_assistant.core.scoring.projections import score_stats
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
 from sleeper_assistant.utils.cache import VersionedCache
 
 DEFENSE = "DEF"
-
-
-class DefenseRank(BaseModel):
-    """One opponent against one position. Rank 1 is always the best matchup for the player."""
-
-    rank: int
-    teams: int  # how many teams are ranked, so "3rd of 32" can be said
-    points: float  # fantasy points per game: allowed to the position, or scored by the offense
-    games: int  # completed games counted
-    # "defense": ranked by points allowed to the position (most first);
-    # "offense": a team defense's opponent, ranked by points scored (fewest first)
-    side: Literal["defense", "offense"] = "defense"
-
-
-class MatchupRank(DefenseRank):
-    """A player's opponent this week and how that defense ranks against his position."""
-
-    opponent: str
 
 
 # (defense team, position) -> rank

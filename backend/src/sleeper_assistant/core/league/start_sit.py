@@ -18,14 +18,12 @@ from sleeper_assistant.constants import EMPTY_SLOT, FANTASY_POSITIONS
 from sleeper_assistant.core.league.lineup_slots import assign_lineup, starter_slots
 from sleeper_assistant.core.league.player_names import player_name
 from sleeper_assistant.core.league.rankings import RankedPlayer, Rankings, build_rankings
-from sleeper_assistant.core.nfl.injury_status import WILL_NOT_PLAY, InjuryInfo, injury_info
-from sleeper_assistant.core.nfl.matchup_rank import (
-    DefenseTable,
-    MatchupRank,
-    build_defense_table,
-    matchup_rank,
-)
-from sleeper_assistant.core.nfl.nfl_games import GameInfo, games_for_week
+from sleeper_assistant.core.models.games import GameInfo
+from sleeper_assistant.core.models.injury import InjuryInfo
+from sleeper_assistant.core.models.matchup import MatchupRank
+from sleeper_assistant.core.nfl.injury_status import WILL_NOT_PLAY, injury_info
+from sleeper_assistant.core.nfl.matchup_rank import DefenseTable, build_defense_table, matchup_rank
+from sleeper_assistant.core.nfl.nfl_games import games_for_week
 from sleeper_assistant.core.scoring.projections import projected_points
 from sleeper_assistant.db import LeagueRow, PlayerRow, RosterRow
 
