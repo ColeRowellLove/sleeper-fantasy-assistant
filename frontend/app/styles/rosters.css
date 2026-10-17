@@ -889,18 +889,22 @@
 /* the live-update bar is one slim row: the status, then a small pause button */
 .live-refresh .btn {
   font-size: 0.8rem;
-  min-height: 2rem;
-  padding: 0.15rem 0.7rem;
+  min-height: 2.5rem; /* still a fair tap target */
+  padding: 0.15rem 0.8rem;
 }
 
 /* points and projection: side by side, and stacked on a phone so the name keeps the room */
 .player-nums {
   display: flex;
+  flex: 0 0 8rem; /* one fixed column, so the numbers line up from row to row */
   gap: 0.85rem;
+  justify-content: flex-end;
 }
 
 @media (max-width: 40rem) {
   .player-nums {
+    align-items: flex-end;
+    flex: 0 0 4.6rem;
     flex-direction: column;
     gap: 0.1rem;
   }
@@ -916,4 +920,9 @@
   .player-nums .player-proj:empty {
     display: none;
   }
+}
+
+/* the roster reads as a list: names and numbers stay close instead of spreading across the page */
+.rosters {
+  max-width: 46rem;
 }
