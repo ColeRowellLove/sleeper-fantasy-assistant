@@ -5,9 +5,12 @@ import GameBadge from "./GameBadge";
 import LocalTime from "./LocalTime";
 import InjuryBadge from "./InjuryBadge";
 import TeamLogo from "./TeamLogo";
+import TeamRankChips from "./TeamRankChips";
 import TeamStatsTable from "./TeamStatsTable";
 import PlayerLink from "./PlayerLink";
 import NoteList from "./NoteList";
+
+const TOP_STATS = 10; // the chips show the first ten; the rest are under a disclosure
 
 function PlayerCell({
   player,
@@ -207,12 +210,24 @@ export default function TeamDepthChart({
         </>
       )}
       {!compact && data.stats && data.stats.length > 0 && (
-        <TeamStatsTable
-          stats={data.stats}
-          team={data.team}
-          headingId={`${headingId}-stats`}
-          title="Team stats"
-        />
+        <div className="depth-stats">
+          <TeamRankChips
+            stats={data.stats.slice(0, TOP_STATS)}
+            team={data.team}
+            headingId={`${headingId}-rank`}
+          />
+          {data.stats.length > TOP_STATS && (
+            <details className="depth-all-stats">
+              <summary>All {data.stats.length} team stats</summary>
+              <TeamStatsTable
+                stats={data.stats}
+                team={data.team}
+                headingId={`${headingId}-stats`}
+                title="Team stats"
+              />
+            </details>
+          )}
+        </div>
       )}
       <NoteList
         items={[
