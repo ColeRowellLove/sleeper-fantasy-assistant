@@ -3,11 +3,9 @@ import { abbreviateName } from "../lib/game";
 import { positionClass } from "../lib/positions";
 import {
   formatPoints,
-  formatProjection,
   notPlayedYet,
   pairRows,
   slotShort,
-  projectionDelta,
   winnerId,
   type WeekState,
 } from "../lib/lineups";
@@ -18,6 +16,7 @@ import PlayerLink from "./PlayerLink";
 import PlayerStatLine from "./PlayerStatLine";
 import TeamLink from "./TeamLink";
 import MatchupHeader from "./MatchupHeader";
+import Projection from "./Projection";
 import WinBar from "./WinBar";
 
 type Matchup = Lineups["matchups"][number];
@@ -34,38 +33,6 @@ interface Props {
   standings?: StandingsRow[];
   /** Eager-load avatars (use for the first card on the page). */
   priority?: boolean;
-}
-
-/** "Projected 127.27 (+3.2)": the delta only once there is something to compare. */
-function Projection({
-  projected,
-  compareWith,
-  actual,
-  state,
-  label,
-}: {
-  projected: number | null | undefined;
-  /** The projection frozen before kickoff: a finished week's score is compared with this one. */
-  compareWith?: number | null;
-  actual: number | null;
-  state: WeekState;
-  label: string;
-}) {
-  const text = formatProjection(projected);
-  if (text === null) return null;
-  const delta = projectionDelta(actual, compareWith ?? projected, state);
-  return (
-    <span className="proj">
-      {label} {text}
-      {delta && (
-        <span className="proj-delta">
-          {" "}
-          ({delta}
-          <span className="visually-hidden"> against projection</span>)
-        </span>
-      )}
-    </span>
-  );
 }
 
 function Cell({

@@ -138,11 +138,29 @@
 }
 
 .mh-team {
-  display: block;
+  align-items: center;
+  display: flex;
   font-weight: 700;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.mh-side-b .mh-team {
+  justify-content: flex-end;
+}
+
+/* only the name is cut with an ellipsis; the You and Winner tags always show */
+.mh-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mh-team .you,
+.mh-team .win-tag {
+  flex: none;
+  margin-left: 0;
 }
 
 .mh-blurb {
@@ -178,6 +196,7 @@
 .mh-score .proj {
   color: var(--muted);
   font-size: 0.85rem;
+  white-space: normal;
 }
 
 .mh-todo {

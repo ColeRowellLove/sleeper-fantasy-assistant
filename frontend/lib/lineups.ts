@@ -182,9 +182,10 @@ export function teamInitials(name: string): string {
   const words = name
     .trim()
     .split(/\s+/)
-    .filter((w) => /[A-Za-z0-9]/.test(w));
-  return words
+    .filter((w) => /[\p{L}\p{N}]/u.test(w));
+  const letters = words
     .slice(0, 2)
-    .map((w) => Array.from(w.replace(/[^A-Za-z0-9]/g, ""))[0]?.toUpperCase() ?? "")
+    .map((w) => Array.from(w.replace(/[^\p{L}\p{N}]/gu, ""))[0]?.toUpperCase() ?? "")
     .join("");
+  return letters || Array.from(name.trim())[0] || "?"; // an emoji-only name keeps its first symbol
 }

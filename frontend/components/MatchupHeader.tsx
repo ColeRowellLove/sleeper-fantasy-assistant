@@ -2,13 +2,8 @@ import Link from "next/link";
 
 import type { StandingsRow, TeamLineup } from "../lib/api";
 import { rosterPath } from "../lib/league";
-import {
-  formatProjection,
-  projectionDelta,
-  streakText,
-  yetToPlay,
-  type WeekState,
-} from "../lib/lineups";
+import { streakText, yetToPlay, type WeekState } from "../lib/lineups";
+import Projection from "./Projection";
 import TeamAvatar from "./TeamAvatar";
 
 /** "@manager • 3-2 ▲2W (#4)": who runs the team and how it is doing, from the standings. */
@@ -44,42 +39,38 @@ function Side({
   leagueId?: string;
   side: "a" | "b";
 }) {
-  const projected = formatProjection(team.projected);
-  const delta = projectionDelta(team.points, team.projected_pregame ?? team.projected, state);
-  const todo = yetToPlay(team);
+  // nothing is left in a finished week, and the standings are today's, so they only fit a week in play
+  const todo = state === "played" ? null : yetToPlay(team);
   return (
     <div className={`mh-side mh-side-${side}${isWinner ? " winner" : ""}`}>
       <div className="mh-id">
         <TeamAvatar rosterId={team.roster_id} name={team.team} />
         <div className="mh-names">
           <span className="mh-team">
-            {leagueId ? (
-              <Link href={rosterPath(leagueId, team.roster_id)} className="member-link">
-                {team.team}
-              </Link>
-            ) : (
-              team.team
-            )}
+            <span className="mh-name">
+              {leagueId ? (
+                <Link href={rosterPath(leagueId, team.roster_id)} className="member-link">
+                  {team.team}
+                </Link>
+              ) : (
+                team.team
+              )}
+            </span>
             {isMe && <span className="you">You</span>}
             {isWinner && <span className="win-tag">Winner</span>}
           </span>
-          <Blurb row={row} />
+          {state !== "played" && <Blurb row={row} />}
         </div>
       </div>
       <div className="mh-score">
         <span className="score num">{state === "upcoming" ? "–" : team.points.toFixed(2)}</span>
-        {projected !== null && (
-          <span className="proj">
-            Projected {projected}
-            {delta && (
-              <span className="proj-delta">
-                {" "}
-                ({delta}
-                <span className="visually-hidden"> against projection</span>)
-              </span>
-            )}
-          </span>
-        )}
+        <Projection
+          projected={team.projected}
+          compareWith={team.projected_pregame}
+          actual={team.points}
+          state={state}
+          label="Projected"
+        />
       </div>
       {todo && (
         <p className="mh-todo">

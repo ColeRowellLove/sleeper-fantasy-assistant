@@ -80,7 +80,9 @@ describe("streakText and teamInitials", () => {
     expect(teamInitials("Shough Around & Find Out")).toBe("SA");
     expect(teamInitials("Dad Bods")).toBe("DB");
     expect(teamInitials("Wolves")).toBe("W");
-    expect(teamInitials("   ")).toBe("");
+    expect(teamInitials("狼 隊")).toBe("狼隊"); // letters of any script
+    expect(teamInitials("🔥🔥")).toBe("🔥"); // nothing alphabetic: the first symbol
+    expect(teamInitials("   ")).toBe("?");
   });
 });
 
@@ -113,6 +115,22 @@ describe("MatchupHeader", () => {
     );
     expect(screen.getAllByText("Projected 100.20")).toHaveLength(2);
     await expectNoA11yViolations(ui);
+  });
+
+  it("hides the record and what is left to play for a finished week", () => {
+    render(
+      <MatchupHeader
+        a={a}
+        b={b}
+        state="played"
+        winner={1}
+        myRosterId={null}
+        standings={[row(1)]}
+      />,
+    );
+    expect(screen.queryByText(/@mgr1/)).not.toBeInTheDocument(); // the standings are today's
+    expect(screen.queryByText(/Yet to play/)).not.toBeInTheDocument();
+    expect(screen.getByText("Winner")).toBeInTheDocument();
   });
 
   it("still works without standings", () => {
