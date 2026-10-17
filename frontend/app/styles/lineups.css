@@ -543,6 +543,10 @@ table.h2h {
   grid-template-columns: 1fr 1fr;
 }
 
+.win-half {
+  min-width: 0;
+}
+
 .win-half-b {
   text-align: right;
 }

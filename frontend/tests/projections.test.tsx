@@ -230,6 +230,17 @@ describe("win chance in the matchup", () => {
     expect((container.querySelector(".win-bar-b") as HTMLElement).style.width).toBe("1%");
   });
 
+  it("has no accessibility violations and names both teams in the spoken sentence", async () => {
+    const ui = (
+      <MatchupCard matchup={withChance(0.54, 0.46)} state="upcoming" week={7} myRosterId={1} />
+    );
+    render(ui);
+    expect(
+      screen.getByText(/Cole has a 54 percent chance to win and Dad has 46 percent/),
+    ).toBeInTheDocument();
+    await expectNoA11yViolations(ui);
+  });
+
   it("has no bar for a decided matchup or one with no chance to show", () => {
     const decided = render(
       <MatchupCard matchup={withChance(0.62, 0.38)} state="played" week={5} myRosterId={1} />,

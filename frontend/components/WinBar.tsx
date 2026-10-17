@@ -10,8 +10,9 @@ function tone(mine: number, theirs: number): string {
  * One slim bar per team, like Sleeper's header: each fills to its own win chance (the first team
  * from the left, the second from the right) under a bold "46% WIN". The teams have their own
  * colours (blue and orange, not red and green, so it reads for colour-blind viewers) and the team
- * behind is the softer shade. Colour is never the only signal: the numbers and names say it, and
- * the bar is decorative because the sentence for screen readers carries the same information.
+ * behind is the softer shade. Colour is never the only signal: each bar sits on its team's side, under that team's
+ * name and score, and the bar is decorative because the sentence for screen readers (with both
+ * names) carries the same information.
  */
 export default function WinBar({
   a,
