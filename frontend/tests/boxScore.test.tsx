@@ -93,3 +93,18 @@ describe("BoxScorePanel", () => {
     await expectNoA11yViolations(panel(["p1"]));
   });
 });
+
+describe("BoxScorePanel without teams", () => {
+  it("says it is not available rather than showing empty tabs", () => {
+    render(
+      <BoxScorePanel
+        data={{ home: "KC", away: "WAS", final: true, teams: [] }}
+        leagueId="1"
+        week={7}
+        mine={[]}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("not available");
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  });
+});
