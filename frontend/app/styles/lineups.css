@@ -171,6 +171,10 @@ table.h2h {
   width: 4.5rem;
 }
 
+.slot-short {
+  display: none;
+}
+
 .h2h .slot-cell {
   color: var(--muted);
   padding-left: 0.5rem;
@@ -306,49 +310,110 @@ table.h2h {
 }
 
 @media (max-width: 40rem) {
+  /* Each row is a grid, not a 5-column table: a name and its numbers share one half of the card
+     (name on top, points and projection under it) and the slot sits between the halves, so
+     nothing can run into anything, whatever the text size. */
+  table.h2h,
+  .h2h tbody {
+    display: block;
+  }
+
+  .h2h thead {
+    display: none; /* the team names are in the scoreboard above */
+  }
+
+  .h2h tbody tr {
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr 2.8rem 1fr;
+    padding: 0.4rem 0.9rem;
+  }
+
   .h2h th,
   .h2h td {
-    padding: 0.5rem 0.4rem;
+    border-bottom: 0;
+    padding: 0.1rem 0;
   }
 
-  .h2h tr > :first-child {
-    padding-left: 0.9rem;
-  }
-
+  .h2h tr > :first-child,
   .h2h tr > :last-child {
-    padding-right: 0.9rem;
+    padding-left: 0;
+    padding-right: 0;
   }
 
-  .h2h .slot-col,
-  .h2h .slot-cell {
-    padding-left: 0.1rem;
-    padding-right: 0.1rem;
-    width: 2.6rem;
+  /* the tinted rows (bench, IR, taxi) tint the whole row, not each cell */
+  .h2h tr.bench,
+  .h2h tr.ir,
+  .h2h tr.taxi {
+    background: color-mix(in srgb, var(--role-bench) 7%, transparent);
   }
 
-  /* wide enough for "Proj 18.16" on its own line, so it never runs into the name or the slot */
-  .h2h .pts-cell,
-  .h2h .num-col {
-    width: 3.7rem;
+  .h2h tr.ir {
+    background: color-mix(in srgb, var(--role-ir) 8%, transparent);
   }
 
-  .h2h .slot-cell {
-    font-size: 0.65rem;
+  .h2h tr.taxi {
+    background: color-mix(in srgb, var(--role-taxi) 8%, transparent);
   }
 
-  /* air between a name and the points next to it */
+  .h2h tr.bench td,
+  .h2h tr.bench th,
+  .h2h tr.ir td,
+  .h2h tr.ir th,
+  .h2h tr.taxi td,
+  .h2h tr.taxi th {
+    background: transparent;
+  }
+
   .h2h .player-cell.cell-left {
-    padding-right: 0.5rem;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .h2h .pts-left {
+    grid-column: 1;
+    grid-row: 2;
+    text-align: left;
+  }
+
+  .h2h .slot-cell {
+    align-self: center;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    overflow: hidden;
+    padding: 0;
+    text-align: center;
+    width: auto;
   }
 
   .h2h .player-cell.cell-right {
-    padding-left: 0.5rem;
+    grid-column: 3;
+    grid-row: 1;
   }
 
+  .h2h .pts-right {
+    grid-column: 3;
+    grid-row: 2;
+    text-align: right;
+  }
+
+  .h2h .pts-cell {
+    width: auto;
+  }
+
+  .slot-full {
+    display: none;
+  }
+
+  .slot-short {
+    display: inline;
+  }
+
+  /* "0.00 · Proj 18.16" on one line under the name */
   .h2h .pts-cell .proj {
-    display: block;
-    font-size: 0.7rem;
-    white-space: nowrap;
+    display: inline;
+    font-size: 0.75rem;
+    margin-left: 0.4rem;
   }
 
   .h2h .avatar {

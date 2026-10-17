@@ -88,6 +88,20 @@ export function pairRows(left: TeamLineup, right: TeamLineup): PairedRow[] {
   return rows;
 }
 
+const SHORT_SLOTS: Record<string, string> = {
+  Bench: "BN",
+  Taxi: "TX",
+  FLEX: "FLX",
+  SUPER_FLEX: "SFLX",
+  REC_FLEX: "RFLX",
+  WRRB_FLEX: "WRRB",
+};
+
+/** A slot label short enough for a phone column: Bench becomes BN, FLEX becomes FLX. */
+export function slotShort(slot: string): string {
+  return SHORT_SLOTS[slot] ?? slot;
+}
+
 /** The team with more points, or null for a tie or when nobody has scored. */
 export function winnerId(a: TeamLineup, b: TeamLineup): number | null {
   if (a.points === b.points) return null;

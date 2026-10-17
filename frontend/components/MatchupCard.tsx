@@ -7,6 +7,7 @@ import {
   formatProjection,
   notPlayedYet,
   pairRows,
+  slotShort,
   projectionDelta,
   winnerId,
   type WeekState,
@@ -272,7 +273,10 @@ export default function MatchupCard({
             <tr key={`${row.slot}-${i}`} className={row.kind === "starter" ? undefined : row.kind}>
               <Cell player={row.left} state={state} side="left" priority={priority} />
               <th scope="row" className="slot-cell">
-                {row.slot}
+                <span className="slot-full">{row.slot}</span>
+                <span className="slot-short" aria-hidden="true">
+                  {slotShort(row.slot)}
+                </span>
               </th>
               <Cell player={row.right} state={state} side="right" priority={priority} />
             </tr>

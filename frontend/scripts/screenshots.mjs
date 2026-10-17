@@ -143,6 +143,20 @@ try {
       await context.close();
     }
   }
+  // a phone with larger text: no screenshots, only the layout checks (the owner's phone found what
+  // 100% text hid)
+  const large = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const largePage = await large.newPage();
+  for (const p of PAGES) {
+    if (p.league && !apiUp) continue;
+    await largePage.goto(`http://localhost:${PORT}${p.path}`);
+    await largePage.addStyleTag({ content: "html { font-size: 125% !important; }" });
+    await largePage.waitForTimeout(300);
+    for (const problem of await layoutProblems(largePage)) {
+      found.set(`${p.name}@mobile-large:${problem.kind}`, problem.text);
+    }
+  }
+  await large.close();
   await browser.close();
   console.log("screenshots written to frontend/screenshots/");
 } finally {
