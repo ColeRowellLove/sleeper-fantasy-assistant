@@ -107,8 +107,10 @@ describe("Team tab", () => {
     const panel = screen.getByRole("tabpanel");
     expect(within(panel).getByRole("heading", { name: "WAS team rank" })).toBeInTheDocument();
     expect(within(panel).getByText("26th")).toBeInTheDocument();
-    expect(within(panel).getByText("Marcus Mariota")).toBeInTheDocument();
-    const mine = within(panel).getByText("Jayden Daniels").closest(".depth-player");
+    expect(within(panel).getByRole("link", { name: "Marcus Mariota" })).toBeInTheDocument();
+    const mine = within(panel)
+      .getByRole("link", { name: "Jayden Daniels" })
+      .closest(".depth-player");
     expect(mine).toHaveClass("is-viewed");
   });
 });

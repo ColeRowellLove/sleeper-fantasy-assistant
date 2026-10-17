@@ -171,9 +171,11 @@ describe("TeamDepthChart", () => {
 
   it("marks players on your team, available players and players without a Sleeper match", () => {
     render(<TeamDepthChart data={data} myRosterId={1} />);
-    expect(screen.getByText("On your team")).toBeInTheDocument();
-    expect(screen.getAllByText("Available").length).toBeGreaterThan(0);
-    expect(screen.getByText("Jake Bobo")).toBeInTheDocument();
+    expect(screen.getByText(/on your team/)).toBeInTheDocument();
+    expect(screen.getAllByText(/available in this league/).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText((_, el) => el?.className === "depth-name" && el.textContent === "Jake Bobo"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Jake Bobo" })).not.toBeInTheDocument(); // not matched: no pop-up
     expect(screen.getByRole("link", { name: "Sam Darnold" })).toHaveAttribute(
       "href",
@@ -379,7 +381,7 @@ describe("deep charts slide sideways", () => {
     });
     expect(area).toHaveAttribute("tabindex", "0");
     expect(within(area).getByRole("columnheader", { name: "5th string" })).toBeInTheDocument();
-    expect(within(area).getByText("Back 5")).toBeInTheDocument();
+    expect(within(area).getByRole("link", { name: "Back 5" })).toBeInTheDocument();
     expect(screen.getByText("Slide sideways to see all 5 depth levels.")).toBeInTheDocument();
     await expectNoA11yViolations(<TeamDepthChart data={deep} myRosterId={null} />);
   });
