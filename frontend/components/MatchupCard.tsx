@@ -282,10 +282,8 @@ export default function MatchupCard({
               <Cell player={row.left} state={state} side="left" priority={priority} />
               <th scope="row" className="slot-cell">
                 <span className={`slot-chip ${positionClass(row.slot)}`}>
-                  <span className="slot-full">{row.slot}</span>
-                  <span className="slot-short" aria-hidden="true">
-                    {slotShort(row.slot)}
-                  </span>
+                  <span className="visually-hidden">{row.slot}</span>
+                  <span aria-hidden="true">{slotShort(row.slot)}</span>
                 </span>
               </th>
               <Cell player={row.right} state={state} side="right" priority={priority} />

@@ -21,6 +21,7 @@ describe("abbreviateName", () => {
     expect(abbreviateName("Amon-Ra St. Brown")).toBe("A. St. Brown");
     expect(abbreviateName("LAR defense")).toBe("LAR defense");
     expect(abbreviateName("Madonna")).toBe("Madonna");
+    expect(abbreviateName("D.J. Moore")).toBe("D.J. Moore"); // already initials
   });
 });
 
@@ -43,7 +44,7 @@ describe("gameLineParts", () => {
       team_score: 14,
       opponent_score: 17,
     });
-    expect(gameLineParts(live)).toMatchObject({ time: "Q2 2:24", score: "14-17" });
+    expect(gameLineParts(live)).toMatchObject({ time: "Q2 2:24", score: "L 14-17" });
     const won = game({ state: "final", team_score: 24, opponent_score: 20 });
     expect(gameLineParts(won)).toMatchObject({ time: "Final", score: "W 24-20" });
     expect(gameLineParts({ ...won, team_score: 10 })?.score).toBe("L 10-20");
@@ -88,7 +89,7 @@ describe("GameLine", () => {
       />,
     );
     expect(screen.getByText("Q3 0:41")).toBeInTheDocument();
-    expect(screen.getByText("10-7")).toBeInTheDocument();
+    expect(screen.getByText("W 10-7")).toBeInTheDocument();
     const { container } = render(<GameLine game={null} />);
     expect(container).toBeEmptyDOMElement();
   });

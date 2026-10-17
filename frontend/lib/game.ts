@@ -312,23 +312,33 @@ export function needsLiveRefresh(
 /** "J. Daniels": the first initial and the rest. One-word names and team defenses stay whole. */
 export function abbreviateName(name: string): string {
   const parts = name.trim().split(/\s+/);
-  if (parts.length < 2 || /\bdefense$/i.test(name.trim())) return name.trim();
-  return `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
+  // a defense, a one-word name and a first name that is already initials ("D.J. Moore") stay whole
+  if (parts.length < 2 || /\bdefense$/i.test(name.trim()) || parts[0].includes(".")) {
+    return name.trim();
+  }
+  return `${Array.from(parts[0])[0]}. ${parts.slice(1).join(" ")}`;
 }
 
 /** "Mon 5:15 PM" in the viewer's own time zone (browser only, like `formatKickoff`). */
+const shortKickoffs = new Map<string, string | null>(); // the zone does not change while the page is open
+
 export function formatKickoffShort(kickoff: string | null | undefined): string | null {
   if (!kickoff) return null;
+  const known = shortKickoffs.get(kickoff);
+  if (known !== undefined) return known;
   const parsed = new Date(kickoff);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
+  const text = Number.isNaN(parsed.getTime())
+    ? null
+    : parsed.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
+  shortKickoffs.set(kickoff, text);
+  return text;
 }
 
 export interface GameLineParts {
   state: GameInfo["state"];
   /** The lead words: "Mon 5:15 PM", "Q2 2:24", "Final" or "Bye week". */
   time: string;
-  /** "W 24-20", "L 14-17" or "14-17" once there is a score; the player's team first. */
+  /** "W 24-20" or "L 14-17" once there is a score (live or final); the player's team first. */
   score: string | null;
   /** "@" or "vs", with the opponent's code; both null on a bye or without an opponent. */
   versus: "@" | "vs" | null;
@@ -359,16 +369,16 @@ export function gameLineParts(
       opponent,
     };
   }
+  const result = haveScore ? (mine > theirs ? "W " : mine < theirs ? "L " : "T ") : "";
   if (game.state === "live") {
     return {
       state: "live",
       time: game.period_text || "Live",
-      score: numbers,
+      score: numbers ? `${result}${numbers}` : null, // winning or losing, like Sleeper's "L 14-17"
       versus,
       opponent,
     };
   }
-  const result = haveScore ? (mine > theirs ? "W " : mine < theirs ? "L " : "T ") : "";
   return {
     state: "final",
     time: "Final",
@@ -384,7 +394,7 @@ export interface WeatherIcon {
   label: string;
 }
 
-const WEATHER_ICONS: Record<string, string> = {
+const WEATHER_ICONS: Record<string, string | undefined> = {
   Dome: "🏟️",
   "Closed roof": "🏟️",
   Freezing: "❄️",
@@ -397,5 +407,6 @@ const WEATHER_ICONS: Record<string, string> = {
 export function weatherIcon(game: GameInfo | null | undefined): WeatherIcon | null {
   if (!game || game.state === "bye" || !game.conditions) return null;
   const word = weatherWord(game.conditions);
-  return word ? { icon: WEATHER_ICONS[word] ?? "", label: word } : null;
+  const icon = word ? WEATHER_ICONS[word] : undefined;
+  return word && icon ? { icon, label: word } : null; // no icon for a word we have none for
 }

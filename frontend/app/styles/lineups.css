@@ -489,8 +489,8 @@ table.h2h {
     gap: 0.4rem;
   }
 
-  /* a phone has room for the name, position and numbers only: the face, the game line and the
-     stat line are on the roster and game pages */
+  /* a phone keeps the name, position, one game line and the numbers: the face and the stat line
+     are on the roster and game pages */
   .h2h .avatar,
   .h2h .stat-line {
     display: none;
@@ -498,7 +498,13 @@ table.h2h {
 
   /* names are short on a phone, like Sleeper's \"J. Daniels\" */
   .name-full {
-    display: none;
+    border: 0;
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px; /* still read by a screen reader: the short name is aria-hidden */
   }
 
   .name-short {
@@ -701,19 +707,4 @@ table.h2h {
 .win-bar-rough {
   font-size: 0.75rem;
   margin: 0.2rem 0 0;
-}
-
-/* the slot chip shows the short label (BN, FLX) on every screen; the full word is for screen readers */
-.slot-full {
-  border: 0;
-  clip-path: inset(50%);
-  height: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-  width: 1px;
-}
-
-.slot-short {
-  display: inline;
 }
