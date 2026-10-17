@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel
@@ -25,6 +26,7 @@ from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
     PlayerRow,
+    RosterRow,
 )
 from sleeper_assistant.views.roster_players import (
     Line,
@@ -85,6 +87,56 @@ class Lineups(BaseModel):
     matchups: list[MatchupView]
 
 
+@dataclass
+class _Week:
+    """What building any team's lineup for one week needs."""
+
+    team: dict[int, str]
+    owners: dict[int, str | None]
+    players: dict[str, PlayerRow]
+    slots: list[str]
+    games: dict[str, GameInfo]
+    projected: dict[str, float]
+    defense: DefenseTable
+    lines: dict[str, Line]
+
+
+def _week_to_show(
+    rows: list[MatchupRow], weeks: list[int], current: int | None, week: int | None
+) -> int | None:
+    """The asked-for week, else the current NFL week, else the latest week with scores."""
+    if week is None:
+        if current in weeks:
+            return current
+        scored = [w for w in weeks if any(m.points for m in rows if m.week == w)]
+        candidates = scored or weeks
+        week = candidates[-1] if candidates else None
+    return week if week in weeks else None
+
+
+def _load_week(
+    session: Session,
+    league: LeagueRow,
+    week: int,
+    week_rows: list[MatchupRow],
+    rosters: list[RosterRow],
+) -> _Week:
+    team, _ = team_names(session, rosters)
+    ids = {pid for m in week_rows for pid in [*m.starters, *m.players]}
+    players = load_players(session, ids)
+    games = games_for_week(session, league.season, week)
+    return _Week(
+        team=team,
+        owners={r.roster_id: r.owner_id for r in rosters},
+        players=players,
+        slots=starter_slots(league.roster_positions),
+        games=games,
+        projected=projected_points(session, league.season, week, league.scoring_settings, ids),
+        defense=build_defense_table(session, league.season, league.scoring_settings),
+        lines=week_lines(session, league, week, players, games),
+    )
+
+
 def build_lineups(session: Session, league: LeagueRow, week: int | None = None) -> Lineups:
     """Both teams' lineups per matchup for one week.
 
@@ -94,33 +146,14 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
     rows = list(session.scalars(select(MatchupRow).where(MatchupRow.league_id == league.league_id)))
     weeks = sorted({m.week for m in rows})
     current = current_week(session, league.season)
+    week = _week_to_show(rows, weeks, current, week)
     if week is None:
-        if current in weeks:
-            week = current
-        else:
-            scored = [w for w in weeks if any(m.points for m in rows if m.week == w)]
-            candidates = scored or weeks
-            week = candidates[-1] if candidates else None
-    if week is None or week not in weeks:
         return Lineups(week=None, current_week=current, weeks=weeks, matchups=[])
 
     week_rows = [m for m in rows if m.week == week]
     rosters = league_rosters(session, league.league_id)
-    team, _ = team_names(session, rosters)
     avatars = team_avatars(session, rosters)
-    owners = {r.roster_id: r.owner_id for r in rosters}
-    players = load_players(session, {pid for m in week_rows for pid in [*m.starters, *m.players]})
-    slots = starter_slots(league.roster_positions)
-    games = games_for_week(session, league.season, week)
-    defense = build_defense_table(session, league.season, league.scoring_settings)
-    lines = week_lines(session, league, week, players, games)
-    projected = projected_points(
-        session,
-        league.season,
-        week,
-        league.scoring_settings,
-        {pid for m in week_rows for pid in [*m.starters, *m.players]},
-    )
+    ctx = _load_week(session, league, week, week_rows, rosters)
     # IR and taxi come from the current roster (past weeks use today's IR list)
     parked = {
         r.roster_id: {**{pid: "IR" for pid in r.reserve}, **{pid: "TAXI" for pid in r.taxi}}
@@ -129,18 +162,7 @@ def build_lineups(session: Session, league: LeagueRow, week: int | None = None) 
 
     by_matchup: dict[int, list[TeamLineup]] = {}
     for m in sorted(week_rows, key=lambda m: m.roster_id):
-        lineup = _team_lineup(
-            m,
-            team,
-            owners,
-            players,
-            slots,
-            games,
-            parked.get(m.roster_id, {}),
-            projected,
-            defense,
-            lines,
-        )
+        lineup = _team_lineup(m, ctx, parked.get(m.roster_id, {}))
         lineup.avatar = avatars.get(m.roster_id)
         # a missing matchup_id (bye/unscheduled) must not group unrelated teams together
         key = m.matchup_id if m.matchup_id is not None else -m.roster_id
@@ -194,18 +216,30 @@ def _team_projection(starters: list[LineupPlayer], *, pregame: bool = False) -> 
     return round(sum(values), 2) if values else None
 
 
-def _team_lineup(  # noqa: PLR0913, PLR0917
-    m: MatchupRow,
-    team: dict[int, str],
-    owners: dict[int, str | None],
-    players: dict[str, PlayerRow],
-    slots: list[str],
-    games: dict[str, GameInfo],
-    parked: dict[str, str],
-    projected: dict[str, float],
-    defense: DefenseTable,
-    lines: dict[str, Line],
-) -> TeamLineup:
+def _lineup_player(ctx: _Week, pid: str, slot: str, points: float | None) -> LineupPlayer:
+    """One row of a lineup: who he is, his game, what he did and what he is projected to do."""
+    name, position, nfl_team = display(ctx.players, pid)
+    game = ctx.games.get(nfl_team) if nfl_team else None
+    pregame = ctx.projected.get(pid, 0.0)
+    return LineupPlayer(
+        slot=slot,
+        player_id=pid,
+        name=name,
+        position=position,
+        team=nfl_team,
+        points=points,
+        game=game,
+        injury=injury_info(ctx.players, pid),
+        projected=projection_now(pregame, points, game),
+        projected_pregame=pregame,
+        projection_missing=pid not in ctx.projected,
+        matchup=matchup_rank(ctx.defense, position, game.opponent if game else None),
+        stat_line=ctx.lines[pid].text if pid in ctx.lines else None,
+        stat_line_projected=pid in ctx.lines and ctx.lines[pid].projected,
+    )
+
+
+def _team_lineup(m: MatchupRow, ctx: _Week, parked: dict[str, str]) -> TeamLineup:
     points: dict[str, Any] = m.players_points
 
     def pts(pid: str) -> float | None:
@@ -214,7 +248,7 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
 
     starters: list[LineupPlayer] = []
     for i, pid in enumerate(m.starters):
-        slot = slots[i] if i < len(slots) else "FLEX"
+        slot = ctx.slots[i] if i < len(ctx.slots) else "FLEX"
         if pid == EMPTY_SLOT:
             starters.append(
                 LineupPlayer(
@@ -222,59 +256,19 @@ def _team_lineup(  # noqa: PLR0913, PLR0917
                 )
             )
             continue
-        name, position, nfl_team = display(players, pid)
         value = m.starters_points[i] if i < len(m.starters_points) else pts(pid)
-        game = games.get(nfl_team) if nfl_team else None
-        pregame = projected.get(pid, 0.0)
-        starters.append(
-            LineupPlayer(
-                slot=slot,
-                player_id=pid,
-                name=name,
-                position=position,
-                team=nfl_team,
-                points=None if value is None else float(value),
-                game=game,
-                injury=injury_info(players, pid),
-                projected=projection_now(pregame, None if value is None else float(value), game),
-                projected_pregame=pregame,
-                projection_missing=pid not in projected,
-                matchup=matchup_rank(defense, position, game.opponent if game else None),
-                stat_line=lines[pid].text if pid in lines else None,
-                stat_line_projected=pid in lines and lines[pid].projected,
-            )
-        )
+        starters.append(_lineup_player(ctx, pid, slot, None if value is None else float(value)))
 
-    bench = []
-    for pid in m.players:
-        if pid in m.starters:
-            continue
-        name, position, nfl_team = display(players, pid)
-        game = games.get(nfl_team) if nfl_team else None
-        pregame = projected.get(pid, 0.0)
-        bench.append(
-            LineupPlayer(
-                slot=parked.get(pid, "BN"),
-                player_id=pid,
-                name=name,
-                position=position,
-                team=nfl_team,
-                points=pts(pid),
-                game=game,
-                injury=injury_info(players, pid),
-                projected=projection_now(pregame, pts(pid), game),
-                projected_pregame=pregame,
-                projection_missing=pid not in projected,
-                matchup=matchup_rank(defense, position, game.opponent if game else None),
-                stat_line=lines[pid].text if pid in lines else None,
-                stat_line_projected=pid in lines and lines[pid].projected,
-            )
-        )
+    bench = [
+        _lineup_player(ctx, pid, parked.get(pid, "BN"), pts(pid))
+        for pid in m.players
+        if pid not in m.starters
+    ]
     bench.sort(key=lambda p: (_PARKED_ORDER.get(p.slot, 0), -(p.points or 0.0), p.name))
     return TeamLineup(
         roster_id=m.roster_id,
-        team=team.get(m.roster_id, f"Team {m.roster_id}"),
-        owner_id=owners.get(m.roster_id),
+        team=ctx.team.get(m.roster_id, f"Team {m.roster_id}"),
+        owner_id=ctx.owners.get(m.roster_id),
         points=round(m.points, 2),
         projected=_team_projection(starters),
         projected_pregame=_team_projection(starters, pregame=True),
