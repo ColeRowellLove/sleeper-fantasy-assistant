@@ -348,6 +348,8 @@ export interface LineupPlayer {
 export interface TeamLineup {
   roster_id: number;
   team: string;
+  /** The team's picture (a Sleeper image URL), when it has one. */
+  avatar?: string | null;
   owner_id: string | null;
   points: number;
   /** Sum of the starters' projections; null/absent when none has one. */

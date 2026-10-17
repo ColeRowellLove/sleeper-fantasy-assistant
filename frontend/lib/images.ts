@@ -28,3 +28,18 @@ export function initials(name: string): string {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+
+const PICTURE_HOSTS = new Set(["sleepercdn.com", "sleeper.com", "sleeper.app"]); // as the backend
+
+/** A team's picture URL, only when it is on Sleeper's own hosts (anything else is not loaded). */
+export function teamPictureUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && PICTURE_HOSTS.has(parsed.hostname)
+      ? parsed.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}

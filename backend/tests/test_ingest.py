@@ -12,6 +12,7 @@ from sleeper_assistant.db import (
     PlayerRow,
     RawSnapshotRow,
     RosterRow,
+    SleeperUserRow,
     TransactionRow,
 )
 from sleeper_assistant.ingest import _streak, sync_league, sync_players
@@ -67,6 +68,10 @@ def test_sync_league(session: Session) -> None:
     assert _count(session, MatchupRow) == 6  # weeks 1-3 (week 3 is an upcoming pairing)
     assert _count(session, TransactionRow) == 1
     assert _count(session, RawSnapshotRow) > 0
+
+    cole = session.get(SleeperUserRow, "u1")
+    assert cole is not None
+    assert cole.avatar == "x"  # the manager's picture id is kept for the team picture
 
 
 def test_sync_is_idempotent_and_keeps_last_viewed(session: Session) -> None:

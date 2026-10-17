@@ -44,7 +44,7 @@ function Side({
   return (
     <div className={`mh-side mh-side-${side}${isWinner ? " winner" : ""}`}>
       <div className="mh-id">
-        <TeamAvatar rosterId={team.roster_id} name={team.team} />
+        <TeamAvatar rosterId={team.roster_id} name={team.team} picture={team.avatar} />
         <div className="mh-names">
           <span className="mh-team">
             <span className="mh-name">
