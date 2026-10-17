@@ -266,3 +266,57 @@ table.standings {
   margin-left: 0.3rem;
   padding: 0.05rem 0.4rem;
 }
+
+/* a phone: the header is a few lines, not half the screen */
+@media (max-width: 40rem) {
+  .league-head {
+    gap: 0.5rem;
+    padding-top: 1rem;
+  }
+
+  .league-head > div {
+    max-width: 100%;
+    min-width: 0; /* lets the long name be cut with an ellipsis instead of widening the page */
+  }
+
+  .league-head h1 {
+    font-size: 1.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .league-meta {
+    margin-top: 0.15rem;
+  }
+
+  .rule-chips {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+    overflow-x: auto; /* one row that scrolls instead of two or three rows of chips */
+    position: relative; /* clips the screen-reader text inside */
+  }
+
+  .rule-chips li {
+    flex: none;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem;
+  }
+
+  .league-head .my-team {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    width: 100%;
+  }
+
+  .league-head .my-team select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tabs {
+    margin-top: 0.75rem;
+  }
+}
