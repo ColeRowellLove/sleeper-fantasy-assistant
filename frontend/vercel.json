@@ -1,15 +1,19 @@
 {
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- .",
+  "ignoreCommand": "[ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ] || git diff --quiet HEAD^ HEAD -- .",
   "regions": ["pdx1"],
   "git": {
     "deploymentEnabled": {
+      "develop": false,
       "feature/*": false,
       "bugfix/*": false,
       "chore/*": false,
       "docs/*": false,
       "refactor/*": false,
       "test/*": false,
-      "hotfix/*": false
+      "hotfix/*": false,
+      "claude/*": false,
+      "dependabot/*": false,
+      "release-drafter/*": false
     }
   }
 }
