@@ -98,6 +98,8 @@ export default function StartSitTool({
             Best lineup{best.week ? `, week ${best.week}` : ""}
           </h3>
           <p className="note">
+            {/* with swaps to make, the list below is the why; otherwise this says why not */}
+            {best.changes.length === 0 && `${best.why} `}
             Projected {best.projected.toFixed(1)} against {best.current_projected.toFixed(1)} for
             the current lineup.
           </p>

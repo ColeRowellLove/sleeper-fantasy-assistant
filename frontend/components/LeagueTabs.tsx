@@ -39,7 +39,9 @@ export default function LeagueTabs({
                 }
               >
                 {section.label}
-                {section.key === "alerts" && unreadAlerts > 0 && ` ${unreadAlerts}`}
+                {section.key === "alerts" && unreadAlerts > 0 && (
+                  <span className="tab-count">{unreadAlerts}</span>
+                )}
               </Link>
             </li>
           ))}

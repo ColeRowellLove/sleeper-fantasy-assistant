@@ -89,8 +89,13 @@ async function layoutProblems(page) {
     for (const el of document.querySelectorAll(".player-name, .cell-name")) {
       const box = el.getBoundingClientRect();
       const line = parseFloat(getComputedStyle(el).lineHeight) || box.height;
-      const cut = el.scrollWidth > el.clientWidth + 1;
-      if (box.width > 0 && window.innerWidth < 600 && (cut || box.height > line * 2.2)) {
+      const cut = el.scrollWidth > el.clientWidth + 1; // a block cut off with an ellipsis
+      const lines = el.getClientRects().length; // an inline name has one box per line it wraps onto
+      if (
+        box.width > 0 &&
+        window.innerWidth < 600 &&
+        (cut || lines > 2 || box.height > line * 2.2)
+      ) {
         problems.push({
           kind: "name-squeezed",
           text: `"${el.textContent}" is cut off or wrapped to many lines (${Math.round(box.width)}px wide)`,

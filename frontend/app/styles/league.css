@@ -255,3 +255,14 @@ table.standings {
     padding: 0.1rem 0.4rem;
   }
 }
+
+/* the number of new alerts: a small badge; the words are in the link's accessible name */
+.tab-count {
+  background: var(--accent);
+  border-radius: 999px;
+  color: var(--on-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 0.3rem;
+  padding: 0.05rem 0.4rem;
+}
