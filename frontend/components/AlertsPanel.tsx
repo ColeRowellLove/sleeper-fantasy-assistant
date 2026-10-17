@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import LocalTime from "./LocalTime";
+
 import type { AlertItem, AlertsData, Dashboard } from "../lib/api";
 import {
   ALERT_NOTES,
   ALERT_TYPES,
   alertAdvice,
-  alertTime,
   newestAlertTime,
   serializeOff,
   unreadAlerts,
@@ -79,7 +80,7 @@ function AlertCard({ alert, isNew }: { alert: AlertItem; isNew: boolean }) {
         <p className="alert-why">{alert.why}</p>
       )}
       <p className="muted alert-meta">
-        {alertTime(alert.created_at)}
+        <LocalTime iso={alert.created_at} />
         {alert.player_id && (
           <>
             {" · "}

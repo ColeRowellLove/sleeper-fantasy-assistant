@@ -93,19 +93,7 @@ export function newestAlertTime(alerts: AlertItem[]): string | null {
   return times.length > 0 ? new Date(Math.max(...times)).toISOString() : null;
 }
 
-/** "Mon, Oct 12, 4:05 PM" in UTC, so the server and the browser print the same text. */
-export function alertTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  })} UTC`;
-}
+export { utcDateTime as alertTime } from "./time"; // alerts first print in UTC, then in the viewer's zone (LocalTime)
 
 /**
  * The alert types a person can choose between, in plain words (keep in step with the detectors

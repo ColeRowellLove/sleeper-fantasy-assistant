@@ -2,6 +2,7 @@ import type { DepthPlayer, DepthSlot, TeamDepth } from "../lib/api";
 import { depthRows, groupSlots, recordText, SLIDE_FROM, TEAM_NAMES } from "../lib/depth";
 import { unitOnField, type Unit } from "../lib/game";
 import GameBadge from "./GameBadge";
+import LocalTime from "./LocalTime";
 import InjuryBadge from "./InjuryBadge";
 import TeamLogo from "./TeamLogo";
 import TeamStatsTable from "./TeamStatsTable";
@@ -138,7 +139,6 @@ export default function TeamDepthChart({
     unit !== null && unit === onField ? <span className="unit-on">On the field now</span> : null;
   // fantasy positions are the offense's; the other sections are named by the chart's own keys
   const SECTION_UNITS: Record<string, Unit> = { "offense-line": "offense", defense: "defense" };
-  const updated = data.updated_at ? new Date(data.updated_at) : null;
 
   return (
     <Wrapper {...(landmark ? { "aria-labelledby": headingId } : {})} className="depth-chart">
@@ -161,9 +161,11 @@ export default function TeamDepthChart({
             {data.source && (
               <span className="muted">
                 Source: {data.source}
-                {updated
-                  ? `, updated ${updated.toISOString().slice(0, 16).replace("T", " ")} UTC`
-                  : ""}
+                {data.updated_at && (
+                  <>
+                    , updated <LocalTime iso={data.updated_at} />
+                  </>
+                )}
               </span>
             )}
           </p>
