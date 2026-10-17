@@ -53,12 +53,6 @@ def assign_lineup(
     return [assigned[i] for i in sorted(assigned)]
 
 
-def optimal_lineup(slots: list[str], candidates: list[tuple[str, str, float]]) -> list[str]:
-    """Player ids of the best lineup, highest scorer first."""
-    chosen = {pid for _, pid in assign_lineup(slots, candidates)}
-    return [pid for pid, _, _ in sorted(candidates, key=lambda c: -c[2]) if pid in chosen]
-
-
 def starter_slots(roster_positions: list[str]) -> list[str]:
     """Lineup slot labels in the order Sleeper lists a roster's starters (no bench, IR or taxi)."""
     return [p for p in roster_positions if p not in NON_STARTER_SLOTS]
