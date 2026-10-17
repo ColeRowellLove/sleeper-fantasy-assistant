@@ -19,17 +19,17 @@ from sleeper_assistant.nfl_teams import NICKNAMES
 log = logging.getLogger(__name__)
 
 KEEP = timedelta(days=14)  # older headlines are deleted
+SNAPSHOT_KEEP = timedelta(days=2)  # raw lists are only for debugging a parse problem
 MAX_NAME_WORDS = 4
 _FANTASY_POSITIONS = {"QB", "RB", "WR", "TE", "K"}
 TOPICS: dict[str, re.Pattern[str]] = {
     "injury": re.compile(
-        r"\b(injur\w*|questionable|doubtful|ruled out|out for|inactive|hamstring|ankle|knee"
-        r"|concussion)\b",
+        r"\b(injur\w*|questionable|doubtful|ruled out|out for|inactive|hamstring|concussion)\b",
         re.I,
     ),
-    "depth": re.compile(r"\b(depth chart|starter|starting|benched|promoted|activated)\b", re.I),
+    "depth": re.compile(r"\b(depth chart|starter|benched|promoted|activated)\b", re.I),
     "trade": re.compile(r"\b(trade[sd]?|acquire[sd]?)\b", re.I),
-    "waivers": re.compile(r"\b(waive[sd]?|released?|cut|signs?|signed)\b", re.I),
+    "waivers": re.compile(r"\b(waive[sd]?|released|signed|signs with|cut by)\b", re.I),
 }
 
 
@@ -63,8 +63,11 @@ def match_entry(title: str, index: dict[str, str]) -> tuple[list[str], list[str]
             pid = index.get(" ".join(words[i : i + size]))
             if pid and pid not in players:
                 players.append(pid)
-    lowered = title.lower()
-    teams = [code for code, nick in NICKNAMES.items() if nick.lower() in lowered]
+    teams = [
+        code
+        for code, nick in NICKNAMES.items()
+        if re.search(rf"\b{re.escape(nick)}\b", title, re.I)
+    ]
     topics = [name for name, pattern in TOPICS.items() if pattern.search(title)]
     return players, teams, topics
 
@@ -82,7 +85,9 @@ def store_entries(session: Session, entries: list[NewsEntry], index: dict[str, s
         if not players and not teams:
             continue
         row = session.get(NewsItemRow, _id(entry.link))
-        if row is None:
+        if row is not None:  # a publisher can edit a headline; keep what we show current
+            row.title, row.teams, row.player_ids, row.topics = entry.title, teams, players, topics
+        else:
             session.add(
                 NewsItemRow(
                     id=_id(entry.link), source=entry.source, title=entry.title, link=entry.link,
@@ -119,6 +124,11 @@ def sync_news(session: Session, http: httpx.Client) -> int:
         )  # fmt: skip
         stored += store_entries(session, entries, index)
     session.execute(delete(NewsItemRow).where(NewsItemRow.fetched_at < utcnow() - KEEP))
+    session.execute(
+        delete(RawSnapshotRow).where(
+            RawSnapshotRow.source == "news", RawSnapshotRow.fetched_at < utcnow() - SNAPSHOT_KEEP
+        )
+    )
     session.commit()
     if feeds and len(failures) == len(feeds):
         raise RuntimeError("every news feed failed: " + "; ".join(failures))

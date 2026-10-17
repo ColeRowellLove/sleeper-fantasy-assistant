@@ -14,15 +14,18 @@ export default function NewsList({
   items,
   myRosterId,
   label,
+  ranked = true,
 }: {
   items: readonly NewsItem[];
   myRosterId: number | null;
   label: string;
+  /** Put your players and favourite team first; off keeps the order given (newest first). */
+  ranked?: boolean;
 }) {
   const favourite = useFavourite();
   return (
     <ul className="news-list" aria-label={label}>
-      {sortNews(items, myRosterId, favourite).map((item) => {
+      {(ranked ? sortNews(items, myRosterId, favourite) : items).map((item) => {
         const flags = newsFlags(item, myRosterId, favourite);
         const reasons: Reason[] = [
           ...(flags.mine ? [{ label: "Your player", stance: "info" as const }] : []),

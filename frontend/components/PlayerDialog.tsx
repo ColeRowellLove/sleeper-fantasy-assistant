@@ -229,7 +229,12 @@ export default function PlayerDialog({
   const news = (
     <section aria-labelledby="pd-news">
       <h3 id="pd-news">News</h3>
-      <NewsList items={detail.news ?? []} myRosterId={null} label={`News about ${detail.name}`} />
+      <NewsList
+        items={detail.news ?? []}
+        myRosterId={null}
+        ranked={false}
+        label={`News about ${detail.name}`}
+      />
     </section>
   );
   const history = (

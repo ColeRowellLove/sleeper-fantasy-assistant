@@ -70,7 +70,8 @@ def _when(text: str | None) -> datetime | None:
 
 def parse_feed(xml_text: str, source: str) -> list[NewsEntry]:
     """The entries of an RSS 2.0 or Atom feed; entries without a title or a web link are skipped."""
-    if "<!DOCTYPE" in xml_text.upper() or "<!ENTITY" in xml_text.upper():
+    prolog = re.split(r"<(?:rss|feed|rdf)\b", xml_text, maxsplit=1, flags=re.I)[0].upper()
+    if "<!DOCTYPE" in prolog or "<!ENTITY" in prolog:  # only the prolog can declare entities
         raise FeedError(f"{source}: feeds with a DOCTYPE or entities are not read")
     try:
         root = ElementTree.fromstring(xml_text)
@@ -84,8 +85,10 @@ def parse_feed(xml_text: str, source: str) -> list[NewsEntry]:
         title = _clean(item.findtext("title") or item.findtext(f"{_ATOM}title"))
         link = (item.findtext("link") or "").strip()
         if not link:
-            atom_link = item.find(f"{_ATOM}link")
-            link = (atom_link.get("href") or "").strip() if atom_link is not None else ""
+            links = item.findall(f"{_ATOM}link")
+            own = [x for x in links if x.get("rel", "alternate") == "alternate"]
+            chosen = (own or links)[:1]
+            link = (chosen[0].get("href") or "").strip() if chosen else ""
         published = _when(
             item.findtext("pubDate") or item.findtext(f"{_ATOM}updated")
             or item.findtext(f"{_ATOM}published")
@@ -97,10 +100,14 @@ def parse_feed(xml_text: str, source: str) -> list[NewsEntry]:
 
 def fetch_feed(http: httpx.Client, source: str, url: str) -> list[NewsEntry]:
     """Download and parse one feed (raises on HTTP errors, oversize bodies and bad XML)."""
-    response = http.get(
-        url, timeout=20.0, headers={"User-Agent": USER_AGENT}, follow_redirects=True
-    )
-    response.raise_for_status()
-    if len(response.content) > MAX_BYTES:
-        raise FeedError(f"{source}: the feed is larger than {MAX_BYTES} bytes")
-    return parse_feed(response.text, source)
+    with http.stream(
+        "GET", url, timeout=20.0, headers={"User-Agent": USER_AGENT}, follow_redirects=True
+    ) as response:
+        response.raise_for_status()
+        body = bytearray()
+        for chunk in response.iter_bytes():
+            body.extend(chunk)
+            if len(body) > MAX_BYTES:  # stop reading, never buffer an endless feed
+                raise FeedError(f"{source}: the feed is larger than {MAX_BYTES} bytes")
+        encoding = response.encoding or "utf-8"
+    return parse_feed(bytes(body).decode(encoding, errors="replace"), source)

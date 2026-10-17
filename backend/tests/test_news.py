@@ -117,3 +117,43 @@ def test_the_board_marks_which_teams_own_the_players_named(
     first = next(i for i in view.items if i.players)
     assert (first.roster_ids, first.players[0].name) == ([2], "Jayden Daniels")
     assert [i.title[:7] for i in player_news(session, "p1")] == ["Command"]
+
+
+def test_a_team_name_inside_a_longer_word_is_not_a_team(session: Session) -> None:
+    index = name_index(session)
+    assert match_entry("Coaches praise new training programs", index) == ([], [], [])
+    assert match_entry("Rams add a coach", index)[1] == ["LAR"]
+
+
+def test_doctype_text_inside_an_item_is_not_a_declaration() -> None:
+    xml = (
+        "<rss><channel><item><title>Hello</title><link>https://x.test/1</link>"
+        "<description><![CDATA[<!DOCTYPE html>]]></description></item></channel></rss>"
+    )
+    assert [e.title for e in parse_feed(xml, "X")] == ["Hello"]
+
+
+def test_atom_prefers_the_alternate_link() -> None:
+    xml = (
+        '<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>T</title>'
+        '<link rel="replies" href="https://x.test/comments"/>'
+        '<link rel="alternate" href="https://x.test/story"/></entry></feed>'
+    )
+    assert parse_feed(xml, "A")[0].link == "https://x.test/story"
+
+
+def test_an_oversize_feed_is_refused_while_reading() -> None:
+    http = _transport({"big.test": "<rss>" + "x" * 2_100_000 + "</rss>"})
+    with pytest.raises(FeedError):
+        fetch_feed(http, "Big", "https://big.test/rss")
+
+
+def test_an_edited_headline_is_refreshed(session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NEWS_FEEDS", "Up|https://up.test/rss")
+    session.add(_player("p1", "Jayden Daniels", "QB", "WAS"))
+    session.commit()
+    sync_news(session, _transport({"up.test": FIXTURE}))
+    edited = FIXTURE.replace("questionable with a knee injury", "ruled out")
+    sync_news(session, _transport({"up.test": edited}))
+    titles = [r.title for r in session.scalars(select(NewsItemRow))]
+    assert "Commanders QB Jayden Daniels ruled out" in titles
