@@ -8,6 +8,7 @@ import { VIEWS, entriesFor, stanceWord, type WireView } from "../lib/waiverView"
 import FilterChips from "./FilterChips";
 import PlayerIdentity from "./PlayerIdentity";
 import NoteList from "./NoteList";
+import ReasonChips from "./ReasonChips";
 
 /** "Tue, Oct 20" from an ISO date, the same on the server and in the browser. */
 export function waiverDateLabel(iso: string): string {
@@ -42,15 +43,10 @@ function Entry({ entry, rank }: { entry: WireEntry; rank: number }) {
           <span className="wire-gain">+{entry.gain.toFixed(1)}</span>
         </span>
       </div>
-      <ul className="wire-reasons" aria-label={`Reasons for and against: ${reasonCounts(entry)}`}>
-        {entry.reasons
-          .filter((r) => r.stance !== "info")
-          .map((r) => (
-            <li key={r.label} className={`reason reason-${r.stance}`}>
-              <span className="reason-word">{stanceWord(r.stance)}</span> {r.label}
-            </li>
-          ))}
-      </ul>
+      <ReasonChips
+        label={`Reasons for and against: ${reasonCounts(entry)}`}
+        reasons={entry.reasons.filter((r) => r.stance !== "info")}
+      />
       <details className="wire-why">
         <summary>Details</summary>
         <ul className="wire-signals">
