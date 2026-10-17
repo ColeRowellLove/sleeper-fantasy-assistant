@@ -1116,3 +1116,65 @@ td.season-log {
   cursor: pointer;
   font-size: 0.85rem;
 }
+
+/* Transactions board */
+.txn-list {
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.txn-card {
+  border-left: 4px solid var(--line);
+  padding: 0.65rem 0.8rem;
+}
+
+.txn-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.75rem;
+  justify-content: space-between;
+  margin: 0 0 0.5rem;
+}
+
+.txn-time {
+  font-size: 0.8rem;
+}
+
+.txn-moves {
+  display: grid;
+  gap: 0.6rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.txn-team {
+  font-size: 0.85rem;
+  margin: 0 0 0.3rem;
+}
+
+.txn-players {
+  display: grid;
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.txn-sign {
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.05rem 0.5rem;
+}
+
+.txn-added .txn-sign {
+  background: color-mix(in srgb, var(--game-live) 18%, var(--surface-2));
+  color: var(--game-live);
+}
+
+.txn-dropped .txn-sign {
+  background: color-mix(in srgb, var(--injury-out) 18%, var(--surface-2));
+  color: var(--injury-out);
+}

@@ -25,6 +25,7 @@ const PAGES = [
     "rankings",
     "teams&team=SF",
     "standings",
+    "transactions",
     "settings",
     "alerts",
   ].map((tab) => ({

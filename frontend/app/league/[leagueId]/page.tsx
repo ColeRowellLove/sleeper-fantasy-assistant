@@ -11,6 +11,7 @@ import TeamDepthChart from "../../../components/TeamDepthChart";
 import TeamDialog from "../../../components/TeamDialog";
 import TeamPicker from "../../../components/TeamPicker";
 import PlayersTable from "../../../components/PlayersTable";
+import TransactionsPanel from "../../../components/TransactionsPanel";
 import TrendingPanel from "../../../components/TrendingPanel";
 import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
@@ -33,6 +34,7 @@ import type {
   Lineups,
   PlayerDetail,
   PlayersData,
+  TransactionsData,
   TeamDepth,
 } from "../../../lib/api";
 import { resolveApiUrl } from "../../../lib/apiUrl";
@@ -119,6 +121,7 @@ export default async function LeaguePage({
     rankings,
     accuracy,
     leagueSettings,
+    transactions,
     players,
     playerDetail,
     depth,
@@ -146,6 +149,9 @@ export default async function LeaguePage({
       : Promise.resolve(null),
     tab === "settings"
       ? getJson<LeagueSettings>(`/api/leagues/${leagueId}/settings`)
+      : Promise.resolve(null),
+    tab === "transactions"
+      ? getJson<TransactionsData>(`/api/leagues/${leagueId}/transactions`)
       : Promise.resolve(null),
     tab === "players" || tab === "trending"
       ? getJson<PlayersData>(`/api/leagues/${leagueId}/players`)
@@ -342,6 +348,9 @@ export default async function LeaguePage({
             <p className="note">Pick a team to see its depth chart.</p>
           )}
         </>
+      )}
+      {tab === "transactions" && transactions && (
+        <TransactionsPanel data={transactions} leagueId={leagueId} myRosterId={myRosterId} />
       )}
       {tab === "settings" && leagueSettings && <SettingsPanel data={leagueSettings} />}
       {depthDialog && (
