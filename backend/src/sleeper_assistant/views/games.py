@@ -13,12 +13,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import FANTASY_POSITIONS
-from sleeper_assistant.core.nfl_games import GameInfo, current_week, games_for_week
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.projections import score_projection, score_stats
-from sleeper_assistant.core.rosters import league_rosters
-from sleeper_assistant.core.stat_lines import stat_line
-from sleeper_assistant.core.team_names import team_names
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.team_names import team_names
+from sleeper_assistant.core.nfl.injury_status import InjuryInfo, injury_info
+from sleeper_assistant.core.nfl.nfl_games import GameInfo, current_week, games_for_week
+from sleeper_assistant.core.nfl.team_depth import TeamRecord, team_record
+from sleeper_assistant.core.scoring.projections import score_projection, score_stats
+from sleeper_assistant.core.scoring.stat_lines import stat_line
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -27,8 +29,6 @@ from sleeper_assistant.db import (
     PlayerWeekStatsRow,
 )
 from sleeper_assistant.utils.parse import finite_numbers
-from sleeper_assistant.views.roster_players import InjuryInfo, injury_info
-from sleeper_assistant.views.team_depth import TeamRecord, team_record
 
 # the stat lines the page lays out, by Sleeper's own names; anything else is left out
 STAT_KEYS = (

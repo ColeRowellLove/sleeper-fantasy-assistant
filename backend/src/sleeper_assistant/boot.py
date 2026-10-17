@@ -22,6 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant import sample_league
+from sleeper_assistant.core.sources.sleeper import SleeperClient, SleeperNotFoundError
 from sleeper_assistant.db import (
     LeagueRow,
     PlayerRow,
@@ -29,7 +30,6 @@ from sleeper_assistant.db import (
     make_engine,
     make_session_factory,
 )
-from sleeper_assistant.sources.sleeper import SleeperClient, SleeperNotFoundError
 from sleeper_assistant.sync.ingest import finish_connect, sync_league
 from sleeper_assistant.worker import default_handlers, run_one_shot
 

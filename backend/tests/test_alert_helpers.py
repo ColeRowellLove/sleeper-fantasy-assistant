@@ -3,8 +3,8 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.alerts.helpers import alert_key, first_game_date, lineup_week, player_tag
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.rosters import league_rosters
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow, RosterRow
 
 

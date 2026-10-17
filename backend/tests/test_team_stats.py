@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.team_stats import (
+from sleeper_assistant.core.nfl.team_stats import (
     STATS,
     all_team_stats,
     build_team_stats,

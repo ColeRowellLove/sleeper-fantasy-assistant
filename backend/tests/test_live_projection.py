@@ -5,8 +5,14 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.live_projection import live_projection
-from sleeper_assistant.core.win_probability import StarterState, expectation, matchup_chances
+from sleeper_assistant.core.scoring.live_projection import live_projection
+from sleeper_assistant.core.scoring.win_probability import (
+    StarterState,
+    expectation,
+    matchup_chances,
+)
+from sleeper_assistant.core.sources import live
+from sleeper_assistant.core.sources.live import LiveGame, fraction_elapsed
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -16,8 +22,6 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.sources import live
-from sleeper_assistant.sources.live import LiveGame, fraction_elapsed
 from sleeper_assistant.views.dashboard import build_dashboard
 from sleeper_assistant.views.lineups import build_lineups
 

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.team_avatar import avatar_id, team_avatar_url, team_avatars
+from sleeper_assistant.core.league.team_avatar import avatar_id, team_avatar_url, team_avatars
 from sleeper_assistant.db import LeagueRow, RosterRow, SleeperUserRow, UserLeagueRow
 
 

@@ -37,7 +37,7 @@ from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
 
-PROMPTS = Path(__file__).parent.parent / "prompts"
+PROMPTS = Path(__file__).parents[2] / "prompts"
 DEFAULT_CAP = 20
 TIMEOUT = 25.0
 MAX_FAILURES = 3  # consecutive provider failures after which a run stops asking

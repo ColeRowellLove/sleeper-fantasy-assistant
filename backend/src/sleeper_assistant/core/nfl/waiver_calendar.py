@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import EASTERN
-from sleeper_assistant.core.nfl_games import current_week
+from sleeper_assistant.core.nfl.nfl_games import current_week
 from sleeper_assistant.db import LeagueRow, NflGameRow
 
 DEFAULT_WAIVER_DAY = 2  # Tuesday, with Sunday as 0 (Sleeper's numbering)

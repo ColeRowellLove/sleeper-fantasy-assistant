@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.nfl_games import games_for_week
+from sleeper_assistant.core.nfl.nfl_games import games_for_week
 from sleeper_assistant.db import NflGameRow, utcnow
 from sleeper_assistant.sync import jobs
 from sleeper_assistant.sync.job_schedule import enqueue_kickoff_sync_if_due

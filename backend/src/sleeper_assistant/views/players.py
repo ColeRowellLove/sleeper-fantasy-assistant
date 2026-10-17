@@ -15,11 +15,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import FANTASY_POSITIONS
-from sleeper_assistant.core.nfl_games import GameInfo, current_week, games_for_week
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.projections import projected_points, score_stats
-from sleeper_assistant.core.rosters import league_rosters
-from sleeper_assistant.core.team_names import team_names
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.team_names import team_names
+from sleeper_assistant.core.nfl.injury_status import InjuryInfo, injury_info
+from sleeper_assistant.core.nfl.nfl_games import GameInfo, current_week, games_for_week
+from sleeper_assistant.core.scoring.projections import projected_points, score_stats
 from sleeper_assistant.db import (
     LeagueRow,
     PlayerOwnershipRow,
@@ -28,7 +29,6 @@ from sleeper_assistant.db import (
     PlayerTrendRow,
     PlayerWeekStatsRow,
 )
-from sleeper_assistant.views.roster_players import InjuryInfo, injury_info
 
 
 class PlayerListing(BaseModel):

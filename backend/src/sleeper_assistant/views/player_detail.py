@@ -15,18 +15,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_COMPLETE
-from sleeper_assistant.core.matchup_rank import (
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.team_names import team_names
+from sleeper_assistant.core.nfl.injury_status import InjuryInfo, injury_info
+from sleeper_assistant.core.nfl.matchup_rank import (
     DefenseTable,
     MatchupRank,
     build_defense_table,
     matchup_rank,
 )
-from sleeper_assistant.core.nfl_games import GameInfo, current_week, games_for_week
-from sleeper_assistant.core.player_names import player_name
-from sleeper_assistant.core.projections import score_projection, score_stats
-from sleeper_assistant.core.rosters import league_rosters
-from sleeper_assistant.core.team_names import team_names
-from sleeper_assistant.core.team_stats import TeamStat, build_team_stats, stats_for_position
+from sleeper_assistant.core.nfl.nfl_games import GameInfo, current_week, games_for_week
+from sleeper_assistant.core.nfl.team_depth import TeamDepth, build_team_depth
+from sleeper_assistant.core.nfl.team_stats import TeamStat, build_team_stats, stats_for_position
+from sleeper_assistant.core.scoring.projections import score_projection, score_stats
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -39,8 +41,6 @@ from sleeper_assistant.db import (
 )
 from sleeper_assistant.views.news import NewsEntryView, player_news
 from sleeper_assistant.views.player_history import HistoryEvent, build_history
-from sleeper_assistant.views.roster_players import InjuryInfo, injury_info
-from sleeper_assistant.views.team_depth import TeamDepth, build_team_depth
 
 # volume numbers worth showing even when the league does not score them directly
 _MAX_BYES = 2  # a team has one bye; more gaps than this means the schedule is not fully loaded

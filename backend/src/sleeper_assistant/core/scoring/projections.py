@@ -14,9 +14,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_PRE
-from sleeper_assistant.core.defense import parse_tier, points_allowed_score
+from sleeper_assistant.core.nfl.defense import parse_tier, points_allowed_score
+from sleeper_assistant.core.sources.sleeper import SleeperClient
 from sleeper_assistant.db import NflGameRow, PlayerProjectionRow, utcnow
-from sleeper_assistant.sources.sleeper import SleeperClient
 
 # a game in any other state has kicked off (or finished), so its projections are frozen
 

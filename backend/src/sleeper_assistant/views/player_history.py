@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.rosters import league_rosters
+from sleeper_assistant.core.league.rosters import league_rosters
 from sleeper_assistant.db import LeagueRow, SleeperUserRow, TransactionRow
 
 Source = Literal["waivers", "free_agency", "trade", "commissioner"]

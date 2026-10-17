@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.live_window import live_window_open
+from sleeper_assistant.core.nfl.live_window import live_window_open
 from sleeper_assistant.db import (
     JobRow,
     LeagueRow,

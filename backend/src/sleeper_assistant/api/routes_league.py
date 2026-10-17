@@ -9,26 +9,31 @@ from pydantic import BaseModel, StringConstraints
 
 from sleeper_assistant.alerts.engine import AlertsView, build_alerts
 from sleeper_assistant.api.deps import LeagueDep, SessionDep
-from sleeper_assistant.core.depth import TEAM_IDS
-from sleeper_assistant.db import (
-    RosterRow,
-)
-from sleeper_assistant.sources.box_score import BoxScore, BoxScoreError, box_score, link_players
-from sleeper_assistant.views.games import Games, build_games
-from sleeper_assistant.views.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
-from sleeper_assistant.views.lineups import Lineups, build_lineups
-from sleeper_assistant.views.news import NewsView, build_news
-from sleeper_assistant.views.player_detail import PlayerDetail, build_player_detail
-from sleeper_assistant.views.players import PlayersResponse, build_players
-from sleeper_assistant.views.rankings import Rankings, build_rankings
-from sleeper_assistant.views.start_sit import (
+from sleeper_assistant.core.league.rankings import Rankings, build_rankings
+from sleeper_assistant.core.league.start_sit import (
     MAX_COMPARE,
     BestLineup,
     Comparison,
     best_lineup,
     compare_players,
 )
-from sleeper_assistant.views.team_depth import TeamDepth, build_team_depth
+from sleeper_assistant.core.nfl.depth import TEAM_IDS
+from sleeper_assistant.core.nfl.team_depth import TeamDepth, build_team_depth
+from sleeper_assistant.core.sources.box_score import (
+    BoxScore,
+    BoxScoreError,
+    box_score,
+    link_players,
+)
+from sleeper_assistant.db import (
+    RosterRow,
+)
+from sleeper_assistant.views.games import Games, build_games
+from sleeper_assistant.views.lineup_accuracy import LineupAccuracy, build_lineup_accuracy
+from sleeper_assistant.views.lineups import Lineups, build_lineups
+from sleeper_assistant.views.news import NewsView, build_news
+from sleeper_assistant.views.player_detail import PlayerDetail, build_player_detail
+from sleeper_assistant.views.players import PlayersResponse, build_players
 from sleeper_assistant.views.transactions import TransactionsView, build_transactions
 from sleeper_assistant.views.waiver_wire import WaiverWire, build_waiver_wire
 

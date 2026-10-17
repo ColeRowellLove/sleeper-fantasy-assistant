@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.sources.sleeper import SleeperTransaction
 from sleeper_assistant.db import LeagueRow, RosterRow, SleeperUserRow, TransactionRow
-from sleeper_assistant.sources.sleeper import SleeperTransaction
 from sleeper_assistant.views.player_history import build_history, transaction_date
 
 

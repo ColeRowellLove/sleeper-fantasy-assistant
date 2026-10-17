@@ -7,8 +7,8 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.core.nfl_games import current_week
-from sleeper_assistant.core.player_names import player_name
+from sleeper_assistant.core.league.player_names import player_name
+from sleeper_assistant.core.nfl.nfl_games import current_week
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow
 
 

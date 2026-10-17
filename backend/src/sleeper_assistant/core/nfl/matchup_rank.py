@@ -20,8 +20,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import GAME_COMPLETE, PLAYER_POSITIONS
-from sleeper_assistant.core.projections import score_stats
-from sleeper_assistant.core.stats_version import season_stats_version
+from sleeper_assistant.core.nfl.stats_version import season_stats_version
+from sleeper_assistant.core.scoring.projections import score_stats
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
 from sleeper_assistant.utils.cache import VersionedCache
 

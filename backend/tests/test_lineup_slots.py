@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from sleeper_assistant.core.lineup_slots import assign_lineup, optimal_lineup
+from sleeper_assistant.core.league.lineup_slots import assign_lineup, optimal_lineup
 
 SLOTS = ["QB", "RB", "RB", "WR", "FLEX", "SUPER_FLEX"]
 

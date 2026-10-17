@@ -9,6 +9,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.sources.sleeper import BASE_URL, SleeperClient, SleeperPlayer
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -21,7 +22,6 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.sources.sleeper import BASE_URL, SleeperClient, SleeperPlayer
 from sleeper_assistant.sync.ingest import _bio
 from sleeper_assistant.sync.player_data import stored_history_seasons, sync_season_history
 from sleeper_assistant.views.player_detail import build_player_detail, display_stats

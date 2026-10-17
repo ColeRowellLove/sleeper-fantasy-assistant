@@ -23,13 +23,13 @@ from sleeper_assistant.api.deps import (
     get_engine_factory,
 )
 from sleeper_assistant.api.routes_league import router
-from sleeper_assistant.core.rules import LeagueRules, derive_rules
+from sleeper_assistant.core.league.rules import LeagueRules, derive_rules
+from sleeper_assistant.core.sources.sleeper import SleeperLeague, SleeperNotFoundError
 from sleeper_assistant.db import (
     LeagueRow,
     as_utc,
     utcnow,
 )
-from sleeper_assistant.sources.sleeper import SleeperLeague, SleeperNotFoundError
 from sleeper_assistant.sync.ingest import finish_connect, sync_league
 from sleeper_assistant.views.dashboard import Dashboard, build_dashboard
 

@@ -9,29 +9,28 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.constants import EMPTY_SLOT
-from sleeper_assistant.core.lineup_slots import starter_slots
-from sleeper_assistant.core.matchup_rank import (
+from sleeper_assistant.core.league.lineup_slots import starter_slots
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.team_avatar import team_avatars
+from sleeper_assistant.core.league.team_names import team_names
+from sleeper_assistant.core.nfl.injury_status import InjuryInfo, injury_info
+from sleeper_assistant.core.nfl.matchup_rank import (
     DefenseTable,
     MatchupRank,
     build_defense_table,
     matchup_rank,
 )
-from sleeper_assistant.core.nfl_games import GameInfo, current_week, games_for_week
-from sleeper_assistant.core.projections import projected_points
-from sleeper_assistant.core.rosters import league_rosters
-from sleeper_assistant.core.team_avatar import team_avatars
-from sleeper_assistant.core.team_names import team_names
-from sleeper_assistant.core.win_probability import StarterState, matchup_chances
+from sleeper_assistant.core.nfl.nfl_games import GameInfo, current_week, games_for_week
+from sleeper_assistant.core.scoring.projections import projected_points
+from sleeper_assistant.core.scoring.win_probability import StarterState, matchup_chances
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
     PlayerRow,
 )
 from sleeper_assistant.views.roster_players import (
-    InjuryInfo,
     Line,
     display,
-    injury_info,
     load_players,
     projection_now,
     week_lines,
