@@ -14,7 +14,7 @@ Follow CLAUDE.md "Workflow (required)". Steps:
 3. **Run the checks** with the `run-checks` skill. Everything must pass locally.
 4. **Review before pushing.** Run the `code-review` skill on the diff and fix its findings; also
    `a11y-enforcer:a11y-check` for UI changes and `security-review` for auth, user input, secrets or
-   external requests. Frontend changes need accessibility tests and (when feasible) screenshots.
+   external requests. Frontend changes need accessibility tests, and the Screenshots workflow's comment on the PR must be read (phone first) before merging; fix any layout problem it reports.
 5. **Ship** with `scripts/ship-pr.sh <issue> "<conventional title>" "<summary>"`. It commits,
    pushes, opens the PR into `develop`, waits for CI and squash merges. If CI fails, read the log
    (`gh run view --log-failed`), fix on the same branch and push again. Never `--admin`, never skip hooks.

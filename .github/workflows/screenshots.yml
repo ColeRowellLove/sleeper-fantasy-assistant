@@ -1,35 +1,75 @@
 name: Screenshots
 
-# Lightweight PR screenshots for frontend changes. Not a required check; download the artifact
-# from the run and attach images to the PR description.
+# Every UI or API change gets phone and desktop screenshots of every page, shot against the sample
+# league (made-up data, no network), and a layout check at phone width. The images are posted on
+# the pull request; the job fails on a new layout problem. Mark "Frontend screenshots" as a
+# required check in the branch protection settings to make it block merging.
 on:
   pull_request:
     branches: [main, develop]
-    paths: ["frontend/**"]
+    types: [opened, synchronize, reopened, closed]
+    paths: ["frontend/**", "backend/**", ".github/workflows/screenshots.yml"]
 
 permissions:
-  contents: read
+  contents: write # the pictures are pushed to a screenshots/pr-<n> branch
+  pull-requests: write # and linked in a comment
 
 jobs:
   screenshots:
     name: Frontend screenshots
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run build
-      - run: npm run screenshots
+      - name: Start the API with the sample league
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///./preview.db
+        run: |
+          uv python install 3.12
+          uv sync --frozen
+          uv run alembic upgrade head
+          uv run python -m sleeper_assistant.sample_league
+          nohup uv run uvicorn sleeper_assistant.api:app --port 8000 > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs localhost:8000/health && break; sleep 1; done
+      - name: Build the web app
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run build
+      - name: Screenshots and layout checks
+        working-directory: frontend
+        env:
+          API_URL: http://localhost:8000
+        run: npm run screenshots
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: frontend-screenshots
-          path: frontend/screenshots/*.png
-          retention-days: 7
+          path: |
+            frontend/screenshots/*.png
+            frontend/screenshots/layout-problems.txt
+          retention-days: 14
+      - name: Post the pictures on the pull request
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: scripts/post-pr-screenshots.sh frontend/screenshots "$PR"
+
+  cleanup:
+    name: Remove screenshot branch
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/screenshots/pr-${PR}" || true

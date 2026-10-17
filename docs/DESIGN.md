@@ -47,3 +47,8 @@ read the phone one first (a name broken into one letter per line was only caught
 phone), the
 `a11y-enforcer` and `perf-profiler` skills, and (once the sandbox can reach it) the production site.
 UI pull requests include before and after screenshots when feasible.
+
+The Screenshots workflow does the looking in CI: every page, phone and desktop, light and dark, from the
+sample league, posted on the PR, plus a layout check at 390 px (no sideways scroll, no squeezed names).
+`frontend/scripts/layout-baseline.json` lists the problems that exist today; fixing one means deleting
+its line, and a new problem fails the run.

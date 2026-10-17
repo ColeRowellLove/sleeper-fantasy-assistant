@@ -68,9 +68,12 @@ npm run dev
   from `develop` to `main`. Squash commit titles follow Conventional Commits.
 - **Frontend changes** must include (1) accessibility tests (axe assertions plus role/label queries
   via Testing Library, keyboard reachability for interactive elements) and (2) lightweight
-  screenshots in the PR description when feasible (before/after, desktop and mobile width,
-  compressed PNG, no secrets or real user data). Tooling: `tests/a11y.ts` (`expectNoA11yViolations`), Testing Library, and `npm run screenshots`
-  (also produced by the Screenshots workflow as a downloadable artifact).
+  screenshots (desktop and mobile width, no secrets or real user data). The Screenshots workflow
+  shoots every page against the made-up sample league (`backend/src/sleeper_assistant/sample_league.py`)
+  and posts the images on the PR; read the phone ones first. Locally: `make preview-data`, `make dev-api`,
+  then `npm run screenshots` in `frontend/`. The run also checks the layout at phone width against
+  `frontend/scripts/layout-baseline.json`, a list of known problems that may only shrink. Tooling:
+  `tests/a11y.ts` (`expectNoA11yViolations`) and Testing Library.
 - **Review before pushing.** Run the `code-review` skill on the branch diff before pushing code
   changes and fix its findings first. Also run `a11y-enforcer:a11y-check` for UI changes and
   `security-review` for anything touching auth, user input, secrets or external requests.

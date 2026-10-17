@@ -64,7 +64,8 @@ make setup     # once: install backend and frontend dependencies
 make dev       # migrates ./backend/dev.db, then runs the API (:8000) and the web app (:3000)
 ```
 
-Open http://localhost:3000 and connect your Sleeper username once to load a league (the first
+For a first look without Sleeper, run `make preview-data` once: it loads a made-up league (id 100001,
+open http://localhost:3000/league/100001). Or open http://localhost:3000 and connect your Sleeper username once to load a league (the first
 connect also loads Sleeper's player list). The worker is not needed for a first look; run
 `uv run python -m sleeper_assistant.worker --once` in `backend/` to fetch projections and rankings.
 To see how a page looks at phone and desktop width, run `npm run screenshots` in `frontend/`.
