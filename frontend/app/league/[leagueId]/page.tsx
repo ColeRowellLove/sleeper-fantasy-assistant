@@ -18,12 +18,14 @@ import StandingsTable from "../../../components/StandingsTable";
 import StartSitTool from "../../../components/StartSitTool";
 import { FavouriteProvider } from "../../../components/FavouriteProvider";
 import LiveRefresh from "../../../components/LiveRefresh";
+import BoxScorePanel from "../../../components/BoxScorePanel";
 import GamesPanel from "../../../components/GamesPanel";
 import RankingsPanel from "../../../components/RankingsPanel";
 import AlertsPanel from "../../../components/AlertsPanel";
 import WaiverWirePanel from "../../../components/WaiverWirePanel";
 import WeeklyLineups from "../../../components/WeeklyLineups";
 import type {
+  BoxScoreData,
   Dashboard,
   Games,
   LeagueSettings,
@@ -40,6 +42,7 @@ import type {
   TransactionsData,
   TeamDepth,
 } from "../../../lib/api";
+import { parseBox } from "../../../lib/boxScore";
 import { resolveApiUrl } from "../../../lib/apiUrl";
 import { isTeamCode } from "../../../lib/depth";
 import { LIVE_TABS, leaguePath, parseTab } from "../../../lib/league";
@@ -85,6 +88,7 @@ export default async function LeaguePage({
     pick?: string | string[];
     sources?: string | string[];
     pos?: string;
+    box?: string;
   }>;
 }) {
   const { leagueId } = await params;
@@ -98,6 +102,7 @@ export default async function LeaguePage({
     pick,
     sources,
     pos,
+    box,
   } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
@@ -111,6 +116,9 @@ export default async function LeaguePage({
     Number.isInteger(weekNumber) && weekNumber >= 1 && weekNumber <= 18
       ? `?week=${weekNumber}`
       : "";
+
+  // a game's full box score opens in place of the list: ?tab=games&week=N&box=AWAY-HOME
+  const boxGame = tab === "games" && weekQuery ? parseBox(box) : null;
 
   // the rankings take a week and the chosen sources; only well-formed names go into the request
   const sourceList = parseSources(sources);
@@ -135,6 +143,7 @@ export default async function LeaguePage({
     playerDetail,
     depth,
     depthDialog,
+    boxScore,
   ] = await Promise.all([
     getJson<Dashboard>(`/api/leagues/${leagueId}`),
     tab === "lineups"
@@ -177,6 +186,12 @@ export default async function LeaguePage({
     isTeamCode(depthParam)
       ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${depthParam}`).catch(() => null)
       : Promise.resolve(null),
+    // ESPN is unofficial: when it has nothing the page says so instead of failing
+    boxGame
+      ? getJson<BoxScoreData>(
+          `/api/leagues/${leagueId}/games/${weekNumber}/${boxGame.away}/${boxGame.home}/box`,
+        ).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   // closing the pop-up returns to this same page without ?player
@@ -184,6 +199,7 @@ export default async function LeaguePage({
   if (tabParam) closeParams.set("tab", tabParam);
   if (weekQuery) closeParams.set("week", String(weekNumber));
   if (tabParam === "teams" && isTeamCode(team)) closeParams.set("team", team);
+  if (boxGame) closeParams.set("box", `${boxGame.away}-${boxGame.home}`);
   const closeQuery = closeParams.toString();
   const closeHref = `${leaguePath(leagueId)}${closeQuery ? `?${closeQuery}` : ""}`;
 
@@ -302,7 +318,19 @@ export default async function LeaguePage({
             standings={dashboard.standings}
           />
         )}
-        {tab === "games" && games && (
+        {tab === "games" && boxGame && (
+          <BoxScorePanel
+            data={boxScore}
+            leagueId={leagueId}
+            week={weekNumber}
+            mine={(games?.games ?? [])
+              .filter((g) => g.away === boxGame.away && g.home === boxGame.home)
+              .flatMap((g) => g.players)
+              .filter((p) => myRosterId !== null && p.owner_roster_id === myRosterId)
+              .map((p) => p.player_id)}
+          />
+        )}
+        {tab === "games" && games && !boxGame && (
           <GamesPanel
             data={games}
             leagueId={leagueId}

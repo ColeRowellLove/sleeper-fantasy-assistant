@@ -1,0 +1,43 @@
+{
+  "_note": "Hand-written in the shape of ESPN's game summary (boxscore.players[].statistics[]); NOT a recording, because the build environment cannot reach ESPN.",
+  "header": {"competitions": [{"status": {"type": {"state": "post"}}}]},
+  "boxscore": {
+    "players": [
+      {
+        "team": {"id": "28", "abbreviation": "WSH"},
+        "statistics": [
+          {
+            "name": "passing", "text": "Passing", "labels": ["C/ATT", "YDS", "TD", "INT"],
+            "athletes": [
+              {"athlete": {"displayName": "Jayden Daniels", "position": {"abbreviation": "QB"}},
+               "stats": ["20/30", "250", "2", "0"]}
+            ],
+            "totals": ["20/30", "250", "2", "0"]
+          },
+          {
+            "name": "defensive", "text": "Defensive", "labels": ["TOT", "SACKS", "PD"],
+            "athletes": [
+              {"athlete": {"displayName": "Bobby Wagner", "position": {"abbreviation": "LB"}},
+               "stats": ["9", "1.0", "0"]},
+              {"athlete": {"displayName": "Broken Row"}, "stats": ["1"]}
+            ]
+          },
+          {"name": "punting", "labels": ["NO", "YDS"], "athletes": []},
+          "not a category"
+        ]
+      },
+      {
+        "team": {"id": "12", "abbreviation": "KC"},
+        "statistics": [
+          {
+            "name": "rushing", "text": "Rushing", "labels": ["CAR", "YDS"],
+            "athletes": [
+              {"athlete": {"displayName": "Isiah Pacheco", "position": {"abbreviation": "RB"}},
+               "stats": ["15", "70"]}
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ from pydantic import BaseModel, StringConstraints
 
 from sleeper_assistant.alerts import AlertsView, build_alerts
 from sleeper_assistant.api_deps import LeagueDep, SessionDep
+from sleeper_assistant.box_score import BoxScore, BoxScoreError, box_score, link_players
 from sleeper_assistant.db import (
     RosterRow,
 )
@@ -162,6 +163,24 @@ def get_games(
 ) -> Games:
     """Every NFL game of a week with score, line, conditions and the players in it."""
     return build_games(session, row, week)
+
+
+@router.get("/api/leagues/{league_id}/games/{week}/{away}/{home}/box")
+def get_box_score(
+    row: LeagueDep,
+    session: SessionDep,
+    week: Annotated[int, Path(ge=1, le=18)],
+    away: TeamCode,
+    home: TeamCode,
+) -> BoxScore:
+    """The full ESPN box score of one game: every player and every stat category."""
+    if away not in TEAM_IDS or home not in TEAM_IDS:
+        raise HTTPException(status_code=404, detail="Team not found")
+    try:
+        box = box_score(row.season, week, home, away)
+    except BoxScoreError as error:
+        raise HTTPException(status_code=502, detail=f"Box score not available: {error}") from None
+    return link_players(session, box.model_copy(deep=True))
 
 
 @router.get("/api/leagues/{league_id}/alerts")
