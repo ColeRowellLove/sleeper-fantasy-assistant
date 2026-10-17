@@ -5,7 +5,6 @@ Every league-scoped table is keyed by ``league_id``. Player-level data is shared
 
 from __future__ import annotations
 
-import os
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
@@ -23,7 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
-DEFAULT_DATABASE_URL = "sqlite:///./dev.db"
+from sleeper_assistant.settings import load_settings
 
 
 def utcnow() -> datetime:
@@ -355,7 +354,7 @@ class RawSnapshotRow(Base):
 
 
 def database_url() -> str:
-    return os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+    return load_settings().database_url
 
 
 def normalize_url(url: str) -> str:

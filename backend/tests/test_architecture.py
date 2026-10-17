@@ -5,12 +5,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent / "src" / "sleeper_assistant"
 FEATURES = {"views", "alerts", "sync"}
-SHARED = {"utils", "core", "constants", "db"}
+SHARED = {"utils", "core", "constants", "db", "settings"}
 # what each layer may import (besides itself); entry points (api, worker, boot, sample_league) may
 # import anything
 ALLOWED = {
-    "utils": {"utils", "constants", "db"},
-    "core": {"core", "utils", "constants", "db"},
+    "utils": {"utils", "constants", "db", "settings"},
+    "core": {"core", "utils", "constants", "db", "settings"},
     **{feature: {feature} | SHARED for feature in FEATURES},
 }
 

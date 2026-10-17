@@ -110,6 +110,15 @@ npm run dev                          # http://localhost:3000
 |----------|---------|---------|
 | `DATABASE_URL` | SQLAlchemy URL for the app and migrations | `sqlite:///./dev.db` |
 | `NEWS_FEEDS` | News feeds as `name\|url,name\|url` (headline, source, time and link only; check each feed's terms before use) | ESPN and CBS Sports NFL RSS |
+| `LLM_PROVIDER` | Language model for alert advice: `none`, `anthropic` or `openai_compatible` | `none` |
+| `LLM_MODEL` | The model name for the provider | unset |
+| `LLM_API_KEY` | The provider's key (never commit it) | unset |
+| `ANTHROPIC_API_KEY` | Used when `LLM_PROVIDER=anthropic` and `LLM_API_KEY` is empty | unset |
+| `LLM_BASE_URL` | Endpoint for `openai_compatible` providers | unset |
+| `LLM_MAX_CALLS_PER_RUN` | Cap on model calls in one alert run | built-in default |
+| `SLEEPER_USERNAME` | Boot loads every league of this Sleeper user | unset |
+| `SLEEPER_LEAGUE_ID` | Boot loads this one league | unset |
+| `BOOT_ALLOW_SHARED_DB` | `1` lets boot write to a database that is not SQLite | unset |
 | `TEST_DATABASE_URL` | Run the test suite against Postgres | in-memory SQLite |
 
 Never commit secrets; put keys in environment variables or a git-ignored `.env`.
