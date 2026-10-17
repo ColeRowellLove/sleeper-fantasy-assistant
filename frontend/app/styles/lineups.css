@@ -765,13 +765,31 @@ table.h2h {
   padding: 0;
 }
 
+.card.game-card {
+  padding: 0;
+}
+
 .game-card > summary {
   align-items: center;
   cursor: pointer;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 1rem;
-  padding: 0.85rem 1.25rem;
+  gap: 0.25rem 0.75rem;
+  padding: 0.55rem 0.8rem;
+}
+
+/* what opens under the summary lines up with it */
+.game-card > :not(summary) {
+  margin-left: 0.8rem;
+  margin-right: 0.8rem;
+}
+
+.game-card > :last-child {
+  margin-bottom: 0.8rem;
+}
+
+.game-score {
+  font-size: 1.1rem;
 }
 
 .game-card.has-mine {

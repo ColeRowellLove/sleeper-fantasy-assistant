@@ -1,5 +1,6 @@
 import type { Games } from "../lib/api";
 import { orderGames, yourPlayersText } from "../lib/games";
+import { cardScores } from "../lib/game";
 import { weekState } from "../lib/lineups";
 import GameBadge from "./GameBadge";
 import GamePlayers from "./GamePlayers";
@@ -48,38 +49,43 @@ export default function GamesPanel({
       {ordered.length === 0 && <p className="note">No games have been synced for this week yet.</p>}
 
       <ul className="game-list">
-        {ordered.map(({ card, mine }) => (
-          <li key={card.game_id}>
-            <details className={`card game-card${mine.length > 0 ? " has-mine" : ""}`}>
-              <summary>
-                <span className="game-teams">
-                  <TeamLogo team={card.away} size={28} />
-                  {card.away}
-                  <span className="muted"> at </span>
-                  <TeamLogo team={card.home} size={28} />
-                  {card.home}
-                </span>
-                <GameBadge game={card.game} conditions="full" />
-                {mine.length > 0 && (
-                  <span className="game-mine">
-                    <span className="you">You</span> {yourPlayersText(mine.length)}
+        {ordered.map(({ card, mine }) => {
+          const scores = cardScores(card);
+          return (
+            <li key={card.game_id}>
+              <details className={`card game-card${mine.length > 0 ? " has-mine" : ""}`}>
+                <summary>
+                  <span className="game-teams">
+                    <TeamLogo team={card.away} size={24} />
+                    {card.away}
+                    {scores ? <strong className="game-score num">{scores.away}</strong> : null}
+                    <span className="muted">{scores ? "–" : "at"}</span>
+                    {scores ? <strong className="game-score num">{scores.home}</strong> : null}
+                    <TeamLogo team={card.home} size={24} />
+                    {card.home}
                   </span>
-                )}
-              </summary>
-              <p className="game-links">
-                Depth charts: <TeamLink team={card.away}>{card.away}</TeamLink>,{" "}
-                <TeamLink team={card.home}>{card.home}</TeamLink>
-              </p>
-              {card.players.length === 0 ? (
-                <p className="note">
-                  No stats yet, and none of this league&apos;s teams have players in this game.
+                  <GameBadge game={card.game} conditions="full" />
+                  {mine.length > 0 && (
+                    <span className="game-mine">
+                      <span className="you">You</span> {yourPlayersText(mine.length)}
+                    </span>
+                  )}
+                </summary>
+                <p className="game-links">
+                  Depth charts: <TeamLink team={card.away}>{card.away}</TeamLink>,{" "}
+                  <TeamLink team={card.home}>{card.home}</TeamLink>
                 </p>
-              ) : (
-                <GamePlayers card={card} myRosterId={myRosterId} />
-              )}
-            </details>
-          </li>
-        ))}
+                {card.players.length === 0 ? (
+                  <p className="note">
+                    No stats yet, and none of this league&apos;s teams have players in this game.
+                  </p>
+                ) : (
+                  <GamePlayers card={card} myRosterId={myRosterId} />
+                )}
+              </details>
+            </li>
+          );
+        })}
       </ul>
       <NoteList
         items={[

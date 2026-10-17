@@ -410,3 +410,11 @@ export function weatherIcon(game: GameInfo | null | undefined): WeatherIcon | nu
   const icon = word ? WEATHER_ICONS[word] : undefined;
   return word && icon ? { icon, label: word } : null; // no icon for a word we have none for
 }
+
+/** The two teams' scores for a game card's header, away then home; null before kickoff. */
+export function cardScores(card: { game: GameInfo }): { away: number; home: number } | null {
+  const { team_score: home, opponent_score: away } = card.game;
+  if (card.game.state === "upcoming" || card.game.state === "bye") return null;
+  if (home === null || home === undefined || away === null || away === undefined) return null;
+  return { away, home };
+}
