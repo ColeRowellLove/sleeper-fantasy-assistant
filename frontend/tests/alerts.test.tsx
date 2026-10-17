@@ -20,8 +20,9 @@ import { parseTab } from "../lib/league";
 import { expectNoA11yViolations } from "./a11y";
 
 const refresh = vi.fn();
+const push = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh, replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ refresh, replace: vi.fn(), push }),
   usePathname: () => "/league/1",
   useSearchParams: () => new URLSearchParams("tab=alerts"),
 }));
@@ -55,6 +56,7 @@ const data: AlertsData = {
 
 beforeEach(() => {
   refresh.mockClear();
+  push.mockClear();
   document.cookie = "sa_alerts_seen_1=; max-age=0; path=/";
 });
 
@@ -169,13 +171,19 @@ describe("AlertsPanel", () => {
 
   it("picks the team with a plain GET form", () => {
     render(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
-    const form = screen
-      .getByRole("button", { name: "Show alerts" })
-      .closest("form") as HTMLFormElement;
+    const form = screen.getByRole("combobox", { name: /Team/ }).closest("form") as HTMLFormElement;
     expect(form).toHaveAttribute("method", "get");
     expect(form).toHaveAttribute("action", "/league/1");
     expect((form.querySelector('input[name="tab"]') as HTMLInputElement).value).toBe("alerts");
     expect(screen.getByRole("combobox", { name: /Team/ })).toHaveValue("1");
+  });
+
+  it("shows the chosen team's alerts as soon as it is picked, with no button", async () => {
+    const user = userEvent.setup();
+    render(<AlertsPanel data={data} rosters={rosters} leagueId="1" myRosterId={1} seen={null} />);
+    expect(screen.queryByRole("button", { name: "Show alerts" })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox", { name: /Team/ }), "2");
+    expect(push).toHaveBeenCalledWith("/league/1?tab=alerts&roster=2");
   });
 
   it("explains an empty feed", () => {

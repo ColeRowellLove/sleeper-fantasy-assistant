@@ -112,9 +112,10 @@ describe("roster and scoring", () => {
 describe("SettingsPanel", () => {
   it("shows groups with headings and label/value pairs", () => {
     render(<SettingsPanel data={data} />);
-    const trades = screen.getByRole("region", { name: "Trades" });
-    expect(within(trades).getByText("Trade deadline")).toBeInTheDocument();
-    expect(within(trades).getByText("Week 11")).toBeInTheDocument();
+    const rules = screen.getByRole("region", { name: "League rules" }); // one card, several sections
+    expect(within(rules).getByRole("heading", { name: "Trades" })).toBeInTheDocument();
+    expect(within(rules).getByText("Trade deadline")).toBeInTheDocument();
+    expect(within(rules).getByText("Week 11")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Scoring" })).toBeInTheDocument();
     expect(screen.getByText("Scored at zero in this league (2)")).toBeInTheDocument();
   });

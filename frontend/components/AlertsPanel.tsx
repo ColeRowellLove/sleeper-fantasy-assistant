@@ -180,7 +180,13 @@ export default function AlertsPanel({
         <input type="hidden" name="tab" value="alerts" />
         <label>
           Team{" "}
-          <select name="roster" defaultValue={String(data.roster_id)}>
+          <select
+            name="roster"
+            defaultValue={String(data.roster_id)}
+            onChange={(event) =>
+              router.push(leaguePath(leagueId, `?tab=alerts&roster=${event.target.value}`))
+            }
+          >
             {rosters.map((r) => (
               <option key={r.roster_id} value={r.roster_id}>
                 {r.team}
@@ -189,9 +195,11 @@ export default function AlertsPanel({
             ))}
           </select>
         </label>
-        <button type="submit" className="btn">
-          Show alerts
-        </button>
+        <noscript>
+          <button type="submit" className="btn">
+            Show alerts
+          </button>
+        </noscript>
       </form>
 
       {mine && unread.length > 0 && (
