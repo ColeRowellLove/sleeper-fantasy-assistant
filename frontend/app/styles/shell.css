@@ -159,3 +159,13 @@
   display: grid;
   gap: 0.5rem 1rem;
 }
+
+/* a star and the word Fav by a player on the viewer's favourite NFL team */
+.fav-mark {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 0.4rem;
+  white-space: nowrap;
+}

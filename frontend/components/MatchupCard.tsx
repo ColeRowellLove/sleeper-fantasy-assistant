@@ -9,6 +9,7 @@ import {
   winnerId,
   type WeekState,
 } from "../lib/lineups";
+import FavouriteMark from "./FavouriteProvider";
 import GameLine from "./GameLine";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
@@ -109,6 +110,7 @@ function Cell({
             )}
             {/* the designation is the current one, so it is not shown against weeks already played */}
             {state !== "played" && <InjuryBadge injury={player.injury} />}
+            <FavouriteMark team={player.team} />
           </span>
           <span className="cell-meta cell-game">
             <GameLine game={player.game} matchup={player.matchup} position={player.position} />
