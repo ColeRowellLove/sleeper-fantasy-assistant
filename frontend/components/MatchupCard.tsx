@@ -157,6 +157,45 @@ export default function MatchupCard({
   const winner = state === "played" ? winnerId(a, b) : null;
   const rows = pairRows(a, b);
 
+  const table = (
+    <table className="h2h">
+      <caption className="visually-hidden">
+        {a.team} versus {b.team}: lineups by slot, then bench
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">{a.team}</th>
+          <th scope="col" className="num-col">
+            Pts
+          </th>
+          <th scope="col" className="slot-col">
+            Slot
+          </th>
+          <th scope="col" className="num-col">
+            Pts
+          </th>
+          <th scope="col" className="right-col">
+            {b.team}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={`${row.slot}-${i}`} className={row.kind === "starter" ? undefined : row.kind}>
+            <Cell player={row.left} state={state} side="left" priority={priority} />
+            <th scope="row" className="slot-cell">
+              <span className={`slot-chip ${positionClass(row.slot)}`}>
+                <span className="visually-hidden">{row.slot}</span>
+                <span aria-hidden="true">{slotShort(row.slot)}</span>
+              </span>
+            </th>
+            <Cell player={row.right} state={state} side="right" priority={priority} />
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
   return (
     <article className={`matchup-card${mine ? " mine" : ""}`} aria-labelledby={id}>
       <header className="scoreboard">
@@ -175,42 +214,19 @@ export default function MatchupCard({
         />
         <WinBar a={a} b={b} state={state} />
       </header>
-      <table className="h2h">
-        <caption className="visually-hidden">
-          {a.team} versus {b.team}: lineups by slot, then bench
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">{a.team}</th>
-            <th scope="col" className="num-col">
-              Pts
-            </th>
-            <th scope="col" className="slot-col">
-              Slot
-            </th>
-            <th scope="col" className="num-col">
-              Pts
-            </th>
-            <th scope="col" className="right-col">
-              {b.team}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={`${row.slot}-${i}`} className={row.kind === "starter" ? undefined : row.kind}>
-              <Cell player={row.left} state={state} side="left" priority={priority} />
-              <th scope="row" className="slot-cell">
-                <span className={`slot-chip ${positionClass(row.slot)}`}>
-                  <span className="visually-hidden">{row.slot}</span>
-                  <span aria-hidden="true">{slotShort(row.slot)}</span>
-                </span>
-              </th>
-              <Cell player={row.right} state={state} side="right" priority={priority} />
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {mine || myRosterId === null ? (
+        table
+      ) : (
+        <details className="matchup-lineups">
+          <summary>
+            Lineups
+            <span className="visually-hidden">
+              : {a.team} versus {b.team}
+            </span>
+          </summary>
+          {table}
+        </details>
+      )}
     </article>
   );
 }

@@ -126,6 +126,10 @@ async function layoutProblems(page) {
   });
 }
 
+// fold-outs are checked where they matter: the games page's are still wide on a phone (#423)
+const openFolds = (page) =>
+  page.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true)));
+
 const found = new Map(); // "<page>@<viewport>:<kind>" -> sentence
 try {
   await waitForServer();
@@ -162,6 +166,8 @@ try {
           clip: { x: 0, y: 0, width: vp.width, height: Math.min(height, SHOT_HEIGHT) },
         });
         if (theme === "light") {
+          // fold-out content is checked too (the screenshot above shows it as a visitor first sees it)
+          if (p.name === "lineups") await openFolds(page);
           for (const problem of await layoutProblems(page)) {
             found.set(`${p.name}@${vp.name}:${problem.kind}`, problem.text);
           }
@@ -178,6 +184,7 @@ try {
     if (p.league && !apiUp) continue;
     await largePage.goto(`http://localhost:${PORT}${p.path}`);
     await largePage.addStyleTag({ content: "html { font-size: 125% !important; }" });
+    if (p.name === "lineups") await openFolds(largePage);
     await largePage.waitForTimeout(300);
     for (const problem of await layoutProblems(largePage)) {
       found.set(`${p.name}@mobile-large:${problem.kind}`, problem.text);

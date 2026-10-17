@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import WeeklyLineups from "../components/WeeklyLineups";
@@ -93,6 +94,37 @@ describe("WeeklyLineups", () => {
     expect(within(cards[0]).getByText("Your matchup")).toBeInTheDocument();
     expect(within(cards[0]).getAllByText("Cole").length).toBeGreaterThan(0);
     expect(within(cards[1]).queryByText("Your matchup")).not.toBeInTheDocument();
+  });
+
+  it("opens your matchup's lineups and folds the others under a Lineups summary", () => {
+    render(<WeeklyLineups data={data} leagueId="9" myRosterId={1} />);
+    const cards = screen.getAllByRole("article");
+    expect(cards[0].querySelector("details")).toBeNull();
+    const folded = cards[1].querySelector("details");
+    expect(folded).not.toBeNull();
+    expect(folded).not.toHaveAttribute("open");
+    expect(within(folded as HTMLElement).getByText("Lineups")).toBeInTheDocument();
+    expect(within(folded as HTMLElement).getByText(/^: Sis versus Bro$/)).toBeInTheDocument();
+  });
+
+  it("opens the folded lineups from a focusable summary, and has no violations", async () => {
+    const user = userEvent.setup();
+    render(<WeeklyLineups data={data} leagueId="9" myRosterId={1} />);
+    const summary = screen.getByText(/^: Sis versus Bro$/).closest("summary") as HTMLElement;
+    summary.focus();
+    expect(summary).toHaveFocus();
+    await user.click(summary);
+    expect(summary.closest("details")).toHaveAttribute("open");
+    expect(
+      within(summary.closest("details") as HTMLElement).getByRole("table"),
+    ).toBeInTheDocument();
+    await expectNoA11yViolations(<WeeklyLineups data={data} leagueId="9" myRosterId={1} />);
+  });
+
+  it("shows every lineup open when no team is yours", () => {
+    render(<WeeklyLineups data={data} leagueId="9" myRosterId={null} />);
+    expect(screen.queryByText(/Sis versus Bro/, { selector: "summary *" })).toBeNull();
+    expect(document.querySelectorAll("details")).toHaveLength(0);
   });
 
   it("always puts your team on the left, even when the data lists it second", () => {
