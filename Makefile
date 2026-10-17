@@ -1,10 +1,11 @@
-.PHONY: help setup check fmt backend-check frontend-check migrate dev dev-api dev-web hooks
+.PHONY: help setup check fmt backend-check frontend-check migrate preview-data dev dev-api dev-web hooks
 
 help:
 	@echo "make setup           install backend + frontend dependencies"
 	@echo "make check           run everything CI runs (backend + frontend)"
 	@echo "make fmt             auto-format backend code"
 	@echo "make migrate         apply database migrations (DATABASE_URL, default SQLite)"
+	@echo "make preview-data    load the made-up sample league (id 100001) for a first look"
 	@echo "make dev             migrate, then run the API (:8000) and the web app (:3000) together"
 	@echo "make dev-api         run the API on :8000"
 	@echo "make dev-web         run the web app on :3000"
@@ -27,6 +28,9 @@ fmt:
 
 migrate:
 	cd backend && uv run alembic upgrade head
+
+preview-data: migrate
+	cd backend && uv run python -m sleeper_assistant.sample_league
 
 dev: migrate
 	$(MAKE) -j2 dev-api dev-web
