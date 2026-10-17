@@ -7,8 +7,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import alert_advice, alert_injury, alerts
-from sleeper_assistant.alerts import run_all_leagues
+from sleeper_assistant.alerts import advice as alert_advice
+from sleeper_assistant.alerts import engine as alerts
+from sleeper_assistant.alerts import injury as alert_injury
+from sleeper_assistant.alerts.engine import run_all_leagues
 from sleeper_assistant.db import (
     AlertRow,
     LeagueRow,

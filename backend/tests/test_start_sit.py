@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.league.start_sit import best_lineup, compare_players
 from sleeper_assistant.db import (
     LeagueRow,
     NflGameRow,
@@ -11,7 +12,6 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.start_sit import best_lineup, compare_players
 
 SCORING = {"rush_yd": 0.1, "rec_yd": 0.1, "pass_yd": 0.04}
 

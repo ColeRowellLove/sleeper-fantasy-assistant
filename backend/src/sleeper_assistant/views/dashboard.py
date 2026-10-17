@@ -1,0 +1,144 @@
+"""Read models for the league dashboard: standings and rosters."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from sleeper_assistant.core.league.lineup_slots import starter_slots
+from sleeper_assistant.core.league.loaders import players_by_id
+from sleeper_assistant.core.league.rosters import league_rosters
+from sleeper_assistant.core.league.team_names import team_names
+from sleeper_assistant.core.nfl.matchup_rank import (
+    build_defense_table,
+)
+from sleeper_assistant.core.nfl.nfl_games import current_week, games_for_week
+from sleeper_assistant.core.scoring.projections import projected_points
+from sleeper_assistant.db import (
+    LeagueRow,
+    PlayerOwnershipRow,
+    RosterRow,
+)
+from sleeper_assistant.views.roster_players import (
+    RosterContext,
+    RosterPlayer,
+    roster_players,
+    week_lines,
+    week_points,
+)
+
+
+class StandingsRow(BaseModel):
+    rank: int
+    roster_id: int
+    team: str
+    manager: str | None = None  # the manager's Sleeper username
+    owner_id: str | None = None
+    wins: int
+    losses: int
+    ties: int
+    points_for: float
+    points_against: float
+    streak: str | None = None  # e.g. "3W" (three straight wins) or "2L"
+
+
+class RosterView(BaseModel):
+    roster_id: int
+    team: str
+    owner_id: str | None = None
+    players: list[RosterPlayer]  # starters (slot order), bench, IR, taxi
+
+
+class Dashboard(BaseModel):
+    league_id: str
+    name: str
+    season: str
+    week: int | None = None  # the current NFL week (first week with an unfinished game)
+    standings: list[StandingsRow]
+    rosters: list[RosterView]
+
+
+def _standings(
+    rosters: list[RosterRow], team: dict[int, str], manager: dict[int, str]
+) -> list[StandingsRow]:
+    ordered = sorted(rosters, key=lambda r: (-r.wins, r.losses, -r.ties, -r.points_for))
+    return [
+        StandingsRow(
+            rank=i,
+            roster_id=r.roster_id,
+            team=team[r.roster_id],
+            manager=manager[r.roster_id],
+            owner_id=r.owner_id,
+            wins=r.wins,
+            losses=r.losses,
+            ties=r.ties,
+            points_for=round(r.points_for, 2),
+            points_against=round(r.points_against, 2),
+            streak=r.streak,
+        )
+        for i, r in enumerate(ordered, start=1)
+    ]
+
+
+def _roster_context(
+    session: Session, league: LeagueRow, rosters: list[RosterRow], week: int | None
+) -> tuple[RosterContext, dict[int, dict[str, float]]]:
+    """The week's games, projections and stat lines, and what each roster has earned so far."""
+    ids = {pid for r in rosters for pid in [*r.players, *r.reserve, *r.taxi]}
+    players = players_by_id(session, ids)
+    games = games_for_week(session, league.season, week) if week else {}
+    ctx = RosterContext(
+        players=players,
+        slots=starter_slots(league.roster_positions),
+        games=games,
+        projected=(
+            projected_points(session, league.season, week, league.scoring_settings, ids)
+            if week
+            else {}
+        ),
+        defense=build_defense_table(session, league.season, league.scoring_settings),
+        lines=week_lines(session, league, week, players, games) if week else {},
+    )
+    earned = week_points(session, league.league_id, week) if week else {}
+    return ctx, earned
+
+
+def build_dashboard(session: Session, league: LeagueRow) -> Dashboard:
+    rosters = league_rosters(session, league.league_id)
+    team, manager = team_names(session, rosters)
+    week = current_week(session, league.season)
+    ctx, earned = _roster_context(session, league, rosters, week)
+    views = [
+        RosterView(
+            roster_id=r.roster_id,
+            team=team[r.roster_id],
+            owner_id=r.owner_id,
+            players=roster_players(r, ctx, earned.get(r.roster_id, {})),
+        )
+        for r in rosters  # already by roster id
+    ]
+    _add_ownership(session, views)
+    return Dashboard(
+        league_id=league.league_id,
+        name=league.name,
+        season=league.season,
+        week=week,
+        standings=_standings(rosters, team, manager),
+        rosters=views,
+    )
+
+
+def _add_ownership(session: Session, views: list[RosterView]) -> None:
+    """Fill in ESPN's owned and started shares for every rostered player."""
+    ids = {p.player_id for v in views for p in v.players}
+    shares = {
+        row.player_id: row
+        for row in session.scalars(
+            select(PlayerOwnershipRow).where(PlayerOwnershipRow.player_id.in_(ids))
+        )
+    }
+    for view in views:
+        for p in view.players:
+            if row := shares.get(p.player_id):
+                p.owned_pct, p.started_pct = row.owned, row.started

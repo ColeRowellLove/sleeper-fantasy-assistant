@@ -52,8 +52,14 @@ describe("shared components are the only way to build these", () => {
     expect(using(/<PlayerAvatar/).filter((f) => !allowed.includes(f))).toEqual([]);
   });
 
+  it("the box score is compact on purpose: short names, no faces, but still the shared table", () => {
+    const text = files.find((f) => f.name === "GamePlayers.tsx")?.text ?? "";
+    expect(text).toContain("StatTable");
+    expect(text).not.toContain("<PlayerAvatar");
+  });
+
   it("the shared components are used by the tabs they were built for", () => {
-    for (const name of ["PlayersTable.tsx", "RankingsPanel.tsx", "GamePlayers.tsx"]) {
+    for (const name of ["PlayersTable.tsx", "RankingsPanel.tsx"]) {
       const text = files.find((f) => f.name === name)?.text ?? "";
       expect(text, `${name} should use PlayerIdentity`).toContain("PlayerIdentity");
       expect(text, `${name} should use StatTable`).toContain("StatTable");

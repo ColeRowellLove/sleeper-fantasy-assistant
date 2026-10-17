@@ -40,8 +40,10 @@ Connect a league by Sleeper username and the app shows, for each league:
 - **Lineups:** every matchup side by side for any week, in the Sleeper starter order.
 - **Players:** every relevant NFL player through your league: filter by position and availability, search, and sort by Sleeper adds and drops, ESPN owned and start percentages, positional rank, season points under your scoring, and projected points.
 - **Player pop-up:** click any player (rosters, lineups, Players tab) for their bio, position rank, week-by-week points with the team and opponent for each game and every stat that counted, this week's projected stats, and past seasons with the teams he played for and each season open game by game (regular season only), all scored with your league's rules.
-- **Projections:** projected points (scored with your league's own rules) next to actual points on rosters and lineups, updated live while a game is played (what he has scored plus the rest of the projection by the game clock, and exactly his score once the game is over; the pre-game projection stays frozen for comparing), with a team total in each matchup and a win chance for each team (a simple model from the two projected totals; see `backend/src/sleeper_assistant/win_probability.py` for the assumptions).
+- **Projections:** projected points (scored with your league's own rules) next to actual points on rosters and lineups, updated live while a game is played (what he has scored plus the rest of the projection by the game clock, and exactly his score once the game is over; the pre-game projection stays frozen for comparing), with a team total in each matchup and a win chance for each team (a simple model from the two projected totals; see `backend/src/sleeper_assistant/core/scoring/win_probability.py` for the assumptions).
 - **Teams:** any NFL team's full depth chart (offense including the line, defense and special teams) with injuries, who is next up when a starter is out, and which of the players are on your league's rosters.
+- **Box score:** each game on the NFL games page links to ESPN's full box score (every player in every category: passing, rushing, receiving, defense, kicking, returns), a tab per team, with your players marked. ESPN is unofficial, so the page says so when it has nothing.
+- **News:** NFL headlines from public RSS feeds, kept when they name a player or team, labelled by source and linked back to the article (never copied); headlines about your players are marked, and each player's pop-up lists the news about him.
 - **Settings:** the league's rules and scoring as Sleeper reports them.
 
 Dark and light themes, phone and desktop layouts, and keyboard and screen-reader support throughout.
@@ -75,7 +77,7 @@ Sleeper API + other sources -> ingest jobs -> Postgres -> FastAPI -> Next.js das
 
 ```
 backend/
-  src/sleeper_assistant/   api, sleeper client, ingest, rules, db models
+  src/sleeper_assistant/   api, views, alerts, sync, core, utils (see CLAUDE.md), db models
   migrations/              Alembic migrations
   tests/                   pytest tests and recorded JSON fixtures
 frontend/                  Next.js app
@@ -107,6 +109,16 @@ npm run dev                          # http://localhost:3000
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `DATABASE_URL` | SQLAlchemy URL for the app and migrations | `sqlite:///./dev.db` |
+| `NEWS_FEEDS` | News feeds as `name\|url,name\|url` (headline, source, time and link only; check each feed's terms before use) | ESPN and CBS Sports NFL RSS |
+| `LLM_PROVIDER` | Language model for alert advice: `none`, `anthropic` or `openai_compatible` | `none` |
+| `LLM_MODEL` | The model name for the provider | unset |
+| `LLM_API_KEY` | The provider's key (never commit it) | unset |
+| `ANTHROPIC_API_KEY` | Used when `LLM_PROVIDER=anthropic` and `LLM_API_KEY` is empty | unset |
+| `LLM_BASE_URL` | Endpoint for `openai_compatible` providers | unset |
+| `LLM_MAX_CALLS_PER_RUN` | Cap on model calls in one alert run | built-in default |
+| `SLEEPER_USERNAME` | Boot loads every league of this Sleeper user | unset |
+| `SLEEPER_LEAGUE_ID` | Boot loads this one league | unset |
+| `BOOT_ALLOW_SHARED_DB` | `1` lets boot write to a database that is not SQLite | unset |
 | `TEST_DATABASE_URL` | Run the test suite against Postgres | in-memory SQLite |
 
 Never commit secrets; put keys in environment variables or a git-ignored `.env`.

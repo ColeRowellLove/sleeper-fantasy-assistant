@@ -1,4 +1,5 @@
 import type { StandingsRow } from "./api";
+import { nextSort as flipSort, type SortDirection } from "./sort";
 
 export type SortKey =
   | "rank"
@@ -9,8 +10,6 @@ export type SortKey =
   | "points_against"
   | "accuracy"
   | "left_on_bench";
-type SortDirection = "asc" | "desc";
-
 export interface SortState {
   key: SortKey;
   direction: SortDirection;
@@ -54,17 +53,9 @@ const VALUE: Record<SortKey, (row: StandingsRow) => number | string | null> = {
   left_on_bench: (row) => row.left_on_bench ?? null,
 };
 
-/** What a first click on a column does: names run A to Z, rank best first, numbers high first. */
-function firstDirection(key: SortKey): SortDirection {
-  return key === "rank" || key === "team" ? "asc" : "desc"; // streak: hottest first
-}
-
-/** Clicking the active column flips it; clicking another starts at that column's natural order. */
+/** Clicking the active column flips it; names run A to Z, rank best first, numbers high first. */
 export function nextSort(current: SortState, key: SortKey): SortState {
-  if (current.key === key) {
-    return { key, direction: current.direction === "asc" ? "desc" : "asc" };
-  }
-  return { key, direction: firstDirection(key) };
+  return flipSort(current, key, (k) => k === "rank" || k === "team"); // streak: hottest first
 }
 
 /** Sorted copy. Ties keep league rank order whichever way the column runs, so the order is stable. */

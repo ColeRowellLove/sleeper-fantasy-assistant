@@ -32,6 +32,7 @@ export const SECTIONS = [
       { key: "trending", label: "Trending" },
       { key: "waiver", label: "Waiver wire" },
       { key: "rankings", label: "Rankings" },
+      { key: "news", label: "News" },
       { key: "teams", label: "NFL teams" },
     ],
   },

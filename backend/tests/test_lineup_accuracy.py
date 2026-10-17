@@ -3,8 +3,8 @@
 from sqlalchemy.orm import Session
 
 from sleeper_assistant.db import LeagueRow, RosterRow
-from sleeper_assistant.ingest import _potential
-from sleeper_assistant.lineup_accuracy import build_lineup_accuracy
+from sleeper_assistant.sync.ingest import _potential
+from sleeper_assistant.views.lineup_accuracy import build_lineup_accuracy
 
 
 def _roster(rid: int, points: float, potential: float | None) -> RosterRow:

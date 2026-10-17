@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Dashboard, Lineups, RosterPlayer, RosterStatus } from "../lib/api";
 import { notPlayedYet, ownershipText, slotShort } from "../lib/lineups";
 import { positionClass } from "../lib/positions";
+import FavouriteMark from "./FavouriteProvider";
 import GameLine from "./GameLine";
 import InjuryBadge from "./InjuryBadge";
 import PlayerAvatar from "./PlayerAvatar";
@@ -146,6 +147,7 @@ function PlayerItem({ player }: { player: RosterPlayer }) {
             {player.team ? <TeamLink team={player.team}>{player.team}</TeamLink> : "No team"}
           </span>
           <InjuryBadge injury={player.injury} />
+          <FavouriteMark team={player.team} />
         </span>
         {own && <span className="player-own">{own}</span>}
         <GameLine game={player.game} matchup={player.matchup} position={player.position} />

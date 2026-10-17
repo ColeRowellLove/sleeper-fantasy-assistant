@@ -5,7 +5,7 @@ description: Change the database schema in this repo - SQLAlchemy model in db.py
 
 # Add a database migration
 
-Schema lives in `backend/src/sleeper_assistant/db.py`; migrations live in `backend/migrations/versions/`
+Schema lives in `backend/src/sleeper_assistant/db/**`; migrations live in `backend/migrations/versions/`
 and are numbered `0001`, `0002`, ... (the last one is the highest number in that folder).
 
 ## Steps

@@ -3,11 +3,11 @@ from datetime import UTC, datetime, timedelta
 import httpx
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import jobs
-from sleeper_assistant.dashboard import games_for_week
+from sleeper_assistant.core.nfl.nfl_games import games_for_week
 from sleeper_assistant.db import NflGameRow, utcnow
-from sleeper_assistant.kickoffs import parse_conditions, parse_kickoffs, sync_kickoffs
-from sleeper_assistant.worker import enqueue_kickoff_sync_if_due
+from sleeper_assistant.sync import jobs
+from sleeper_assistant.sync.job_schedule import enqueue_kickoff_sync_if_due
+from sleeper_assistant.sync.kickoffs import parse_conditions, parse_kickoffs, sync_kickoffs
 
 CSV = """season,game_type,week,gameday,gametime,home_team,away_team
 2026,REG,6,2026-10-18,13:00,SF,DAL

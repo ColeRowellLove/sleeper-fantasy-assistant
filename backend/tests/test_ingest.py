@@ -6,6 +6,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.sources.sleeper import BASE_URL, SleeperClient
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -15,8 +16,7 @@ from sleeper_assistant.db import (
     SleeperUserRow,
     TransactionRow,
 )
-from sleeper_assistant.ingest import _streak, sync_league, sync_players
-from sleeper_assistant.sleeper import BASE_URL, SleeperClient
+from sleeper_assistant.sync.ingest import _streak, sync_league, sync_players
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parent / "fixtures" / "sleeper_league.json").read_text()

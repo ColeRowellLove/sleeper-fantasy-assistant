@@ -13,8 +13,19 @@ export interface PanelTab {
  * underline under the open one. Arrow keys, Home and End move between tabs; only the open panel is
  * rendered, so a closed tab costs nothing.
  */
-export default function PanelTabs({ label, tabs }: { label: string; tabs: PanelTab[] }) {
-  const [active, setActive] = useState(tabs[0]?.key ?? "");
+export default function PanelTabs({
+  label,
+  tabs,
+  initial,
+}: {
+  label: string;
+  tabs: PanelTab[];
+  /** The key of the tab to open first; the first tab when absent or unknown. */
+  initial?: string;
+}) {
+  const [active, setActive] = useState(
+    tabs.some((t) => t.key === initial) ? (initial ?? "") : (tabs[0]?.key ?? ""),
+  );
   const id = useId();
   const buttons = useRef<Record<string, HTMLButtonElement | null>>({});
 

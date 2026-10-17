@@ -142,7 +142,7 @@ export interface StatColumn {
 }
 
 /** The stat's column heading: a short word where there is one, otherwise the scoring label. */
-export function statLabel(key: string): string {
+function statLabel(key: string): string {
   return SHORT[key] ?? scoringLabel(key);
 }
 

@@ -9,16 +9,18 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import alert_advice, alerts, llm
-from sleeper_assistant.alert_waiver import (
+from sleeper_assistant.alerts import advice as alert_advice
+from sleeper_assistant.alerts import engine as alerts
+from sleeper_assistant.alerts.engine import run_alerts
+from sleeper_assistant.alerts.waiver import detect_waiver_targets
+from sleeper_assistant.core.league.waiver_board import replaced_by
+from sleeper_assistant.core.nfl.waiver_calendar import (
     coming_week,
     day_name,
-    detect_waiver_targets,
-    replaced_by,
     waiver_date_if_tomorrow,
     waiver_day,
 )
-from sleeper_assistant.alerts import run_alerts
+from sleeper_assistant.core.sources import llm
 from sleeper_assistant.db import (
     AlertRow,
     LeagueRow,

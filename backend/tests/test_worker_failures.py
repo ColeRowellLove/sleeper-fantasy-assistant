@@ -5,8 +5,9 @@ import logging
 import pytest
 from sqlalchemy import Engine
 
-from sleeper_assistant import jobs, worker
-from sleeper_assistant.db import make_session_factory
+from sleeper_assistant import worker
+from sleeper_assistant.db import JobRow, make_session_factory
+from sleeper_assistant.sync import jobs
 from sleeper_assistant.worker import exit_code, run_batch, run_once, run_one_shot
 
 
@@ -95,7 +96,7 @@ def test_forgetting_failures_ends_the_cooldown_so_a_sync_is_retried(engine: Engi
     assert run_once(factory, {"sync_projections": _boom}) is True
     # retried until it fails for good (max attempts), then it sits in its failure cooldown
     with factory() as session:
-        for job in session.query(worker.JobRow).all():
+        for job in session.query(JobRow).all():
             job.status, job.attempts, job.finished_at = "failed", job.max_attempts, worker.utcnow()
         session.commit()
         assert worker.enqueue_projection_sync_if_due(session) is False  # cooling down

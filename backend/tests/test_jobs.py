@@ -7,7 +7,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import jobs
 from sleeper_assistant.db import (
     Base,
     JobRow,
@@ -17,12 +16,9 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.worker import (
-    enqueue_due_syncs,
-    enqueue_player_sync_if_due,
-    run_cycle,
-    run_once,
-)
+from sleeper_assistant.sync import jobs
+from sleeper_assistant.sync.job_schedule import enqueue_due_syncs, enqueue_player_sync_if_due
+from sleeper_assistant.worker import run_cycle, run_once
 
 
 def test_enqueue_and_claim_in_order(session: Session) -> None:
@@ -239,8 +235,8 @@ def test_run_cycle_enqueues_and_drains(engine: Engine) -> None:
 
     # league, players, schedule, kickoffs, projections, trending, stats, history, ownership,
     # depth charts and the alert run
-    assert result.enqueued == 11
-    assert result.ran == 11
+    assert result.enqueued == 12
+    assert result.ran == 12
     assert sorted(ran) == ["L1", "players"]
     assert (
         run_cycle(

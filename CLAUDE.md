@@ -12,8 +12,8 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
 ## How we work (read first)
 
 1. **Reuse before you write.** Before adding code, look for what already exists and use it:
-   `backend/src/sleeper_assistant` (helpers such as `stat_lines`, `projections`, `lineup_slots`,
-   `matchup_rank`, `alerts`), `frontend/lib` (`format.ts` numbers, `time.ts` times, game state, lineups, alerts, positions) and
+   `backend/src/sleeper_assistant` (`core/` such as `core/scoring/stat_lines`, `projections`,
+   `core/league/lineup_slots`, `core/nfl/matchup_rank`; `alerts/helpers`; `utils/`; `constants.py`), `frontend/lib` (`format.ts` numbers, `time.ts` times, game state, lineups, alerts, positions) and
    `frontend/components` (`PlayerIdentity`, `PlayerStatLine`, `StatTable`, `FilterChips`, `GameBadge`, `GameLine`, `ReasonChips`, `PanelTabs`, `LocalTime`,
    `WinBar`). Search first (`grep`), read the module, then extend it. Do not write a second version.
 2. **Duplicated logic becomes a shared util.** The second time the same logic is needed, move it to
@@ -44,6 +44,33 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
 ## Layout
 
 - `backend/` — Python 3.12 (FastAPI, Pydantic, httpx). Package `src/sleeper_assistant`. Managed with **uv**.
+  - **The rule:** anything imported across modules lives in the shared layer (`utils/`, `core/`, `constants.py`,
+    `db`); the feature packages (`views/`, `alerts/`, `sync/`) import only the shared layer and never each other
+    (`tests/test_architecture.py` fails if they do). Entry points (`api/`, `worker`, `boot`, `sample_league`)
+    wire the features together and may import any of them. Code only one feature uses stays in that feature.
+  - `utils/` generic helpers that know nothing about fantasy football: reading untrusted JSON, text, time, caches.
+  - `core/` the fantasy and NFL logic every feature builds on:
+    `core/league` (rules, rosters and ownership, team and player names, shared loaders, lineup slots, start/sit, rankings, the waiver board),
+    `core/scoring` (scoring stats and projections, stat lines, live projections, win chances, recent form),
+    `core/nfl` (games and schedule, teams, depth charts, injury statuses, matchup ranks, team stats, waiver calendar),
+    `core/sources` (outside services: Sleeper, ESPN scoreboard, ownership and box score, news feeds, and the
+    language model client with its `prompts/`; parsing of an unofficial source lives here),
+    `core/models` (pydantic models more than one module uses: games, injuries, matchup ranks; a model one module
+    uses stays in that module).
+  - `views/` read models that only one page uses (dashboard, lineups, games, players, player detail, waiver wire,
+    transactions, news, lineup accuracy). They read stored data, never fetch.
+  - `alerts/` the engine (`engine`), what every detector needs (`helpers`), model `advice` and the detectors
+    (`bye`, `injury`, `lineup`, `waiver`, registered in `detectors`).
+  - `sync/` getting data in and keeping it fresh: league, player, stats, depth chart, news and kickoff syncs,
+    the crosswalk, and the job queue (`jobs`, `job_schedule`).
+  - `api/` the app, shared dependencies (`deps`) and the routes; routes stay thin and call a view or core function.
+  - top level: `db/` (tables, split by area), `settings.py` (every environment variable, read nowhere else; add a new one to
+    `ENV_VARS` and the README table), `constants.py` (values two modules need), `worker` (runs queued jobs), `boot` and
+    `sample_league` (made-up data for previews).
+  - **Where a new file goes:** a new data source in `core/sources/` (see the `add-source-parser` skill) and the code
+    that stores it in `sync/`; a calculation two features need in `core/` (a generic helper in `utils/`); a page's
+    read model in `views/` and its route in `api/`; an alert in `alerts/` following the detector pattern in
+    `alerts/engine.py`. If a feature needs something from another feature, move it down into `core/`.
 - `frontend/` — Next.js (App Router, TypeScript). Managed with **npm**.
 - `.github/workflows/` — CI (`ci.yml`), PR policy, secret scan, dependency review (CodeQL is enabled in repo settings).
 - `.claude/skills/` — project skills: `ship-pr` (issue -> branch -> review -> CI -> squash merge),

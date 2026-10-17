@@ -11,10 +11,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from sleeper_assistant import api
-from sleeper_assistant.api import app, get_session, get_sleeper
+from sleeper_assistant.api import app
+from sleeper_assistant.api import deps as api_deps
+from sleeper_assistant.api.deps import get_session, get_sleeper
+from sleeper_assistant.core.sources.sleeper import BASE_URL, SleeperClient
 from sleeper_assistant.db import Base, LeagueRow, make_session_factory
-from sleeper_assistant.sleeper import BASE_URL, SleeperClient
 
 FIXTURE: dict[str, Any] = json.loads(
     (Path(__file__).parent / "fixtures" / "sleeper_league.json").read_text()
@@ -356,12 +357,16 @@ def test_reads_are_cached_briefly_while_a_game_is_on_and_longer_otherwise(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     assert client.post("/api/leagues/1/connect").status_code == 200
-    monkeypatch.setattr(api, "live_window_cached", lambda *_a, **_k: False)  # not the wall clock
+    monkeypatch.setattr(
+        api_deps, "live_window_cached", lambda *_a, **_k: False
+    )  # not the wall clock
     quiet = client.get("/api/leagues/1/games")
-    assert quiet.headers["cache-control"] == api.READ_CACHE
-    monkeypatch.setattr(api, "live_window_cached", lambda *_a, **_k: True)
+    assert quiet.headers["cache-control"] == api_deps.READ_CACHE
+    monkeypatch.setattr(api_deps, "live_window_cached", lambda *_a, **_k: True)
     for path in ("", "/lineups", "/games", "/rankings", "/players", "/teams/SF"):
-        assert client.get(f"/api/leagues/1{path}").headers["cache-control"] == api.READ_CACHE_LIVE
+        assert (
+            client.get(f"/api/leagues/1{path}").headers["cache-control"] == api_deps.READ_CACHE_LIVE
+        )
 
 
 def test_games_endpoint(client: TestClient) -> None:

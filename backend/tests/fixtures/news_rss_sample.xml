@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- hand-written in the standard RSS 2.0 layout: the sandbox cannot reach the real feeds, so this is
+     NOT a recording; replace it with a recorded response when one can be fetched -->
+<rss version="2.0">
+  <channel>
+    <title>NFL headlines</title>
+    <item>
+      <title>Commanders QB Jayden Daniels questionable with a knee injury</title>
+      <link>https://example.com/news/1</link>
+      <pubDate>Sat, 17 Oct 2026 14:05:00 GMT</pubDate>
+      <description>&lt;p&gt;Long article text we never store.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>  Texans   sign a punter  </title>
+      <link>https://example.com/news/2</link>
+      <pubDate>not a date</pubDate>
+    </item>
+    <item>
+      <title>No link at all</title>
+    </item>
+    <item>
+      <title>Unsafe link</title>
+      <link>javascript:alert(1)</link>
+    </item>
+  </channel>
+</rss>
