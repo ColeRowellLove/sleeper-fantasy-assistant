@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import RosterRow, SleeperUserRow, UserLeagueRow
+from sleeper_assistant.db import LeagueRow, RosterRow, SleeperUserRow, UserLeagueRow
 from sleeper_assistant.team_avatar import avatar_id, team_avatar_url, team_avatars
 
 
@@ -37,6 +37,17 @@ def _roster(roster_id: int, owner: str | None) -> RosterRow:
 
 
 def test_a_team_shows_its_own_picture_then_the_managers_then_none(session: Session) -> None:
+    session.add(
+        LeagueRow(
+            league_id="L",
+            name="Family",
+            season="2026",
+            total_rosters=4,
+            scoring_settings={},
+            roster_positions=[],
+            settings={},
+        )
+    )
     session.add_all(
         [
             SleeperUserRow(user_id="a", username="a", display_name="A", avatar="av1"),
