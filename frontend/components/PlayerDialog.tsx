@@ -8,7 +8,6 @@ import type { PlayerDetail } from "../lib/api";
 import {
   bioDetails,
   bioStrip,
-  describeStats,
   formatStat,
   rankText,
   statColumns,
@@ -20,6 +19,7 @@ import GameLog from "./GameLog";
 import InjuryBadge from "./InjuryBadge";
 import PanelTabs from "./PanelTabs";
 import PlayerAvatar from "./PlayerAvatar";
+import PlayerSummary from "./PlayerSummary";
 import PositionChip from "./PositionChip";
 import TeamLink from "./TeamLink";
 import TeamStatsTable from "./TeamStatsTable";
@@ -140,12 +140,6 @@ function PastSeasonRows({
   );
 }
 
-const percent = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : `${n.toFixed(1)}%`;
-
-const count = (n: number | null | undefined) =>
-  n === null || n === undefined ? "–" : n.toLocaleString("en-US");
-
 /**
  * One player's pop-up: who they are, where they rank this season, what they scored each week and
  * what is projected. A native dialog, so focus stays inside, Escape closes it and focus returns to
@@ -172,7 +166,6 @@ export default function PlayerDialog({
   const close = () => router.replace(closeHref, { scroll: false });
   const strip = bioStrip(detail.bio);
   const details = bioDetails(detail.bio);
-  const rank = rankText(detail.position, detail.season.rank);
   const weekStats = detail.weeks.map((w) => w.stats);
   const columns = statColumns(
     [...weekStats, ...(detail.projected ? [detail.projected.stats] : [])],
@@ -181,6 +174,7 @@ export default function PlayerDialog({
   const totals = statTotals(weekStats);
   const summary = (
     <>
+      <PlayerSummary detail={detail} />
       {details.length > 0 && (
         <section aria-labelledby="pd-bio">
           <h3 id="pd-bio">Bio</h3>
@@ -192,59 +186,6 @@ export default function PlayerDialog({
               </div>
             ))}
           </dl>
-        </section>
-      )}
-
-      <section aria-labelledby="pd-season">
-        <h3 id="pd-season">This season</h3>
-        <dl className="setting-rows">
-          <div className="setting-row">
-            <dt>Position rank</dt>
-            <dd>{rank}</dd>
-          </div>
-          <div className="setting-row">
-            <dt>Points</dt>
-            <dd>{detail.season.points.toFixed(1)}</dd>
-          </div>
-          <div className="setting-row">
-            <dt>Games</dt>
-            <dd>{detail.season.games}</dd>
-          </div>
-          <div className="setting-row">
-            <dt>Points per game</dt>
-            <dd>
-              {detail.season.average === null || detail.season.average === undefined
-                ? "–"
-                : detail.season.average.toFixed(1)}
-            </dd>
-          </div>
-          <div className="setting-row">
-            <dt>Owned % (ESPN)</dt>
-            <dd>{percent(detail.owned_pct)}</dd>
-          </div>
-          <div className="setting-row">
-            <dt>Started % (ESPN)</dt>
-            <dd>{percent(detail.started_pct)}</dd>
-          </div>
-          <div className="setting-row">
-            <dt>Sleeper adds, last 24 hours</dt>
-            <dd>{count(detail.adds)}</dd>
-          </div>
-          <div className="setting-row">
-            <dt>Sleeper drops, last 24 hours</dt>
-            <dd>{count(detail.drops)}</dd>
-          </div>
-        </dl>
-        <p className="note">Points use this league&apos;s scoring, and every stat counts.</p>
-      </section>
-
-      {detail.projected && (
-        <section aria-labelledby="pd-proj">
-          <h3 id="pd-proj">Projected, week {detail.projected.week}</h3>
-          <p className="pd-projected">
-            <strong>{detail.projected.points.toFixed(1)}</strong> points
-          </p>
-          <p className="note">{describeStats(detail.projected.stats, detail.position)}</p>
         </section>
       )}
     </>

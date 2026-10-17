@@ -280,15 +280,15 @@ describe("PlayerDialog", () => {
   it("shows ESPN's ownership and start percentages, labelled as ESPN's", () => {
     renderDialog();
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
-    expect(within(dialog).getByText("Owned % (ESPN)").nextSibling).toHaveTextContent("99.9%");
-    expect(within(dialog).getByText("Started % (ESPN)").nextSibling).toHaveTextContent("25.9%");
+    expect(within(dialog).getByText("Owned").nextSibling).toHaveTextContent("99.9%");
+    expect(within(dialog).getByText("Started").nextSibling).toHaveTextContent("25.9%");
   });
 
   it("shows a dash, never 0, when ESPN has no number for the player", () => {
     renderDialog({ ...detail, owned_pct: null, started_pct: undefined });
     const dialog = screen.getByRole("dialog", { name: "Puka Nacua" });
-    expect(within(dialog).getByText("Owned % (ESPN)").nextSibling).toHaveTextContent("–");
-    expect(within(dialog).getByText("Started % (ESPN)").nextSibling).toHaveTextContent("–");
+    expect(within(dialog).getByText("Owned").nextSibling).toHaveTextContent("–");
+    expect(within(dialog).getByText("Started").nextSibling).toHaveTextContent("–");
   });
 
   it("links the owning team to its roster and says how long the player has been in the league", () => {
@@ -306,8 +306,8 @@ describe("PlayerDialog", () => {
     expect(screen.getByRole("heading", { name: "Bio" })).toBeInTheDocument();
     expect(screen.getByText("BYU")).toBeInTheDocument();
     expect(screen.getByText("WR1")).toBeInTheDocument(); // position rank
-    expect(screen.getAllByText("146.6").length).toBeGreaterThan(0); // the summary and the totals row
-    expect(screen.getByRole("heading", { name: "Projected, week 6" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "This week's game" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /projections by week/i })).toBeInTheDocument();
     expect(screen.getAllByText(/22\.5/).length).toBeGreaterThan(0); // the section and the table row
     expect(
       screen.getByText("Targets 10, Catches 6.6, Rec yds 106.8, Rec TD 0.8"),
