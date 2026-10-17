@@ -47,6 +47,7 @@ function TeamRow({
 }
 
 export default function GamesPanel({
+  favourite = null,
   data,
   leagueId,
   myRosterId,
@@ -54,6 +55,8 @@ export default function GamesPanel({
   data: Games;
   leagueId: string;
   myRosterId: number | null;
+  /** The viewer's favourite NFL team code: its game is listed first. */
+  favourite?: string | null;
 }) {
   const ordered = orderGames(data.games, myRosterId);
   const state = data.week === null ? "played" : weekState(data.week, data.current_week);
@@ -74,7 +77,7 @@ export default function GamesPanel({
       {data.week !== null && <p className="note">{NOTES[state]}</p>}
       {ordered.length === 0 && <p className="note">No games have been synced for this week yet.</p>}
 
-      {groupGames(ordered).map((section) => (
+      {groupGames(ordered, favourite).map((section) => (
         <section key={section.key} aria-labelledby={`day-${section.key}`} className="game-day">
           <h3 id={`day-${section.key}`} className="game-day-title">
             {section.title}

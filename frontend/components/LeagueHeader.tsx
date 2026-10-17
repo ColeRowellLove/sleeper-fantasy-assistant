@@ -1,13 +1,17 @@
 import type { Dashboard } from "../lib/api";
 import { ruleChips } from "../lib/league";
+import FavouriteTeamPicker from "./FavouriteTeamPicker";
 import MyTeamPicker from "./MyTeamPicker";
 
 export default function LeagueHeader({
   data,
   myRosterId,
+  favourite = null,
 }: {
   data: Dashboard;
   myRosterId: number | null;
+  /** The viewer's favourite NFL team code, if they chose one. */
+  favourite?: string | null;
 }) {
   return (
     <header className="league-head">
@@ -20,12 +24,15 @@ export default function LeagueHeader({
           ))}
         </ul>
       </div>
-      <MyTeamPicker
-        key={myRosterId ?? "none"} // remount when the server resolves a different team
-        leagueId={data.league_id}
-        teams={data.standings}
-        myRosterId={myRosterId}
-      />
+      <div className="head-pickers">
+        <MyTeamPicker
+          key={myRosterId ?? "none"} // remount when the server resolves a different team
+          leagueId={data.league_id}
+          teams={data.standings}
+          myRosterId={myRosterId}
+        />
+        <FavouriteTeamPicker key={favourite ?? "none"} favourite={favourite} />
+      </div>
     </header>
   );
 }

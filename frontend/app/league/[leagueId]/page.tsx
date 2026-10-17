@@ -44,6 +44,7 @@ import { needsLiveRefresh } from "../../../lib/game";
 import { parseRankPosition, parseSources } from "../../../lib/rankings";
 import {
   USER_COOKIE,
+  NFL_TEAM_COOKIE,
   alertsOffCookie,
   alertsSeenCookie,
   findMyRosterId,
@@ -97,6 +98,10 @@ export default async function LeaguePage({
   } = await searchParams;
   if (!/^\d{1,25}$/.test(leagueId)) notFound();
   const tab = parseTab(tabParam);
+  const jar = await cookies();
+  const favouriteCookie = jar.get(NFL_TEAM_COOKIE)?.value;
+  const favourite = isTeamCode(favouriteCookie) ? favouriteCookie : null;
+  const teamCode = isTeamCode(team) ? team : favourite; // the team page opens on the favourite
   const weekNumber = Number(week);
   // ignore anything outside the weeks the API accepts instead of failing the whole page
   const weekQuery =
@@ -160,8 +165,8 @@ export default async function LeaguePage({
     player && /^[A-Za-z0-9]{1,12}$/.test(player)
       ? getJson<PlayerDetail>(`/api/leagues/${leagueId}/players/${player}`).catch(() => null)
       : Promise.resolve(null),
-    tab === "teams" && isTeamCode(team)
-      ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${team}`)
+    tab === "teams" && teamCode
+      ? getJson<TeamDepth>(`/api/leagues/${leagueId}/teams/${teamCode}`)
       : Promise.resolve(null),
     // a team opened as a pop-up from any team code; an unknown code opens nothing
     isTeamCode(depthParam)
@@ -187,7 +192,6 @@ export default async function LeaguePage({
     [playerDetail?.game, depth?.game, depthDialog?.game],
   ]);
 
-  const jar = await cookies();
   const myRosterId = findMyRosterId(dashboard.standings, {
     team: jar.get(teamCookie(leagueId))?.value,
     userId: jar.get(USER_COOKIE)?.value,
@@ -262,7 +266,7 @@ export default async function LeaguePage({
 
   return (
     <main id="main" className="container">
-      <LeagueHeader data={dashboard} myRosterId={myRosterId} />
+      <LeagueHeader data={dashboard} myRosterId={myRosterId} favourite={favourite} />
       <LeagueTabs leagueId={leagueId} active={tab} unreadAlerts={newAlerts} />
       <LiveRefresh active={liveNow && LIVE_TABS.includes(tab)} />
       {tab === "standings" && (
@@ -293,7 +297,12 @@ export default async function LeaguePage({
         />
       )}
       {tab === "games" && games && (
-        <GamesPanel data={games} leagueId={leagueId} myRosterId={myRosterId} />
+        <GamesPanel
+          data={games}
+          leagueId={leagueId}
+          myRosterId={myRosterId}
+          favourite={favourite}
+        />
       )}
       {tab === "rankings" && rankings && (
         <RankingsPanel
@@ -341,7 +350,7 @@ export default async function LeaguePage({
       {tab === "trending" && players && <TrendingPanel data={players} />}
       {tab === "teams" && (
         <>
-          <TeamPicker leagueId={leagueId} selected={isTeamCode(team) ? team : null} />
+          <TeamPicker leagueId={leagueId} selected={teamCode} />
           {depth ? (
             <TeamDepthChart data={depth} myRosterId={myRosterId} />
           ) : (

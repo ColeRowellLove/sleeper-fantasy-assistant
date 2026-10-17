@@ -152,6 +152,7 @@ try {
       });
       await context.addCookies([
         { name: `sa_team_${LEAGUE}`, value: "1", url: `http://localhost:${PORT}` },
+        { name: "sa_nfl_team", value: "WAS", url: `http://localhost:${PORT}` },
       ]);
       const page = await context.newPage();
       for (const p of PAGES) {
