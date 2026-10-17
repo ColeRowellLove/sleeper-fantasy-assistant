@@ -1,8 +1,5 @@
-import Link from "next/link";
-
-import type { LineupPlayer, Lineups, TeamLineup } from "../lib/api";
+import type { LineupPlayer, Lineups, StandingsRow } from "../lib/api";
 import { abbreviateName } from "../lib/game";
-import { rosterPath } from "../lib/league";
 import { positionClass } from "../lib/positions";
 import {
   formatPoints,
@@ -20,6 +17,7 @@ import PlayerAvatar from "./PlayerAvatar";
 import PlayerLink from "./PlayerLink";
 import PlayerStatLine from "./PlayerStatLine";
 import TeamLink from "./TeamLink";
+import MatchupHeader from "./MatchupHeader";
 import WinBar from "./WinBar";
 
 type Matchup = Lineups["matchups"][number];
@@ -32,6 +30,8 @@ interface Props {
   mine?: boolean;
   /** When given, each team's name links to that team's roster. */
   leagueId?: string;
+  /** The standings, for each team's record, streak and seed under its name. */
+  standings?: StandingsRow[];
   /** Eager-load avatars (use for the first card on the page). */
   priority?: boolean;
 }
@@ -65,44 +65,6 @@ function Projection({
         </span>
       )}
     </span>
-  );
-}
-
-function TeamScore({
-  team,
-  state,
-  isWinner,
-  isMe,
-  leagueId,
-}: {
-  team: TeamLineup;
-  state: WeekState;
-  isWinner: boolean;
-  isMe: boolean;
-  leagueId?: string;
-}) {
-  return (
-    <div className={`team-score${isWinner ? " winner" : ""}`}>
-      <span className="team-name">
-        {leagueId ? (
-          <Link href={rosterPath(leagueId, team.roster_id)} className="member-link">
-            {team.team}
-          </Link>
-        ) : (
-          team.team
-        )}
-        {isMe && <span className="you">You</span>}
-      </span>
-      <span className="score num">{state === "upcoming" ? "–" : team.points.toFixed(2)}</span>
-      <Projection
-        projected={team.projected}
-        compareWith={team.projected_pregame}
-        actual={team.points}
-        state={state}
-        label="Projected"
-      />
-      {isWinner && <span className="win-tag">Winner</span>}
-    </div>
   );
 }
 
@@ -210,6 +172,7 @@ export default function MatchupCard({
   myRosterId,
   mine = false,
   leagueId,
+  standings,
   priority = false,
 }: Props) {
   const [a, b] = matchup.teams;
@@ -234,25 +197,15 @@ export default function MatchupCard({
         <h3 id={id} className="visually-hidden">
           {a.team} versus {b.team}
         </h3>
-        <div className="score-row">
-          <TeamScore
-            team={a}
-            state={state}
-            isWinner={winner === a.roster_id}
-            isMe={a.roster_id === myRosterId}
-            leagueId={leagueId}
-          />
-          <span className="vs" aria-hidden="true">
-            vs
-          </span>
-          <TeamScore
-            team={b}
-            state={state}
-            isWinner={winner === b.roster_id}
-            isMe={b.roster_id === myRosterId}
-            leagueId={leagueId}
-          />
-        </div>
+        <MatchupHeader
+          a={a}
+          b={b}
+          state={state}
+          winner={winner}
+          myRosterId={myRosterId}
+          leagueId={leagueId}
+          standings={standings}
+        />
         <WinBar a={a} b={b} state={state} />
       </header>
       <table className="h2h">

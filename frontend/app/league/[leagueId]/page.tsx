@@ -277,7 +277,12 @@ export default async function LeaguePage({
         />
       )}
       {tab === "lineups" && lineups && (
-        <WeeklyLineups data={lineups} leagueId={leagueId} myRosterId={myRosterId} />
+        <WeeklyLineups
+          data={lineups}
+          leagueId={leagueId}
+          myRosterId={myRosterId}
+          standings={dashboard.standings}
+        />
       )}
       {tab === "games" && games && (
         <GamesPanel data={games} leagueId={leagueId} myRosterId={myRosterId} />

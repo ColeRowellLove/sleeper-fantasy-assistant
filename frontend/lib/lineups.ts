@@ -145,3 +145,46 @@ export function projectionDelta(
 export function notPlayedYet(state: WeekState, game?: { state: string } | null): boolean {
   return state === "upcoming" || game?.state === "upcoming";
 }
+
+const POSITION_ORDER = ["QB", "RB", "WR", "TE", "K", "DEF"];
+
+/**
+ * What a team still has to play, like Sleeper's "yet to play (10): QB, 2 RB, 4 WR, TE, K, DEF":
+ * its starters whose game is not over (upcoming or live), counted by position. Null when nobody is
+ * left (or when there is no schedule to tell).
+ */
+export function yetToPlay(team: TeamLineup): { count: number; text: string } | null {
+  const left = team.starters.filter(
+    (p) => p.game?.state === "upcoming" || p.game?.state === "live",
+  );
+  if (left.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const p of left) counts.set(p.position ?? "?", (counts.get(p.position ?? "?") ?? 0) + 1);
+  const order = [...counts.keys()].sort((x, y) => {
+    const ix = POSITION_ORDER.indexOf(x);
+    const iy = POSITION_ORDER.indexOf(y);
+    return (ix === -1 ? 99 : ix) - (iy === -1 ? 99 : iy) || x.localeCompare(y);
+  });
+  const text = order.map((pos) => ((counts.get(pos) ?? 0) > 1 ? `${counts.get(pos)} ${pos}` : pos));
+  return { count: left.length, text: text.join(", ") };
+}
+
+/** "3W" becomes "▲3W" and "2L" "▼2L" (the letter stays, so the arrow is never the only cue). */
+export function streakText(streak: string | null | undefined): string | null {
+  const match = /^(\d+)([WLT])$/i.exec(streak ?? "");
+  if (!match) return null;
+  const arrow = match[2].toUpperCase() === "W" ? "▲" : match[2].toUpperCase() === "L" ? "▼" : "";
+  return `${arrow}${match[1]}${match[2].toUpperCase()}`;
+}
+
+/** "Shough Around & Find Out" becomes "SA": up to two initials from the first two words. */
+export function teamInitials(name: string): string {
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .filter((w) => /[A-Za-z0-9]/.test(w));
+  return words
+    .slice(0, 2)
+    .map((w) => Array.from(w.replace(/[^A-Za-z0-9]/g, ""))[0]?.toUpperCase() ?? "")
+    .join("");
+}
