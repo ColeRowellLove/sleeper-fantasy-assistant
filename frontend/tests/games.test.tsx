@@ -2,7 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import GamesPanel from "../components/GamesPanel";
-import type { GameCard, GamePlayer, Games } from "../lib/api";
+import type { GameCard, GameInfo, GamePlayer, Games } from "../lib/api";
+import { cardScores } from "../lib/game";
 import { parseTab } from "../lib/league";
 import { orderGames, yourPlayersText } from "../lib/games";
 import { expectNoA11yViolations } from "./a11y";
@@ -138,7 +139,7 @@ describe("GamesPanel", () => {
       "You 1 of your player",
     ]);
     const first = document.querySelector("details summary .game-teams");
-    expect(first).toHaveTextContent("DEN at KC"); // the game with two of your players leads
+    expect(first).toHaveTextContent("DEN20–27KC"); // away score, dash, home score // the game with two of your players leads
   });
 
   it("lays out every stat like a box score, with your players highlighted and named", () => {
@@ -222,5 +223,24 @@ describe("GamesPanel", () => {
 
   it("has no accessibility violations", async () => {
     await expectNoA11yViolations(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
+  });
+});
+
+describe("cardScores", () => {
+  const card = (game: Partial<GameInfo>) => ({
+    game: { state: "final", date: null, opponent: null, home: null, ...game } as GameInfo,
+  });
+
+  it("gives away then home once a game has started, and nothing before", () => {
+    expect(cardScores(card({ team_score: 27, opponent_score: 20 }))).toEqual({
+      away: 20,
+      home: 27,
+    });
+    expect(cardScores(card({ state: "live", team_score: 3, opponent_score: 0 }))).toEqual({
+      away: 0,
+      home: 3,
+    });
+    expect(cardScores(card({ state: "upcoming", team_score: 0, opponent_score: 0 }))).toBeNull();
+    expect(cardScores(card({ team_score: null, opponent_score: null }))).toBeNull();
   });
 });
