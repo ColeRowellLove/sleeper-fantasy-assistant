@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import build_dashboard
+from sleeper_assistant.core.matchup_rank import build_defense_table, matchup_rank
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -12,9 +12,9 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.lineups import build_lineups
-from sleeper_assistant.matchup_rank import build_defense_table, matchup_rank
-from sleeper_assistant.player_detail import build_player_detail
+from sleeper_assistant.views.dashboard import build_dashboard
+from sleeper_assistant.views.lineups import build_lineups
+from sleeper_assistant.views.player_detail import build_player_detail
 
 SCORING = {"rec": 1.0, "rec_yd": 0.1, "rush_yd": 0.1}
 

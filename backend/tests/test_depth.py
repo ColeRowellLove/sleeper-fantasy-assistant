@@ -8,15 +8,7 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import (
-    LeagueRow,
-    NflGameRow,
-    PlayerRow,
-    RosterRow,
-    TeamDepthChartRow,
-    utcnow,
-)
-from sleeper_assistant.depth import (
+from sleeper_assistant.core.depth import (
     Entry,
     RosterPlayer,
     attach_sleeper_ids,
@@ -26,8 +18,16 @@ from sleeper_assistant.depth import (
     slot_label,
     slot_order,
 )
-from sleeper_assistant.depth_sync import sync_depth_charts
-from sleeper_assistant.team_depth import TeamRecord, build_team_depth, team_record
+from sleeper_assistant.db import (
+    LeagueRow,
+    NflGameRow,
+    PlayerRow,
+    RosterRow,
+    TeamDepthChartRow,
+    utcnow,
+)
+from sleeper_assistant.sync.depth_sync import sync_depth_charts
+from sleeper_assistant.views.team_depth import TeamRecord, build_team_depth, team_record
 
 
 def _athletes(*names: str, injury: str | None = None) -> dict[str, Any]:

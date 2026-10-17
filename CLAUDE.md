@@ -12,8 +12,8 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
 ## How we work (read first)
 
 1. **Reuse before you write.** Before adding code, look for what already exists and use it:
-   `backend/src/sleeper_assistant` (helpers such as `stat_lines`, `projections`, `lineup_slots`,
-   `matchup_rank`, `alerts`), `frontend/lib` (`format.ts` numbers, `time.ts` times, game state, lineups, alerts, positions) and
+   `backend/src/sleeper_assistant` (`core/` rules and calculations such as `stat_lines`, `projections`,
+   `lineup_slots`, `matchup_rank`; `alerts/helpers`; `utils/`; `constants.py`), `frontend/lib` (`format.ts` numbers, `time.ts` times, game state, lineups, alerts, positions) and
    `frontend/components` (`PlayerIdentity`, `PlayerStatLine`, `StatTable`, `FilterChips`, `GameBadge`, `GameLine`, `ReasonChips`, `PanelTabs`, `LocalTime`,
    `WinBar`). Search first (`grep`), read the module, then extend it. Do not write a second version.
 2. **Duplicated logic becomes a shared util.** The second time the same logic is needed, move it to
@@ -44,6 +44,27 @@ users act in the Sleeper app. See [docs/PLAN.md](docs/PLAN.md) for the full buil
 ## Layout
 
 - `backend/` — Python 3.12 (FastAPI, Pydantic, httpx). Package `src/sleeper_assistant`. Managed with **uv**.
+  - `api/` the app, shared dependencies (`deps`) and the league routes. Routes stay thin: they call a view.
+  - `views/` read models, one per page or tool (dashboard, lineups, games, players, player detail, team depth,
+    rankings, waiver wire, start/sit, transactions, news, lineup accuracy). They read stored data, never fetch.
+  - `alerts/` the engine (`engine`), what every detector needs (`helpers`), model `advice` and the detectors
+    (`bye`, `injury`, `lineup`, `waiver`, registered in `detectors`).
+  - `sync/` getting data in and keeping it fresh: league, player, stats, depth chart, news and kickoff syncs,
+    the crosswalk, and the job queue (`jobs`, `job_schedule`).
+  - `sources/` outside services we read from: Sleeper, ESPN (scoreboard, ownership, box score), news feeds and
+    the language model client (`llm`, with its `prompts/`). Parsing of an unofficial source lives here.
+  - `core/` rules and calculations the rest builds on: scoring and projections, lineup slots, injury statuses,
+    win probability, matchup ranks, the NFL schedule and team helpers.
+  - `utils/` small shared helpers (reading untrusted JSON, text, time, caches); `constants.py` values used by
+    more than one module.
+  - top level: `db` (tables), `worker` (runs queued jobs), `boot` and `sample_league` (made-up data for previews).
+  - **Where a new file goes:** a new data source in `sources/` (see the `add-source-parser` skill) and the code
+    that stores it in `sync/`; a page's read model in `views/` and its route in `api/`; a rule or calculation
+    in `core/`; an alert in `alerts/` following the detector pattern in `alerts/engine.py`; a helper two modules
+    need in `utils/`; a value two modules need in `constants.py`. Dependencies mostly point one way:
+    `api` -> `views`/`alerts` -> `core` -> `sources` -> `utils`/`constants`; `sync` uses `sources` and `core`.
+    Known exception: `alerts` and `views` still import each other (the waiver wire reuses the waiver alert's
+    board, the lineup alert reuses start/sit); do not add more, move shared logic down to `core/`.
 - `frontend/` — Next.js (App Router, TypeScript). Managed with **npm**.
 - `.github/workflows/` — CI (`ci.yml`), PR policy, secret scan, dependency review (CodeQL is enabled in repo settings).
 - `.claude/skills/` — project skills: `ship-pr` (issue -> branch -> review -> CI -> squash merge),

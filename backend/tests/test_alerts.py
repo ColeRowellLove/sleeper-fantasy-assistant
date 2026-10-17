@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import alerts
-from sleeper_assistant.alerts import (
+from sleeper_assistant.alerts import engine as alerts
+from sleeper_assistant.alerts.engine import (
     Detector,
     NewAlert,
     build_alerts,
@@ -82,7 +82,7 @@ def test_a_failing_detector_is_logged_and_does_not_stop_the_others(
         "bad": broken,
         "z": _returns(_alert(1, "last")),
     }  # type: ignore[dict-item]
-    with caplog.at_level("ERROR", logger="sleeper_assistant.alerts"):
+    with caplog.at_level("ERROR", logger="sleeper_assistant.alerts.engine"):
         made = run_alerts(session, league, detectors)
     assert made == 2
     keys = {r.dedupe_key for r in session.scalars(select(AlertRow))}
@@ -152,7 +152,7 @@ def test_a_run_that_overlaps_another_does_not_fail_or_lose_the_other_alerts(
             )  # fmt: skip
         return [_alert(1, "e1"), _alert(1, "e2")]
 
-    with caplog.at_level("ERROR", logger="sleeper_assistant.alerts"):
+    with caplog.at_level("ERROR", logger="sleeper_assistant.alerts.engine"):
         made = run_alerts(session, league, {"d": raced})
     assert caplog.text == ""  # not reported as a detector failure
     assert made == 1  # e1 was already told; e2 is new
@@ -173,7 +173,7 @@ def test_one_leagues_database_error_does_not_skip_the_others(
         return real(s, lg, *a, **k)  # type: ignore[arg-type]
 
     monkeypatch.setattr(alerts, "run_alerts", flaky)
-    with caplog.at_level("ERROR", logger="sleeper_assistant.alerts"):
+    with caplog.at_level("ERROR", logger="sleeper_assistant.alerts.engine"):
         made = run_all_leagues(
             session, utcnow() - timedelta(days=1), {"d": _returns(_alert(1, "x"))}
         )
@@ -218,7 +218,7 @@ def test_a_global_step_runs_once_before_the_leagues_and_a_failing_one_does_not_s
 
     alerts.PRE_RUN.update({"t_step": step, "t_broken": broken})
     try:
-        with caplog.at_level("ERROR", logger="sleeper_assistant.alerts"):
+        with caplog.at_level("ERROR", logger="sleeper_assistant.alerts.engine"):
             run_all_leagues(session, utcnow() - timedelta(days=1), {"d": detector})
     finally:
         alerts.PRE_RUN.pop("t_step", None)

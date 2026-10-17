@@ -11,7 +11,7 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.games_view import build_games
+from sleeper_assistant.views.games import build_games
 
 SCORING = {"rush_yd": 0.1, "rush_td": 6.0, "rec": 1.0, "rec_yd": 0.1}
 

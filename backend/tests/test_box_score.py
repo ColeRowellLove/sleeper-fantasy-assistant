@@ -5,8 +5,9 @@ import httpx
 import pytest
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import box_score as module
-from sleeper_assistant.box_score import (
+from sleeper_assistant.db import PlayerRow
+from sleeper_assistant.sources import box_score as module
+from sleeper_assistant.sources.box_score import (
     BoxScore,
     BoxScoreError,
     BoxTeam,
@@ -14,7 +15,6 @@ from sleeper_assistant.box_score import (
     link_players,
     parse_summary,
 )
-from sleeper_assistant.db import PlayerRow
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "espn_summary_sample.json").read_text())
 

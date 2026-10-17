@@ -12,7 +12,7 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.rankings import build_rankings
+from sleeper_assistant.views.rankings import build_rankings
 
 SCORING = {"rec": 1.0, "rec_yd": 0.1, "rush_yd": 0.1, "pass_yd": 0.04}
 

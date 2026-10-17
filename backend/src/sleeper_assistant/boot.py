@@ -29,8 +29,8 @@ from sleeper_assistant.db import (
     make_engine,
     make_session_factory,
 )
-from sleeper_assistant.ingest import finish_connect, sync_league
-from sleeper_assistant.sleeper import SleeperClient, SleeperNotFoundError
+from sleeper_assistant.sources.sleeper import SleeperClient, SleeperNotFoundError
+from sleeper_assistant.sync.ingest import finish_connect, sync_league
 from sleeper_assistant.worker import default_handlers, run_one_shot
 
 log = logging.getLogger(__name__)

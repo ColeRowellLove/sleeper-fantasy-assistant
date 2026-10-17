@@ -1,6 +1,6 @@
 import httpx
 
-from sleeper_assistant.sleeper import BASE_URL, SleeperClient
+from sleeper_assistant.sources.sleeper import BASE_URL, SleeperClient
 
 
 def _client(handler: httpx.MockTransport) -> SleeperClient:

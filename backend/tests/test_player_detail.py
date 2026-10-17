@@ -21,10 +21,10 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.ingest import _bio
-from sleeper_assistant.player_data import stored_history_seasons, sync_season_history
-from sleeper_assistant.player_detail import build_player_detail, display_stats
-from sleeper_assistant.sleeper import BASE_URL, SleeperClient, SleeperPlayer
+from sleeper_assistant.sources.sleeper import BASE_URL, SleeperClient, SleeperPlayer
+from sleeper_assistant.sync.ingest import _bio
+from sleeper_assistant.sync.player_data import stored_history_seasons, sync_season_history
+from sleeper_assistant.views.player_detail import build_player_detail, display_stats
 
 SCORING = {"rec": 1.0, "rec_yd": 0.1, "rec_td": 6.0, "rush_yd": 0.1, "pass_yd": 0.04}
 

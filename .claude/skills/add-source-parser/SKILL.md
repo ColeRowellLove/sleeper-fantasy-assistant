@@ -9,7 +9,7 @@ Unofficial endpoints are fragile; a schema change must fail CI, not silently dro
 
 1. **Licensing first.** Confirm the source allows public use (FantasyPros personal keys do not).
    If unsure, stop and ask the user. Keep request rates low; prefer APIs over scraping.
-2. **Pydantic model(s)** for the payload in `backend/src/sleeper_assistant/` (extra fields ignored,
+2. **Pydantic model(s)** for the payload in `backend/src/sleeper_assistant/sources/` (the code that stores it goes in `sync/`) (extra fields ignored,
    required fields strict so drift raises).
 3. **Fixture test.** Record a small real payload under `backend/tests/fixtures/<source>_*.json`
    (no secrets, no personal data) and test the parser against it, including odd cases (nulls, missing optional fields).

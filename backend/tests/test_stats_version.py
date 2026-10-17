@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
+from sleeper_assistant.core.stats_version import season_stats_version
 from sleeper_assistant.db import NflGameRow, PlayerRow, PlayerWeekStatsRow
-from sleeper_assistant.stats_version import season_stats_version
 
 
 def test_the_version_changes_when_a_game_completes_or_stats_are_stored(session: Session) -> None:

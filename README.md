@@ -40,7 +40,7 @@ Connect a league by Sleeper username and the app shows, for each league:
 - **Lineups:** every matchup side by side for any week, in the Sleeper starter order.
 - **Players:** every relevant NFL player through your league: filter by position and availability, search, and sort by Sleeper adds and drops, ESPN owned and start percentages, positional rank, season points under your scoring, and projected points.
 - **Player pop-up:** click any player (rosters, lineups, Players tab) for their bio, position rank, week-by-week points with the team and opponent for each game and every stat that counted, this week's projected stats, and past seasons with the teams he played for and each season open game by game (regular season only), all scored with your league's rules.
-- **Projections:** projected points (scored with your league's own rules) next to actual points on rosters and lineups, updated live while a game is played (what he has scored plus the rest of the projection by the game clock, and exactly his score once the game is over; the pre-game projection stays frozen for comparing), with a team total in each matchup and a win chance for each team (a simple model from the two projected totals; see `backend/src/sleeper_assistant/win_probability.py` for the assumptions).
+- **Projections:** projected points (scored with your league's own rules) next to actual points on rosters and lineups, updated live while a game is played (what he has scored plus the rest of the projection by the game clock, and exactly his score once the game is over; the pre-game projection stays frozen for comparing), with a team total in each matchup and a win chance for each team (a simple model from the two projected totals; see `backend/src/sleeper_assistant/core/win_probability.py` for the assumptions).
 - **Teams:** any NFL team's full depth chart (offense including the line, defense and special teams) with injuries, who is next up when a starter is out, and which of the players are on your league's rosters.
 - **Box score:** each game on the NFL games page links to ESPN's full box score (every player in every category: passing, rushing, receiving, defense, kicking, returns), a tab per team, with your players marked. ESPN is unofficial, so the page says so when it has nothing.
 - **News:** NFL headlines from public RSS feeds, kept when they name a player or team, labelled by source and linked back to the article (never copied); headlines about your players are marked, and each player's pop-up lists the news about him.
@@ -77,7 +77,7 @@ Sleeper API + other sources -> ingest jobs -> Postgres -> FastAPI -> Next.js das
 
 ```
 backend/
-  src/sleeper_assistant/   api, sleeper client, ingest, rules, db models
+  src/sleeper_assistant/   api, views, alerts, sync, sources, core, utils (see CLAUDE.md), db models
   migrations/              Alembic migrations
   tests/                   pytest tests and recorded JSON fixtures
 frontend/                  Next.js app

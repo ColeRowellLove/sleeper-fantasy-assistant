@@ -2,14 +2,14 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.db import LeagueRow, NflGameRow
-from sleeper_assistant.lineup_slots import starter_slots
-from sleeper_assistant.waiver_calendar import (
+from sleeper_assistant.core.lineup_slots import starter_slots
+from sleeper_assistant.core.waiver_calendar import (
     coming_week,
     day_name,
     waiver_date_if_tomorrow,
     waiver_day,
 )
+from sleeper_assistant.db import LeagueRow, NflGameRow
 
 
 def _league(settings: dict[str, object]) -> LeagueRow:

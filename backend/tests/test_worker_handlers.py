@@ -13,7 +13,6 @@ from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from sleeper_assistant import jobs
 from sleeper_assistant.db import (
     JobRow,
     LeagueRow,
@@ -26,7 +25,8 @@ from sleeper_assistant.db import (
     make_session_factory,
     utcnow,
 )
-from sleeper_assistant.sleeper import BASE_URL, SleeperClient
+from sleeper_assistant.sources.sleeper import BASE_URL, SleeperClient
+from sleeper_assistant.sync import jobs
 from sleeper_assistant.worker import Heartbeat, default_handlers, run_once
 
 FIXTURE: dict[str, Any] = json.loads(

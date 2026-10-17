@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from sleeper_assistant.dashboard import build_dashboard
+from sleeper_assistant.core.stat_lines import projected_stat_lines, stat_line, week_stat_lines
 from sleeper_assistant.db import (
     LeagueRow,
     MatchupRow,
@@ -13,8 +13,8 @@ from sleeper_assistant.db import (
     RosterRow,
     utcnow,
 )
-from sleeper_assistant.lineups import build_lineups
-from sleeper_assistant.stat_lines import projected_stat_lines, stat_line, week_stat_lines
+from sleeper_assistant.views.dashboard import build_dashboard
+from sleeper_assistant.views.lineups import build_lineups
 
 SCORING = {
     "pass_yd": 0.04, "pass_td": 4.0, "pass_int": -2.0, "rush_yd": 0.1, "rush_td": 6.0,

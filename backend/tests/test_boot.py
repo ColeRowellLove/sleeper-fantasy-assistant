@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sleeper_assistant.boot import boot, leagues_for_user, load_leagues
 from sleeper_assistant.db import LeagueRow, NflGameRow, PlayerRow
 from sleeper_assistant.sample_league import LEAGUE_ID
-from sleeper_assistant.sleeper import BASE_URL, SleeperClient
+from sleeper_assistant.sources.sleeper import BASE_URL, SleeperClient
 from test_api_connect import FAILING, FIXTURE, _handler
 
 
