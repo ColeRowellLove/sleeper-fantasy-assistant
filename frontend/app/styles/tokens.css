@@ -34,6 +34,9 @@
   --role-ir: #ff7a6b;
   --role-taxi: #4fd1c5;
 
+  --win-a: #60a5fa; /* win chance bar: the first team (blue) and the second (orange) */
+  --win-b: #fb923c;
+
   --font-display: var(--font-display-face), system-ui, sans-serif;
   --font-body: var(--font-body-face), system-ui, sans-serif;
   --radius: 14px;
@@ -71,6 +74,9 @@
     --role-bench: #565d7e;
     --role-ir: #b3261e;
     --role-taxi: #0f766e;
+
+    --win-a: #1d4ed8;
+    --win-b: #c2410c;
   }
 }
 
@@ -106,6 +112,9 @@
   --role-bench: #565d7e;
   --role-ir: #b3261e;
   --role-taxi: #0f766e;
+
+  --win-a: #1d4ed8;
+  --win-b: #c2410c;
 }
 
 :root[data-theme="dark"] {
