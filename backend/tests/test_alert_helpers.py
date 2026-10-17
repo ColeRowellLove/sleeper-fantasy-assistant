@@ -48,7 +48,9 @@ def test_names_and_tags_never_show_a_blank(session: Session) -> None:
 
 
 def test_a_leagues_rosters_come_back_by_roster_id(session: Session) -> None:
-    session.add(_league())
+    other = _league()
+    other.league_id = "L2"
+    session.add_all([_league(), other])
     session.flush()
     for rid in (2, 1):
         session.add(RosterRow(league_id="L", roster_id=rid, owner_id=None, players=[], starters=[]))
