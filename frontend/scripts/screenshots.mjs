@@ -146,8 +146,14 @@ try {
       for (const p of PAGES) {
         if (p.league && !apiUp) continue;
         await page.goto(`http://localhost:${PORT}${p.path}`);
-        if (p.tab && (await page.getByRole("tab", { name: p.tab }).count()) > 0)
-          await page.getByRole("tab", { name: p.tab }).click();
+        if (p.tab) {
+          // the pop-up opens after the page loads; a tab that never appears is skipped, not fatal
+          const tab = page.getByRole("tab", { name: p.tab });
+          await tab.waitFor({ timeout: 5000 }).then(
+            () => tab.click(),
+            () => console.warn(`no "${p.tab}" tab on ${p.name}; shot it as it is`),
+          );
+        }
         await page.waitForTimeout(400); // images and the client render settle (live pages keep polling)
         const height = await page.evaluate(() => document.documentElement.scrollHeight);
         await page.screenshot({

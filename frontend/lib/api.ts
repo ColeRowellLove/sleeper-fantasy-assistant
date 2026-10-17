@@ -72,6 +72,8 @@ export interface PlayerDetail {
   matchup?: MatchupRank | null;
   /** His team's numbers that matter for his position, ranked. */
   team_stats?: TeamStat[];
+  /** His team's depth chart, for the Team tab. */
+  depth?: TeamDepth | null;
   bio?: Record<string, unknown> | null;
   owner_roster_id?: number | null;
   owner_team?: string | null;

@@ -8,10 +8,22 @@ import TeamStatsTable from "./TeamStatsTable";
 import PlayerLink from "./PlayerLink";
 import NoteList from "./NoteList";
 
-function PlayerCell({ player, myRosterId }: { player: DepthPlayer; myRosterId: number | null }) {
+function PlayerCell({
+  player,
+  myRosterId,
+  highlightId,
+}: {
+  player: DepthPlayer;
+  myRosterId: number | null;
+  highlightId?: string | null;
+}) {
   const mine = myRosterId !== null && player.owner_roster_id === myRosterId;
   return (
-    <span className={`depth-player${player.next_up ? " next-up" : ""}`}>
+    <span
+      className={`depth-player${player.next_up ? " next-up" : ""}${
+        highlightId && player.player_id === highlightId ? " is-viewed" : ""
+      }`}
+    >
       <span className="depth-name">
         {player.player_id ? (
           <PlayerLink playerId={player.player_id}>{player.name}</PlayerLink>
@@ -33,10 +45,12 @@ function PlayerCell({ player, myRosterId }: { player: DepthPlayer; myRosterId: n
 function SlotTable({
   slots,
   myRosterId,
+  highlightId,
   title,
 }: {
   slots: DepthSlot[];
   myRosterId: number | null;
+  highlightId?: string | null;
   title: string;
 }) {
   const { columns, rows } = depthRows(slots);
@@ -74,7 +88,11 @@ function SlotTable({
                 {cells.map((player, i) =>
                   player ? (
                     <td key={columns[i].depth}>
-                      <PlayerCell player={player} myRosterId={myRosterId} />
+                      <PlayerCell
+                        player={player}
+                        myRosterId={myRosterId}
+                        highlightId={highlightId}
+                      />
                     </td>
                   ) : (
                     <td key={columns[i].depth} className="muted">
@@ -95,11 +113,17 @@ function SlotTable({
 export default function TeamDepthChart({
   data,
   myRosterId,
+  highlightId = null,
+  compact = false,
   headingId = "depth-heading",
   landmark = true,
 }: {
   data: TeamDepth;
   myRosterId: number | null;
+  /** A player to mark in the chart, such as the one whose pop-up it is shown in. */
+  highlightId?: string | null;
+  /** Just the chart: no title, game line, team stats or notes (for a place that has its own). */
+  compact?: boolean;
   /** Differs when the chart is shown in a pop-up over a page that already has one. */
   headingId?: string;
   /** A page section is a landmark; inside a dialog it is just content (and would clash with the page's). */
@@ -118,25 +142,33 @@ export default function TeamDepthChart({
 
   return (
     <Wrapper {...(landmark ? { "aria-labelledby": headingId } : {})} className="depth-chart">
-      <div className="depth-title">
-        <TeamLogo team={data.team} />
-        <h2 id={headingId}>{name} depth chart</h2>
-        {data.record && (
-          <span className="depth-record">
-            <span aria-hidden="true">{recordText(data.record).short}</span>
-            <span className="visually-hidden">{recordText(data.record).spoken}</span>
-          </span>
-        )}
-      </div>
-      <p className="depth-meta">
-        <GameBadge game={data.game} conditions="full" />
-        {data.source && (
-          <span className="muted">
-            Source: {data.source}
-            {updated ? `, updated ${updated.toISOString().slice(0, 16).replace("T", " ")} UTC` : ""}
-          </span>
-        )}
-      </p>
+      {compact ? (
+        <h3 id={headingId}>Depth chart</h3>
+      ) : (
+        <>
+          <div className="depth-title">
+            <TeamLogo team={data.team} />
+            <h2 id={headingId}>{name} depth chart</h2>
+            {data.record && (
+              <span className="depth-record">
+                <span aria-hidden="true">{recordText(data.record).short}</span>
+                <span className="visually-hidden">{recordText(data.record).spoken}</span>
+              </span>
+            )}
+          </div>
+          <p className="depth-meta">
+            <GameBadge game={data.game} conditions="full" />
+            {data.source && (
+              <span className="muted">
+                Source: {data.source}
+                {updated
+                  ? `, updated ${updated.toISOString().slice(0, 16).replace("T", " ")} UTC`
+                  : ""}
+              </span>
+            )}
+          </p>
+        </>
+      )}
 
       {sections.skill.length === 0 && sections.more.length === 0 ? (
         <p className="note">No depth chart is available for this team yet.</p>
@@ -148,7 +180,12 @@ export default function TeamDepthChart({
                 Fantasy positions
                 {marker("offense")}
               </h3>
-              <SlotTable slots={sections.skill} myRosterId={myRosterId} title="Fantasy positions" />
+              <SlotTable
+                slots={sections.skill}
+                myRosterId={myRosterId}
+                highlightId={highlightId}
+                title="Fantasy positions"
+              />
             </div>
           )}
           {sections.more.map((section) => (
@@ -157,12 +194,17 @@ export default function TeamDepthChart({
                 {section.title}
                 {marker(SECTION_UNITS[section.key] ?? null)}
               </summary>
-              <SlotTable slots={section.slots} myRosterId={myRosterId} title={section.title} />
+              <SlotTable
+                slots={section.slots}
+                myRosterId={myRosterId}
+                highlightId={highlightId}
+                title={section.title}
+              />
             </details>
           ))}
         </>
       )}
-      {data.stats && data.stats.length > 0 && (
+      {!compact && data.stats && data.stats.length > 0 && (
         <TeamStatsTable
           stats={data.stats}
           team={data.team}

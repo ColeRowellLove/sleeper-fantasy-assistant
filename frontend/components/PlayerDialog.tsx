@@ -22,7 +22,8 @@ import PlayerAvatar from "./PlayerAvatar";
 import PlayerSummary from "./PlayerSummary";
 import PositionChip from "./PositionChip";
 import TeamLink from "./TeamLink";
-import TeamStatsTable from "./TeamStatsTable";
+import TeamDepthChart from "./TeamDepthChart";
+import TeamRankChips from "./TeamRankChips";
 
 type PastSeason = NonNullable<PlayerDetail["past_seasons"]>[number];
 
@@ -192,12 +193,17 @@ export default function PlayerDialog({
   );
   const team = (
     <>
-      {detail.team && detail.team_stats && (
-        <TeamStatsTable
-          stats={detail.team_stats}
-          team={detail.team}
-          headingId="pd-team-stats"
-          title={`${detail.team} team stats`}
+      {detail.team && (
+        <TeamRankChips stats={detail.team_stats} team={detail.team} headingId="pd-team-rank" />
+      )}
+      {detail.depth && (
+        <TeamDepthChart
+          data={detail.depth}
+          myRosterId={null}
+          highlightId={detail.player_id}
+          compact
+          headingId="pd-depth"
+          landmark={false}
         />
       )}
     </>
@@ -341,7 +347,8 @@ export default function PlayerDialog({
           tabs={[
             { key: "summary", label: "Summary", content: summary },
             { key: "log", label: "Game log", content: gameLog },
-            ...(detail.team && detail.team_stats
+            ...(detail.team &&
+            ((detail.team_stats?.length ?? 0) > 0 || (detail.depth?.groups.length ?? 0) > 0)
               ? [{ key: "team", label: "Team", content: team }]
               : []),
             ...(detail.past_seasons.length > 0
