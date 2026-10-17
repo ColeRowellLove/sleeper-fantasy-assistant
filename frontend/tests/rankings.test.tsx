@@ -262,7 +262,7 @@ describe("choosing which sources the ranks use", () => {
   it("says which sources the ranks come from, and keeps them on the week links", () => {
     render(<RankingsPanel data={withSources} leagueId="1" myRosterId={1} />);
     expect(
-      screen.getByText(/ranked by Sleeper projection, Vegas implied points/),
+      screen.getByText(/Change what the ranks use \(Sleeper projection, Vegas implied points\)/),
     ).toBeInTheDocument();
     expect(
       within(screen.getByRole("navigation", { name: "Week" })).getByRole("link", { name: /7/ }),

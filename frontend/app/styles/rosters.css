@@ -1022,3 +1022,49 @@
 .team-header-streak {
   font-weight: 700;
 }
+
+.rank-line {
+  margin: 0 0 0.5rem;
+}
+
+.rank-fold {
+  padding: 0;
+}
+
+.rank-fold > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.55rem 0.9rem;
+}
+
+.rank-fold .rank-sources {
+  border: 0;
+  padding-top: 0;
+}
+
+.rank-agree {
+  color: var(--muted);
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.rank-about {
+  margin-top: 1rem;
+}
+
+.rank-about > summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+/* on a phone the opponent column already says how hard the matchup is: keep the rows short */
+@media (max-width: 40rem) {
+  .rank-agree,
+  .rank-why {
+    display: none;
+  }
+}
