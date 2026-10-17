@@ -16,6 +16,22 @@
   padding: 1rem 1.25rem 0.5rem;
 }
 
+.setting-merged {
+  column-gap: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+}
+
+.setting-sub + .setting-sub {
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 40rem) {
+  .setting-sub + .setting-sub {
+    margin-top: 0;
+  }
+}
+
 .setting-group h3 {
   font-size: 1rem;
   margin: 0 0 0.5rem;

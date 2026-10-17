@@ -48,9 +48,14 @@ export default function SettingsPanel({ data }: { data: LeagueSettings }) {
       </h2>
       <div className="settings-grid">
         <Group group={lineup} prefix="rules" />
-        {groups.map((group) => (
-          <Group key={group.title} group={group} prefix="rules" />
-        ))}
+        <section className="card setting-group setting-merged" aria-label="League rules">
+          {groups.map((group) => (
+            <div key={group.title} className="setting-sub">
+              <h3 id={`rules-${slug(group.title)}`}>{group.title}</h3>
+              <Rows rows={group.rows} />
+            </div>
+          ))}
+        </section>
       </div>
 
       <h2 className="settings-scoring-heading">Scoring</h2>
