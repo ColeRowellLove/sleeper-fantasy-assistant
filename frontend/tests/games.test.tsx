@@ -20,6 +20,7 @@ const player = (id: string, name: string, over: Partial<GamePlayer> = {}): GameP
   name,
   position: "RB",
   team: "SF",
+  stats: { rush_att: 10, rush_yd: 40 },
   ...over,
 });
 
@@ -151,44 +152,63 @@ describe("GamesPanel", () => {
     expect(first).toHaveTextContent(/Broncos.*20.*Chiefs.*27/); // away over home, with scores
   });
 
-  it("lays out every stat like a box score, with your players highlighted and named", () => {
+  it("lays out one table per kind of stat, like theScore, with your players marked and totals", () => {
     render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
     openTeam("KC");
-    const table = screen.getByRole("table", { name: /KC rushing and receiving/ });
-    const headers = within(table)
-      .getAllByRole("columnheader")
-      .map((h) => h.textContent);
-    expect(headers).toEqual([
-      "Rushing and receiving",
-      "Fantasy team",
-      "Car",
-      "Rush yds",
-      "Rush TD",
-      "Tgt",
-      "Rec",
-      "Rec yds",
-      "Rec TD",
-      "Pts",
-    ]);
-    const row = within(table).getByRole("row", { name: /My Back/ });
+    const rushing = screen.getByRole("table", { name: /KC rushing/ });
+    expect(
+      within(rushing)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Rushing", "Rsh", "Yds", "Avg", "TD", "Pts"]);
+    const row = within(rushing).getByRole("row", { name: /My Back/ });
     expect(row).toHaveClass("mine");
-    const cells = within(row)
-      .getAllByRole("cell")
-      .map((c) => c.textContent);
-    expect(cells).toEqual(["You Cole", "18", "92", "1", "4", "3", "21", "–", "12.5"]);
+    expect(
+      within(row)
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["18", "92", "5.1", "1", "12.5"]);
     expect(within(row).getByText("You")).toBeInTheDocument();
+    // the same player also has a receiving line, so he is in that table too
+    const receiving = screen.getByRole("table", { name: /KC receiving/ });
+    expect(
+      within(within(receiving).getByRole("row", { name: /My Back/ }))
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["3", "21", "–", "4", "12.5"]);
+    // two KC runners: 18 + 10 carries, 92 + 40 yards
+    const total = within(rushing).getByRole("row", { name: /Total/ });
+    expect(within(total).getByText("28")).toBeInTheDocument();
+    expect(within(total).getByText("132")).toBeInTheDocument();
+  });
+
+  it("adds a team total under a table with several players, averages included", () => {
+    const two = card("t", "KC", "DEN", [
+      player("8", "Back One", { team: "KC", stats: { rush_att: 14, rush_yd: 52, rush_td: 0 } }),
+      player("9", "Back Two", { team: "KC", stats: { rush_att: 5, rush_yd: 20, rush_td: 1 } }),
+    ]);
+    render(<GamesPanel data={{ ...data, games: [two] }} leagueId="1" myRosterId={1} />);
+    openTeam("KC");
+    const total = within(screen.getByRole("table", { name: /KC rushing/ })).getByRole("row", {
+      name: /Total/,
+    });
+    expect(
+      within(total)
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["19", "72", "3.8", "1", ""]); // 72 yards on 19 carries
   });
 
   it("marks other teams' players with that team's name and a lighter highlight", () => {
     render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
-    const table = screen.getByRole("table", { name: /DEN rushing and receiving/ });
+    const table = screen.getByRole("table", { name: /DEN rushing/ });
     const other = within(table).getByRole("row", { name: /Rostered Elsewhere/ });
     expect(other).toHaveClass("owned-other");
     expect(other).not.toHaveClass("mine");
     expect(within(other).getByText("Dad Bods")).toBeInTheDocument();
   });
 
-  it("shows one team at a time behind a tab each, with its logo and faces, free agents as available", () => {
+  it("shows one team at a time behind a tab each, free agents as FA in words", () => {
     const { container } = render(<GamesPanel data={data} leagueId="1" myRosterId={1} />);
     const tabs = screen.getAllByRole("tab", { name: /KC|DEN|SF|SEA/ }).map((t) => t.textContent);
     expect(tabs).toEqual(expect.arrayContaining(["DEN", "KC"]));
@@ -198,13 +218,12 @@ describe("GamesPanel", () => {
     openTeam("KC");
     expect(screen.getByRole("region", { name: "KC players" })).toBeInTheDocument();
     expect(container.querySelectorAll(".game-team-title .team-logo").length).toBeGreaterThan(0);
-    expect(container.querySelectorAll(".game-players .avatar").length).toBeGreaterThan(0);
     openTeam("SF");
-    const free = screen.getByRole("table", { name: /SF rushing and receiving/ });
-    expect(within(free).getByText("Available")).toBeInTheDocument();
+    const free = screen.getByRole("table", { name: /SF rushing/ });
+    expect(within(free).getByText(/available in this league/)).toBeInTheDocument();
     openTeam("SEA");
-    const mine = screen.getByRole("table", { name: /SEA rushing and receiving/ });
-    expect(within(mine).getByRole("row", { name: /My Only/ })).toHaveTextContent("–");
+    const mine = screen.getByRole("table", { name: /SEA rushing/ });
+    expect(within(mine).getByRole("row", { name: /My Only/ })).toBeInTheDocument();
   });
 
   it("shows projections, labelled, before a player has played", () => {
@@ -218,11 +237,10 @@ describe("GamesPanel", () => {
     ]);
     render(<GamesPanel data={{ ...data, games: [upcoming] }} leagueId="1" myRosterId={1} />);
     openTeam("KC");
-    const table = screen.getByRole("table", { name: /KC rushing and receiving \(projected\)/ });
-    expect(within(table).getByRole("columnheader", { name: "Proj pts" })).toBeInTheDocument();
+    const table = screen.getByRole("table", { name: /KC rushing \(projected\)/ });
+    expect(within(table).getByRole("columnheader", { name: "Proj" })).toBeInTheDocument();
     const row = within(table).getByRole("row", { name: /Projected Back/ });
     expect(within(row).getByText("14.2")).toBeInTheDocument();
-    expect(within(row).getByText("proj")).toBeInTheDocument();
     // projections keep a decimal, so 14.5 carries does not read as 15 and 61.7 yards not as 62
     expect(within(row).getByText("14.5")).toBeInTheDocument();
     expect(within(row).getByText("61.7")).toBeInTheDocument();
