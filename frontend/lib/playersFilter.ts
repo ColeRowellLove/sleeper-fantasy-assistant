@@ -1,6 +1,7 @@
 /** Filtering and sorting for the Players tab. Pure, so it is easy to test. */
 
 import type { PlayerListing } from "./api";
+import { nextSort as flipSort, type SortDirection } from "./sort";
 
 export const POSITION_FILTERS = ["QB", "RB", "WR", "TE", "K", "DEF"] as const;
 export type PositionFilter = "ALL" | (typeof POSITION_FILTERS)[number] | "FLEX";
@@ -9,7 +10,6 @@ export type Availability = "all" | "available" | "rostered";
 
 export type SortKey =
   "name" | "status" | "adds" | "drops" | "owned" | "started" | "rank" | "total" | "projected";
-export type SortDirection = "asc" | "desc";
 
 export interface PlayerSort {
   key: SortKey;
@@ -52,16 +52,9 @@ export function filterPlayers(players: PlayerListing[], filters: PlayerFilters):
   });
 }
 
-/** What a first click on a column does: names and rank run best first, numbers run high first. */
-export function firstDirection(key: SortKey): SortDirection {
-  return key === "name" || key === "rank" || key === "status" ? "asc" : "desc";
-}
-
+/** Clicking the active column flips it; names and rank run best first, numbers high first. */
 export function nextSort(current: PlayerSort, key: SortKey): PlayerSort {
-  if (current.key === key) {
-    return { key, direction: current.direction === "asc" ? "desc" : "asc" };
-  }
-  return { key, direction: firstDirection(key) };
+  return flipSort(current, key, (k) => k === "name" || k === "rank" || k === "status");
 }
 
 function value(p: PlayerListing, key: SortKey): number | string | null {

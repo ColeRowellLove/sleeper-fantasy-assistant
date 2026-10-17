@@ -236,7 +236,7 @@ export interface StandingsRow {
 }
 
 /** Who has the ball and where, for a game in progress (ESPN's live scoreboard). */
-export interface GameSituation {
+interface GameSituation {
   /** The team code with the ball. */
   possession?: string | null;
   /** "1st & 10" */
@@ -403,7 +403,7 @@ export interface Dashboard {
 }
 
 /** Sit vs start accuracy for one team, from the totals Sleeper reports on its roster. */
-export interface TeamAccuracy {
+interface TeamAccuracy {
   roster_id: number;
   team: string;
   /** Sleeper's season points for the team. */
@@ -561,7 +561,7 @@ export interface AlertItem {
 }
 
 /** One reason for or against adding a player; "info" is a plain fact. */
-export interface WireReason {
+interface WireReason {
   stance: "for" | "against" | "info";
   label: string;
   detail: string;

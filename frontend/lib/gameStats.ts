@@ -2,7 +2,7 @@ import type { GamePlayer } from "./api";
 
 type Stats = Record<string, number>;
 
-export interface StatColumn {
+interface StatColumn {
   label: string;
   /** Reads the cell's text from a player's stat line (one decimal for projections); null when empty. */
   get: (stats: Stats, projected?: boolean) => string | null;
@@ -54,7 +54,7 @@ const averageTotal =
     return att > 0 ? (yds / att).toFixed(1) : null;
   };
 
-export type GroupKey = "passing" | "rushing" | "receiving" | "kicking" | "defense";
+type GroupKey = "passing" | "rushing" | "receiving" | "kicking" | "defense";
 
 export interface StatGroup {
   key: GroupKey;

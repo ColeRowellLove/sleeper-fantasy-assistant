@@ -90,7 +90,7 @@ export function groupGames(ordered: OrderedGame[], favourite: string | null = nu
 }
 
 /** "Sunday, Oct 18" from an ISO date (UTC, so the server and the browser agree). */
-export function longDay(date: string): string | null {
+function longDay(date: string): string | null {
   const parsed = new Date(`${date}T12:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.toLocaleDateString("en-US", {
